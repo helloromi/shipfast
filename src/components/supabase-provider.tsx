@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import type { ReactNode } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
@@ -23,7 +23,6 @@ export function SupabaseProvider({ children, initialSession }: SupabaseProviderP
   const [supabase] = useState(() => createSupabaseBrowserClient());
   const [session, setSession] = useState<Session | null>(initialSession);
   const router = useRouter();
-  const searchParams = useSearchParams();
   const exchangingRef = useRef(false);
 
   useEffect(() => {
@@ -47,6 +46,9 @@ export function SupabaseProvider({ children, initialSession }: SupabaseProviderP
 
   // Gère le code PKCE du magic link côté client (permet de créer la session même si les cookies ne sont pas mutables côté serveur)
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    
+    const searchParams = new URLSearchParams(window.location.search);
     const code = searchParams.get("code");
     if (!code || exchangingRef.current) return;
     exchangingRef.current = true;
@@ -54,7 +56,7 @@ export function SupabaseProvider({ children, initialSession }: SupabaseProviderP
     supabase.auth
       .exchangeCodeForSession(code)
       .then(() => {
-        const params = new URLSearchParams(searchParams.toString());
+        const params = new URLSearchParams(window.location.search);
         params.delete("code");
         params.delete("next");
         const query = params.toString();
@@ -67,7 +69,7 @@ export function SupabaseProvider({ children, initialSession }: SupabaseProviderP
       .finally(() => {
         exchangingRef.current = false;
       });
-  }, [supabase, searchParams, router]);
+  }, [supabase, router]);
 
   const value: SupabaseContextValue = {
     supabase,

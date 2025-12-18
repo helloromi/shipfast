@@ -129,6 +129,17 @@ export async function fetchUserSceneAverages(userId: string): Promise<SceneAvera
   }));
 }
 
+type UserProgressQueryResult = {
+  score: number;
+  created_at: string;
+  lines: {
+    scene_id: string;
+    character_id: string;
+    scenes: Scene;
+    characters: Character | null;
+  };
+};
+
 export async function fetchUserProgressScenes(userId: string): Promise<SceneProgress[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -146,7 +157,8 @@ export async function fetchUserProgressScenes(userId: string): Promise<SceneProg
       `
     )
     .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .returns<UserProgressQueryResult[]>();
 
   if (error || !data) {
     console.error(error);
@@ -165,11 +177,11 @@ export async function fetchUserProgressScenes(userId: string): Promise<SceneProg
   >();
 
   for (const row of data) {
-    const line = row.lines as { scene_id: string; scenes: Scene; characters: Character | null } | null;
+    const line = row.lines;
     if (!line?.scene_id || !line?.scenes) continue;
-    const sceneId = line.scene_id as string;
-    const scene = line.scenes as Scene;
-    const character = line.characters as Character | null;
+    const sceneId = line.scene_id;
+    const scene = line.scenes;
+    const character = line.characters;
     const entry = grouped.get(sceneId);
     if (!entry) {
       grouped.set(sceneId, {
