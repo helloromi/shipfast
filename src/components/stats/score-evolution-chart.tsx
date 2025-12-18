@@ -45,7 +45,12 @@ export function ScoreEvolutionChart({ data }: ScoreEvolutionChartProps) {
               padding: "8px 12px",
             }}
             labelStyle={{ color: "#3b1f4a", fontWeight: "600", marginBottom: "4px" }}
-            formatter={(value: number) => [value.toFixed(2), t.stats.charts.score]}
+            formatter={(value) => {
+              if (typeof value === "number") {
+                return [value.toFixed(2), t.stats.charts.score];
+              }
+              return [String(value ?? ""), t.stats.charts.score];
+            }}
           />
           <Line
             type="monotone"
