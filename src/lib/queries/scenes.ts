@@ -50,7 +50,7 @@ export async function fetchScenes(): Promise<Scene[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("scenes")
-    .select("id, title, author, summary, chapter")
+    .select("id, work_id, title, author, summary, chapter")
     .order("title", { ascending: true });
 
   if (error) {
@@ -58,7 +58,14 @@ export async function fetchScenes(): Promise<Scene[]> {
     return [];
   }
 
-  return data ?? [];
+  return (data ?? []).map((scene) => ({
+    id: scene.id,
+    work_id: scene.work_id ?? null,
+    title: scene.title,
+    author: scene.author,
+    summary: scene.summary,
+    chapter: scene.chapter,
+  }));
 }
 
 export async function fetchSceneWithRelations(id: string): Promise<SceneWithRelations | null> {
