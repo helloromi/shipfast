@@ -95,7 +95,10 @@ export async function fetchSceneWithRelations(id: string): Promise<SceneWithRela
   return {
     ...data,
     characters: data.characters ?? [],
-    lines: data.lines ?? [],
+    lines: (data.lines ?? []).map((line) => ({
+      ...line,
+      scene_id: id,
+    })),
   };
 }
 
