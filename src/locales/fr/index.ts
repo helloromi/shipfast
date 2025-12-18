@@ -4,6 +4,7 @@ import { landing } from "./landing";
 import { learn } from "./learn";
 import { login } from "./login";
 import { scenes } from "./scenes";
+import { stats } from "./stats";
 
 export const t = {
   common,
@@ -12,6 +13,7 @@ export const t = {
   home,
   login,
   learn,
+  stats,
 };
 
 export type Translations = typeof t;

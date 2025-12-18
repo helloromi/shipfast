@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { fetchSceneWithRelations, fetchUserProgressScenes, getSupabaseSessionUser } from "@/lib/queries/scenes";
+import { fetchSceneStats } from "@/lib/queries/stats";
+import { SceneStatsDetail } from "@/components/stats/scene-stats-detail";
 import { t } from "@/locales/fr";
 
 type Props = {
@@ -20,9 +22,10 @@ export default async function SceneDetailPage({ params }: Props) {
   }
 
   const user = await getSupabaseSessionUser();
-  const userProgress = user
-    ? (await fetchUserProgressScenes(user.id)).find((p) => p.sceneId === id)
-    : null;
+  const [userProgress, sceneStats] = await Promise.all([
+    user ? fetchUserProgressScenes(user.id).then((p) => p.find((p) => p.sceneId === id)) : Promise.resolve(null),
+    user ? fetchSceneStats(user.id, id) : Promise.resolve(null),
+  ]);
 
   const sortedLines = [...scene.lines].sort((a, b) => a.order - b.order);
 
@@ -53,6 +56,16 @@ export default async function SceneDetailPage({ params }: Props) {
           </div>
         )}
       </div>
+
+      {user && sceneStats && (
+        <SceneStatsDetail
+          stats={sceneStats}
+          sceneId={id}
+          lastCharacterId={lastCharacterId ?? null}
+          lastCharacterName={lastCharacterName ?? null}
+          hasCharacters={scene.characters.length > 0}
+        />
+      )}
 
       <div className="flex flex-col gap-3">
         <h2 className="font-display text-xl font-semibold text-[#3b1f4a]">{t.scenes.detail.personnages.title}</h2>

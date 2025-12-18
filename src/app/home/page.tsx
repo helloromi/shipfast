@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { fetchUserProgressScenes, getSupabaseSessionUser } from "@/lib/queries/scenes";
+import { fetchUserStatsSummary } from "@/lib/queries/stats";
+import { StatsSummaryCard } from "@/components/stats/stats-summary-card";
 import { t } from "@/locales/fr";
 
 export default async function HomePage() {
@@ -10,7 +12,10 @@ export default async function HomePage() {
     redirect("/login");
   }
 
-  const progresses = await fetchUserProgressScenes(user.id);
+  const [progresses, statsSummary] = await Promise.all([
+    fetchUserProgressScenes(user.id),
+    fetchUserStatsSummary(user.id),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -23,6 +28,8 @@ export default async function HomePage() {
           {t.home.description}
         </p>
       </div>
+
+      <StatsSummaryCard stats={statsSummary} />
 
       {progresses.length === 0 && (
         <div className="rounded-2xl border border-dashed border-[#e7e1d9] bg-white/85 p-4 text-sm text-[#524b5a]">

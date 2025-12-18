@@ -17,6 +17,8 @@ type LearnLine = {
 
 type LearnSessionProps = {
   sceneTitle: string;
+  sceneId: string;
+  characterId: string;
   userCharacterName: string;
   lines: LearnLine[];
   userId: string;
@@ -43,7 +45,14 @@ const scoreOptions: ScoreOption[] = [
   { value: 3, emoji: t.learn.scores.parfait.emoji, label: t.learn.scores.parfait.label, color: "bg-[#2cb67d] text-white hover:bg-[#239b6a]" },
 ];
 
-export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: LearnSessionProps) {
+export function LearnSession({
+  sceneTitle,
+  sceneId,
+  characterId,
+  userCharacterName,
+  lines,
+  userId,
+}: LearnSessionProps) {
   const router = useRouter();
   const { supabase } = useSupabase();
 
@@ -73,7 +82,11 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
+  const timeInterval = useRef<NodeJS.Timeout | null>(null);
   const storageKey = useMemo(() => `drafts:${sceneTitle}`, [sceneTitle]);
 
   // Mode auto : desktop -> liste, mobile -> flashcard
@@ -82,6 +95,49 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
     const isMobile = window.innerWidth < 768;
     queueMicrotask(() => setMode(isMobile ? "flashcard" : "list"));
   }, []);
+
+  // Démarrer le tracking de session
+  useEffect(() => {
+    const startSession = async () => {
+      const userLines = lines.filter((l) => l.isUserLine);
+      try {
+        const response = await fetch("/api/sessions/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sceneId,
+            characterId,
+            totalLines: userLines.length,
+          }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.sessionId) {
+            setSessionId(data.sessionId);
+            setSessionStartTime(Date.now());
+          }
+        }
+      } catch (error) {
+        console.error("Error starting session:", error);
+      }
+    };
+    startSession();
+  }, [sceneId, characterId, lines]);
+
+  // Timer pour afficher le temps écoulé
+  useEffect(() => {
+    if (sessionStartTime === null) return;
+
+    timeInterval.current = setInterval(() => {
+      setElapsedTime(Math.floor((Date.now() - sessionStartTime) / 1000));
+    }, 1000);
+
+    return () => {
+      if (timeInterval.current) {
+        clearInterval(timeInterval.current);
+      }
+    };
+  }, [sessionStartTime]);
 
   // Charger les brouillons depuis localStorage
   useEffect(() => {
@@ -154,6 +210,26 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
       const completed = userLines.every((l) => next[l.id] !== null && next[l.id] !== undefined);
       if (completed) {
         setShowSummary(true);
+        // Terminer la session
+        if (sessionId) {
+          const completedLines = userLines.filter((l) => next[l.id] !== null && next[l.id] !== undefined).length;
+          const scores = userLines.map((l) => next[l.id]).filter((s): s is number => s !== null && s !== undefined);
+          const averageScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+          fetch("/api/sessions/end", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sessionId,
+              completedLines,
+              averageScore,
+            }),
+          }).catch((error) => {
+            console.error("Error ending session:", error);
+          });
+        }
+        if (timeInterval.current) {
+          clearInterval(timeInterval.current);
+        }
       }
       return next;
     });
@@ -443,6 +519,11 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
           <span className="text-xs font-semibold text-[#7a7184]">
             {t.learn.labels.restantes} : {remainingCount}
           </span>
+          {elapsedTime > 0 && (
+            <span className="text-xs font-semibold text-[#7a7184]">
+              {Math.floor(elapsedTime / 60)} min {elapsedTime % 60} s
+            </span>
+          )}
           <span className="text-xs text-[#7a7184]">{legend}</span>
         </div>
       </div>

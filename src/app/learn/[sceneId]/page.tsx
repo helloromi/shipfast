@@ -75,6 +75,8 @@ export default async function LearnPage({ params, searchParams }: Props) {
 
       <LearnSession
         sceneTitle={scene.title}
+        sceneId={sceneId}
+        characterId={characterId}
         userCharacterName={character.name}
         lines={lines}
         userId={user.id}
