@@ -1,26 +1,59 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-ivory: #f9f7f3;
+  --fg-ink: #1c1b1f;
+  --prune: #3b1f4a;
+  --corail: #ff6b6b;
+  --gold: #f4c95d;
+  --card: rgba(255, 255, 255, 0.86);
+  --stroke: #e7e1d9;
+  --muted: #524b5a;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--bg-ivory);
+  --color-foreground: var(--fg-ink);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg-ivory);
+  color-scheme: light;
+  min-height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-ivory);
+  color: var(--fg-ink);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display), var(--font-sans), serif;
+  letter-spacing: -0.01em;
+}
+
+a,
+button {
+  transition: all 160ms ease;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--corail) 30%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--corail);
+  outline-offset: 2px;
 }

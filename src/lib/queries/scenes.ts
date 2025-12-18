@@ -1,0 +1,201 @@
+import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { Character, Scene, SceneWithRelations } from "@/types/scenes";
+
+type SceneAverage = {
+  sceneId: string;
+  average: number;
+};
+
+type SceneQueryResult = Scene & {
+  characters: Character[];
+  lines: {
+    id: string;
+    order: number;
+    text: string;
+    character_id: string;
+    characters: Character | null;
+  }[];
+};
+
+export type SceneProgress = {
+  sceneId: string;
+  title: string;
+  author: string | null;
+  summary: string | null;
+  chapter: string | null;
+  average: number;
+  lastCharacterId: string | null;
+  lastCharacterName: string | null;
+};
+
+export async function getSupabaseSessionUser() {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
+    if (error) {
+      return null;
+    }
+
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchScenes(): Promise<Scene[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("scenes")
+    .select("id, title, author, summary, chapter")
+    .order("title", { ascending: true });
+
+  if (error) {
+    console.error(error);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+export async function fetchSceneWithRelations(id: string): Promise<SceneWithRelations | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("scenes")
+    .select(
+      `
+        id,
+        title,
+        author,
+        summary,
+        chapter,
+        characters ( id, name ),
+        lines (
+          id,
+          order,
+          text,
+          character_id,
+          characters ( id, name )
+        )
+      `
+    )
+    .eq("id", id)
+    .single<SceneQueryResult>();
+
+  if (error) {
+    console.error(error);
+    return null;
+  }
+
+  if (!data) return null;
+
+  return {
+    ...data,
+    characters: data.characters ?? [],
+    lines: data.lines ?? [],
+  };
+}
+
+export async function fetchUserSceneAverages(userId: string): Promise<SceneAverage[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("user_line_feedback")
+    .select("score, lines!inner(scene_id)")
+    .eq("user_id", userId)
+    .returns<{ score: number; lines: { scene_id: string } | null }[]>();
+
+  if (error) {
+    console.error(error);
+    return [];
+  }
+
+  const grouped = new Map<string, { sum: number; count: number }>();
+  for (const row of data ?? []) {
+    const sceneId = row.lines?.scene_id;
+    if (!sceneId) continue;
+    const entry = grouped.get(sceneId) ?? { sum: 0, count: 0 };
+    grouped.set(sceneId, { sum: entry.sum + row.score, count: entry.count + 1 });
+  }
+
+  return Array.from(grouped.entries()).map(([sceneId, { sum, count }]) => ({
+    sceneId,
+    average: count ? Math.round((sum / count) * 100) / 100 : 0,
+  }));
+}
+
+export async function fetchUserProgressScenes(userId: string): Promise<SceneProgress[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("user_line_feedback")
+    .select(
+      `
+        score,
+        created_at,
+        lines!inner (
+          scene_id,
+          character_id,
+          scenes ( id, title, author, summary, chapter ),
+          characters ( id, name )
+        )
+      `
+    )
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) {
+    console.error(error);
+    return [];
+  }
+
+  const grouped = new Map<
+    string,
+    {
+      scene: Scene;
+      lastCharacterId: string | null;
+      lastCharacterName: string | null;
+      sum: number;
+      count: number;
+    }
+  >();
+
+  for (const row of data) {
+    const line = row.lines as { scene_id: string; scenes: Scene; characters: Character | null } | null;
+    if (!line?.scene_id || !line?.scenes) continue;
+    const sceneId = line.scene_id as string;
+    const scene = line.scenes as Scene;
+    const character = line.characters as Character | null;
+    const entry = grouped.get(sceneId);
+    if (!entry) {
+      grouped.set(sceneId, {
+        scene,
+        lastCharacterId: character?.id ?? null,
+        lastCharacterName: character?.name ?? null,
+        sum: row.score,
+        count: 1,
+      });
+    } else {
+      grouped.set(sceneId, {
+        scene: entry.scene,
+        lastCharacterId: entry.lastCharacterId,
+        lastCharacterName: entry.lastCharacterName,
+        sum: entry.sum + row.score,
+        count: entry.count + 1,
+      });
+    }
+  }
+
+  return Array.from(grouped.values()).map((entry) => ({
+    sceneId: entry.scene.id,
+    title: entry.scene.title,
+    author: entry.scene.author,
+    summary: entry.scene.summary,
+    chapter: entry.scene.chapter,
+    average: entry.count ? Math.round((entry.sum / entry.count) * 100) / 100 : 0,
+    lastCharacterId: entry.lastCharacterId,
+    lastCharacterName: entry.lastCharacterName,
+  }));
+}
+
