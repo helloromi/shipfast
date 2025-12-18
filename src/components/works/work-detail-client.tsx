@@ -5,15 +5,21 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { t } from "@/locales/fr";
 import { LineRangeSelector } from "@/components/scenes/line-range-selector";
-import { WorkWithScenes } from "@/types/scenes";
+import { Scene } from "@/types/scenes";
+
+type SceneWithStats = Scene & {
+  average?: number;
+  charactersCount: number;
+  linesCount: number;
+};
 
 type WorkDetailClientProps = {
-  work: WorkWithScenes & {
-    scenes: (WorkWithScenes["scenes"][0] & {
-      average?: number;
-      charactersCount: number;
-      linesCount: number;
-    })[];
+  work: {
+    id: string;
+    title: string;
+    author: string | null;
+    summary: string | null;
+    scenes: SceneWithStats[];
   };
 };
 
@@ -118,7 +124,7 @@ export function WorkDetailClient({ work }: WorkDetailClientProps) {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {work.scenes.map((scene) => {
+            {work.scenes.map((scene: SceneWithStats) => {
               const isSelected = selectedScenes.has(scene.id);
               const range = sceneRanges.get(scene.id);
               return (
