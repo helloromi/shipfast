@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { useSupabase } from "@/components/supabase-provider";
 import { Toast } from "@/components/ui/toast";
+import { t } from "@/locales/fr";
 
 type LearnLine = {
   id: string;
@@ -36,10 +37,10 @@ type ScoreOption = {
 };
 
 const scoreOptions: ScoreOption[] = [
-  { value: 0, emoji: "❌", label: "Raté", color: "bg-[#e11d48] text-white hover:bg-[#c4153c]" },
-  { value: 1, emoji: "⚠️", label: "Hésitant", color: "bg-[#f59e0b] text-white hover:bg-[#d88405]" },
-  { value: 2, emoji: "🙂", label: "Bon", color: "bg-[#f4c95d] text-[#1c1b1f] hover:bg-[#e6b947]" },
-  { value: 3, emoji: "✅", label: "Parfait", color: "bg-[#2cb67d] text-white hover:bg-[#239b6a]" },
+  { value: 0, emoji: t.learn.scores.rate.emoji, label: t.learn.scores.rate.label, color: "bg-[#e11d48] text-white hover:bg-[#c4153c]" },
+  { value: 1, emoji: t.learn.scores.hesitant.emoji, label: t.learn.scores.hesitant.label, color: "bg-[#f59e0b] text-white hover:bg-[#d88405]" },
+  { value: 2, emoji: t.learn.scores.bon.emoji, label: t.learn.scores.bon.label, color: "bg-[#f4c95d] text-[#1c1b1f] hover:bg-[#e6b947]" },
+  { value: 3, emoji: t.learn.scores.parfait.emoji, label: t.learn.scores.parfait.label, color: "bg-[#2cb67d] text-white hover:bg-[#239b6a]" },
 ];
 
 export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: LearnSessionProps) {
@@ -143,7 +144,7 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
     });
     setSaving((prev) => ({ ...prev, [lineId]: false }));
     if (error) {
-      setToast({ message: `Erreur: ${error.message}`, variant: "error" });
+      setToast({ message: `${t.learn.messages.erreur} ${error.message}`, variant: "error" });
       return;
     }
 
@@ -156,7 +157,7 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
       }
       return next;
     });
-    setToast({ message: "✅ Feedback enregistré !", variant: "success" });
+    setToast({ message: t.learn.messages.feedbackEnregistreToast, variant: "success" });
 
     if (mode === "flashcard") {
       const idx = userLines.findIndex((l) => l.id === lineId);
@@ -218,7 +219,7 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
     </div>
   );
 
-  const legend = "❌ Raté · ⚠️ Hésitant · 🙂 Bon · ✅ Parfait";
+  const legend = t.learn.scores.legend;
 
   const renderListMode = () => (
     <div className="flex flex-col gap-2">
@@ -235,7 +236,7 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
                 {line.characterName}
               </div>
               {line.isUserLine && (
-                <span className="text-xs font-semibold text-[#3b1f4a]">Ta réplique</span>
+                <span className="text-xs font-semibold text-[#3b1f4a]">{t.learn.labels.taReplique}</span>
               )}
             </div>
 
@@ -257,7 +258,7 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
                       [line.id]: e.target.value,
                     }))
                   }
-                  placeholder="Écris ta réplique"
+                  placeholder={t.learn.placeholders.ecrisReplique}
                   rows={2}
                   className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
                 />
@@ -270,7 +271,7 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
                   onClick={() => revealLine(line.id)}
                   className="w-fit rounded-full bg-[#ff6b6b] px-3 py-1 text-sm font-semibold text-white shadow-sm hover:-translate-y-[1px] hover:bg-[#e75a5a]"
                 >
-                  Révéler
+                  {t.learn.buttons.reveler}
                 </button>
               ) : (
                 renderScoreButtons(line.id, Boolean(saving[line.id]))
@@ -279,7 +280,7 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
 
             {line.isUserLine && state === "scored" && (
               <div className="text-xs font-medium text-[#2cb67d]">
-                Feedback enregistré pour cette réplique.
+                {t.learn.messages.feedbackEnregistre}
               </div>
             )}
 
@@ -287,7 +288,7 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
               <div className="mt-2 grid gap-2 rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] p-3 text-sm">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                    Ta version
+                    {t.learn.labels.taVersion}
                   </div>
                   <div className="whitespace-pre-wrap text-[#1c1b1f]">
                     {(drafts[line.id] ?? "").trim() || "—"}
@@ -295,7 +296,7 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
                 </div>
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                    Original
+                    {t.learn.labels.original}
                   </div>
                   <div className="whitespace-pre-wrap text-[#1c1b1f]">{line.text}</div>
                 </div>
@@ -311,7 +312,7 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
     if (!currentFlashcard) {
       return (
         <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
-          Aucune réplique utilisateur à noter.
+          {t.learn.messages.aucuneReplique}
         </div>
       );
     }
@@ -323,16 +324,16 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
       <div className="flex flex-col gap-3 rounded-2xl border border-[#e7e1d9] bg-white/90 p-4 shadow-sm shadow-[#3b1f4a0f]">
         <div className="flex items-center justify-between gap-2">
           <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-            {currentFlashcard.characterName} — carte {currentIndex + 1}/{userLines.length}
+            {currentFlashcard.characterName} — {t.learn.labels.carte} {currentIndex + 1}/{userLines.length}
           </div>
           <div className="text-xs font-medium text-[#7a7184]">
-            Restantes : {remainingCount}
+            {t.learn.labels.restantes} : {remainingCount}
           </div>
         </div>
 
         {flashcardContext && (
           <div className="rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] px-3 py-2 text-sm text-[#1c1b1f]">
-            <div className="text-xs uppercase text-[#7a7184]">Réplique adverse (contexte)</div>
+            <div className="text-xs uppercase text-[#7a7184]">{t.learn.labels.repliqueAdverse}</div>
             <div>{flashcardContext.text}</div>
           </div>
         )}
@@ -405,14 +406,14 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
               disabled={currentIndex === 0}
               className="rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] disabled:opacity-50"
             >
-              ← Précédent
+              {t.learn.buttons.precedent}
             </button>
             <button
               onClick={() => setCurrentIndex((i) => Math.min(userLines.length - 1, i + 1))}
               disabled={currentIndex >= userLines.length - 1}
               className="rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] disabled:opacity-50"
             >
-              Suivant →
+              {t.learn.buttons.suivant}
             </button>
           </div>
           <button
@@ -420,7 +421,7 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
             disabled={currentIndex >= userLines.length - 1}
             className="rounded-full bg-[#ff6b6b] px-3 py-1 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a] disabled:opacity-50"
           >
-            Passer
+            {t.learn.buttons.passer}
           </button>
         </div>
       </div>
@@ -430,17 +431,17 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-2xl border border-[#e7e1d9] bg-white/90 p-4 shadow-sm shadow-[#3b1f4a0f]">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">Mode apprentissage</p>
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">{t.learn.sectionLabel}</p>
         <h2 className="font-display text-xl font-semibold text-[#1c1b1f]">{sceneTitle}</h2>
         <p className="text-sm text-[#524b5a]">
-          Tu joues : <span className="font-semibold text-[#1c1b1f]">{userCharacterName}</span>
+          {t.learn.labels.tuJoues} : <span className="font-semibold text-[#1c1b1f]">{userCharacterName}</span>
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-[#524b5a]">
           <span className="rounded-full bg-[#f4c95d33] px-2 py-1 font-semibold text-[#3b1f4a]">
-            Mode : {mode === "flashcard" ? "Flashcard" : "Liste"}
+            {t.learn.labels.mode} : {mode === "flashcard" ? t.learn.modes.flashcard : t.learn.modes.liste}
           </span>
           <span className="text-xs font-semibold text-[#7a7184]">
-            Restantes : {remainingCount}
+            {t.learn.labels.restantes} : {remainingCount}
           </span>
           <span className="text-xs text-[#7a7184]">{legend}</span>
         </div>
@@ -453,9 +454,9 @@ export function LearnSession({ sceneTitle, userCharacterName, lines, userId }: L
       {showSummary && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-lg rounded-2xl border border-[#e7e1d9] bg-white p-6 shadow-2xl">
-            <h3 className="font-display text-lg font-semibold text-[#1c1b1f]">Session terminée</h3>
+            <h3 className="font-display text-lg font-semibold text-[#1c1b1f]">{t.learn.messages.sessionTerminee}</h3>
             <p className="mt-1 text-sm text-[#524b5a]">
-              Résumé de tes feedbacks :
+              {t.learn.messages.resumeFeedbacks}
             </p>
             <div className="mt-4 flex flex-col gap-2">
               {scoreOptions.map((score) => {

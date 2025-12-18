@@ -5,9 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { useSupabase } from "@/components/supabase-provider";
+import { t } from "@/locales/fr";
 
 const navItems = [
-  { href: "/scenes", label: "Bibliothèque" },
+  { href: "/scenes", label: t.common.nav.bibliotheque },
 ];
 
 export function Header() {
@@ -33,10 +34,10 @@ export function Header() {
             href={session?.user ? "/home" : "/landing"}
             className="font-display text-xl font-semibold text-[#3b1f4a]"
           >
-            Côté-Cour
+            {t.common.header.appName}
           </Link>
           <nav className="hidden items-center gap-3 text-sm font-medium text-[#524b5a] sm:flex">
-            {navItems.concat(session?.user ? [{ href: "/home", label: "Accueil" }] : []).map((item) => {
+            {navItems.concat(session?.user ? [{ href: "/home", label: t.common.nav.accueil }] : []).map((item) => {
               const active = pathname?.startsWith(item.href);
               return (
                 <Link
@@ -61,18 +62,18 @@ export function Header() {
                 onClick={() => setMenuOpen((v) => !v)}
                 className="rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-sm font-semibold text-[#3b1f4a] shadow-sm hover:border-[#3b1f4a33] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff6b6b]"
               >
-                {session.user.email ?? "Mon compte"}
+                {session.user.email ?? t.common.header.monCompte}
               </button>
               {menuOpen && (
                 <div className="absolute right-0 top-12 z-20 w-56 rounded-2xl border border-[#e7e1d9] bg-white/95 shadow-lg">
-                  <div className="px-4 py-3 text-xs text-[#524b5a]">Connecté</div>
+                  <div className="px-4 py-3 text-xs text-[#524b5a]">{t.common.header.connecte}</div>
                   <div className="border-t border-[#e7e1d9]" />
                   <button
                     onClick={handleLogout}
                     disabled={loading}
                     className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-[#3b1f4a] transition hover:bg-[#f4c95d33] disabled:opacity-50"
                   >
-                    <span>Se déconnecter</span>
+                    <span>{t.common.header.seDeconnecter}</span>
                     {loading && <span className="text-xs text-[#524b5a]">...</span>}
                   </button>
                 </div>
@@ -83,7 +84,7 @@ export function Header() {
               href="/login"
               className="rounded-full bg-[#ff6b6b] px-3 py-1 text-sm font-semibold text-white shadow-sm hover:bg-[#e75a5a]"
             >
-              Se connecter
+              {t.common.header.seConnecter}
             </Link>
           )}
         </div>

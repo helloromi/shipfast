@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { LearnSession } from "@/components/learn/learn-session";
 import { fetchSceneWithRelations, getSupabaseSessionUser } from "@/lib/queries/scenes";
+import { t } from "@/locales/fr";
 
 type Props = {
   params: Promise<{ sceneId: string }>;
@@ -36,7 +37,7 @@ export default async function LearnPage({ params, searchParams }: Props) {
       id: line.id,
       order: line.order,
       text: line.text,
-      characterName: line.characters?.name ?? "Personnage",
+      characterName: line.characters?.name ?? t.common.labels.personnage,
       isUserLine: line.character_id === character.id,
     }));
 
@@ -44,10 +45,10 @@ export default async function LearnPage({ params, searchParams }: Props) {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">Mode apprentissage</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">{t.learn.sectionLabel}</p>
           <h1 className="font-display text-2xl font-semibold text-[#1c1b1f]">{scene.title}</h1>
           <p className="text-sm text-[#524b5a]">
-            Personnage choisi : <span className="font-semibold text-[#1c1b1f]">{character.name}</span>
+            {t.learn.labels.personnageChoisi} : <span className="font-semibold text-[#1c1b1f]">{character.name}</span>
           </p>
         </div>
       </div>

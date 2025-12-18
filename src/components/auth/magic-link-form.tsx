@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { useSupabase } from "@/components/supabase-provider";
 import { Toast } from "@/components/ui/toast";
+import { t } from "@/locales/fr";
 
 type ToastState = {
   message: string;
@@ -31,13 +32,13 @@ export function MagicLinkForm() {
 
     if (signInError) {
       setError(signInError.message);
-      setToast({ message: "Échec de l’envoi du lien", variant: "error" });
+      setToast({ message: t.login.form.error.toast, variant: "error" });
       setStatus("error");
       return;
     }
 
     setStatus("sent");
-    setToast({ message: "Lien envoyé ! Vérifie ta boîte mail.", variant: "success" });
+    setToast({ message: t.login.form.success.toast, variant: "success" });
   };
 
   return (
@@ -47,7 +48,7 @@ export function MagicLinkForm() {
         className="flex w-full flex-col gap-3 rounded-2xl border border-[#e7e1d9] bg-white/90 p-4 shadow-sm shadow-[#3b1f4a0f]"
       >
         <label className="text-sm font-semibold text-[#3b1f4a]">
-          Email pour recevoir le lien magique
+          {t.login.form.label}
         </label>
         <input
           required
@@ -55,18 +56,18 @@ export function MagicLinkForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full rounded-lg border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
-          placeholder="ton@email.com"
+          placeholder={t.login.form.placeholder}
         />
         <button
           type="submit"
           disabled={status === "loading"}
           className="inline-flex items-center justify-center rounded-lg bg-[#ff6b6b] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a] disabled:opacity-60"
         >
-          {status === "loading" ? "Envoi..." : "Envoyer le lien"}
+          {status === "loading" ? t.login.form.button.envoi : t.login.form.button.envoyer}
         </button>
         {status === "sent" && (
           <p className="text-sm text-[#2cb67d]">
-            Lien envoyé ! Vérifie ta boîte mail.
+            {t.login.form.success.message}
           </p>
         )}
         {error && (
