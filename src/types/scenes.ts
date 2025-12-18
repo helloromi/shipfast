@@ -1,5 +1,17 @@
+export type Work = {
+  id: string;
+  title: string;
+  author: string | null;
+  summary: string | null;
+};
+
+export type WorkWithScenes = Work & {
+  scenes: Scene[];
+};
+
 export type Scene = {
   id: string;
+  work_id: string | null;
   title: string;
   author: string | null;
   summary: string | null;

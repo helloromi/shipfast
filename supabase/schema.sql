@@ -1,8 +1,17 @@
 -- Tables de base
 create extension if not exists "uuid-ossp";
 
+create table if not exists public.works (
+  id uuid primary key default uuid_generate_v4(),
+  title text not null,
+  author text,
+  summary text,
+  created_at timestamptz default now()
+);
+
 create table if not exists public.scenes (
   id uuid primary key default uuid_generate_v4(),
+  work_id uuid references public.works(id) on delete set null,
   title text not null,
   author text,
   summary text,
@@ -28,6 +37,7 @@ create table if not exists public.lines (
 
 create unique index if not exists lines_scene_order_idx on public.lines (scene_id, "order");
 create index if not exists lines_character_id_idx on public.lines (character_id);
+create index if not exists scenes_work_id_idx on public.scenes (work_id);
 
 create table if not exists public.user_line_feedback (
   id uuid primary key default uuid_generate_v4(),
@@ -40,17 +50,22 @@ create table if not exists public.user_line_feedback (
 create index if not exists user_line_feedback_user_idx on public.user_line_feedback (user_id);
 create index if not exists user_line_feedback_line_idx on public.user_line_feedback (line_id);
 
+alter table public.works enable row level security;
 alter table public.scenes enable row level security;
 alter table public.characters enable row level security;
 alter table public.lines enable row level security;
 alter table public.user_line_feedback enable row level security;
 
 -- Lecture publique sur les contenus
+create policy "Public read works" on public.works for select using (true);
 create policy "Public read scenes" on public.scenes for select using (true);
 create policy "Public read characters" on public.characters for select using (true);
 create policy "Public read lines" on public.lines for select using (true);
 
 -- Écriture réservée (admin/service role)
+create policy "Service role write works" on public.works
+  for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
+
 create policy "Service role write scenes" on public.scenes
   for all using (auth.role() = 'service_role') with check (auth.role() = 'service_role');
 

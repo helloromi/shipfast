@@ -26,17 +26,17 @@ export const landing = {
     replique: {
       title: "Hamlet",
       meta: "Acte III, scène 2",
-      badge: "A apprendre",
+      badge: "À apprendre",
     },
   },
   sections: {
     masquage: {
       title: "Masquage intelligent",
-      desc: "Tes répliques floutées, un tap pour révéler, un score rapide.",
+      desc: "Tes répliques floutées, un tap pour révéler, un feedback rapide.",
     },
     progression: {
       title: "Progression claire",
-      desc: "Maîtrise moyenne par scène, reprise automatique de l'apprentissage.",
+      desc: "Maîtrise de ta scène, reprise automatique de l'apprentissage.",
     },
     mobile: {
       title: "Pensé mobile",
