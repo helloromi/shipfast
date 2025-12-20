@@ -22,3 +22,4 @@ export default async function WorkDetailPage({ params }: Props) {
 
   return <WorkDetailClient work={work} />;
 }
+

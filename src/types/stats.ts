@@ -40,3 +40,4 @@ export type UserStatsSummary = {
   currentStreak: number;
   lastActivityDate: string | null;
 };
+

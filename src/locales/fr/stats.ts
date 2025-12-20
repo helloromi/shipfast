@@ -32,3 +32,4 @@ export const stats = {
     noData: "Aucune donnée disponible",
   },
 };
+

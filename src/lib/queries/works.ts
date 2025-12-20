@@ -214,3 +214,4 @@ export async function fetchUserWorkAverages(userId: string): Promise<WorkAverage
     average: count ? Math.round((sum / count) * 100) / 100 : 0,
   }));
 }
+

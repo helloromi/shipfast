@@ -239,3 +239,4 @@ export function WorkDetailClient({ work }: WorkDetailClientProps) {
     </div>
   );
 }
+

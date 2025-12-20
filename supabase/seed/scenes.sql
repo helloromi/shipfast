@@ -1,23 +1,14 @@
--- Exemple de seed: 2 œuvres avec leurs scènes
+-- Exemple de seed: 2 scènes publiques
 
--- Œuvre 1 : Roméo et Juliette
-with w as (
-  insert into public.works (title, author, summary)
+-- Scène 1 : Roméo et Juliette (balcon)
+with s as (
+  insert into public.scenes (title, author, summary, chapter)
   values (
-    'Roméo et Juliette',
-    'William Shakespeare',
-    'Tragédie de deux jeunes amants dont la mort réconcilie leurs familles ennemies.'
-  )
-  returning id
-), s as (
-  insert into public.scenes (work_id, title, author, summary, chapter)
-  select
-    w.id,
     'Scène du balcon',
     'William Shakespeare',
     'Roméo rejoint Juliette en secret ; les deux amants échangent leurs vœux malgré la rivalité des familles.',
     'Acte II'
-  from w
+  )
   returning id
 ), c as (
   insert into public.characters (scene_id, name)
@@ -55,24 +46,15 @@ select
   'Si ton amour est honnête, envoie-moi demain un message.'
 from s;
 
--- Œuvre 2 : En attendant Godot
-with w as (
-  insert into public.works (title, author, summary)
+-- Scène 2 : En attendant Godot
+with s as (
+  insert into public.scenes (title, author, summary, chapter)
   values (
     'En attendant Godot',
     'Samuel Beckett',
-    'Pièce de théâtre absurde où deux personnages attendent quelqu''un qui ne viendra jamais.'
-  )
-  returning id
-), s as (
-  insert into public.scenes (work_id, title, author, summary, chapter)
-  select
-    w.id,
-    'Acte I',
-    'Samuel Beckett',
     'Vladimir et Estragon attendent Godot au bord d''une route ; ils tuent le temps en discutant.',
     null
-  from w
+  )
   returning id
 ), c as (
   insert into public.characters (scene_id, name)

@@ -65,3 +65,4 @@ export function ScoreEvolutionChart({ data }: ScoreEvolutionChartProps) {
     </div>
   );
 }
+

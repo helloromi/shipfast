@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { useSupabase } from "@/components/supabase-provider";
 import { Toast } from "@/components/ui/toast";
+import { getSiteUrl } from "@/lib/url";
 import { t } from "@/locales/fr";
 
 type ToastState = {
@@ -23,10 +24,18 @@ export function MagicLinkForm() {
     setStatus("loading");
     setError(null);
 
+    const redirectUrl = `${getSiteUrl()}/scenes`;
+    // Log pour déboguer en production
+    if (process.env.NODE_ENV === "production") {
+      console.log("[MagicLink] emailRedirectTo:", redirectUrl);
+      console.log("[MagicLink] NEXT_PUBLIC_SITE_URL:", process.env.NEXT_PUBLIC_SITE_URL);
+      console.log("[MagicLink] window.location.origin:", typeof window !== "undefined" ? window.location.origin : "N/A");
+    }
+
     const { error: signInError } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/scenes`,
+        emailRedirectTo: redirectUrl,
       },
     });
 
@@ -80,3 +89,4 @@ export function MagicLinkForm() {
     </>
   );
 }
+

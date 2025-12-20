@@ -54,3 +54,4 @@ export function StatsSummaryCard({ stats }: StatsSummaryCardProps) {
     </div>
   );
 }
+
