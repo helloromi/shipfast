@@ -31,22 +31,6 @@ export async function GET(request: NextRequest) {
     // Pour simplifier, on peut aussi créer une fonction RPC dans Supabase
     // Pour l'instant, on retourne juste l'email et on cherchera l'ID côté serveur
     return NextResponse.json({ email, userId: null, note: "Use email to find user" });
-
-    if (searchError) {
-      console.error("Error searching users:", searchError);
-      return NextResponse.json(
-        { error: "Failed to search users" },
-        { status: 500 }
-      );
-    }
-
-    const foundUser = users.users.find((u) => u.email === email);
-
-    if (!foundUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ userId: foundUser.id, email: foundUser.email });
   } catch (error: any) {
     console.error("Error in get user:", error);
     return NextResponse.json(
