@@ -49,6 +49,44 @@ export async function fetchWorks(): Promise<(Work & { scenesCount: number })[]> 
   }));
 }
 
+export async function searchWorks(query: string): Promise<(Work & { scenesCount: number })[]> {
+  if (!query || query.trim().length === 0) {
+    return fetchWorks();
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const searchTerm = `%${query.trim()}%`;
+  
+  const { data, error } = await supabase
+    .from("works")
+    .select(
+      `
+      id,
+      title,
+      author,
+      summary,
+      scenes (id)
+      `
+    )
+    .or(`title.ilike.${searchTerm},author.ilike.${searchTerm}`)
+    .order("title", { ascending: true });
+
+  if (error) {
+    console.error(error);
+    return [];
+  }
+
+  if (!data) return [];
+
+  return data.map((work: any) => ({
+    id: work.id,
+    title: work.title,
+    author: work.author,
+    summary: work.summary,
+    scenesCount: Array.isArray(work.scenes) ? work.scenes.length : 0,
+  }));
+}
+
 export async function fetchWorkWithScenes(workId: string): Promise<WorkWithScenes | null> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase

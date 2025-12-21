@@ -60,5 +60,24 @@ export const scenes = {
       uneScene: "1 scène sélectionnée",
       plusieursScenes: "scènes sélectionnées",
     },
+    search: {
+      placeholder: "Rechercher par titre ou auteur...",
+      button: "Rechercher",
+    },
+    access: {
+      title: "Accès limité",
+      description: "Vous devez débloquer cette œuvre pour y accéder.",
+      freeSlotAvailable: "Slot gratuit disponible",
+      freeSlotInfo: "Vous avez utilisé {used} répliques sur {limit}. Cette scène contient {sceneLines} répliques. Il vous reste {remaining} répliques gratuites.",
+      useFreeSlot: "Utiliser le slot gratuit",
+      granting: "Déblocage...",
+      purchaseRequired: "Vous avez atteint la limite du slot gratuit. Débloquez cette œuvre pour continuer.",
+      purchaseButton: "Débloquer cette œuvre",
+    },
+    privateScenes: {
+      title: "Mes scènes privées",
+      description: "Scènes créées spécialement pour vous",
+      badge: "Privée",
+    },
   },
 };

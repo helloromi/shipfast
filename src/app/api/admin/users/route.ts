@@ -1,0 +1,57 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
+
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Vérifier que l'utilisateur est admin (même logique que dans create/route.ts)
+    const adminEmails = process.env.ADMIN_EMAILS?.split(",") || [];
+    if (adminEmails.length === 0 || !adminEmails.includes(user.email || "")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const searchParams = request.nextUrl.searchParams;
+    const email = searchParams.get("email");
+
+    if (!email) {
+      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    }
+
+    // Pour le MVP, on utilise une approche simple : chercher l'utilisateur par email
+    // En production, on pourrait utiliser Supabase Admin API avec service role key
+    // Ici, on retourne l'email et on laisse l'API create/scenes gérer la recherche
+    // Pour simplifier, on peut aussi créer une fonction RPC dans Supabase
+    // Pour l'instant, on retourne juste l'email et on cherchera l'ID côté serveur
+    return NextResponse.json({ email, userId: null, note: "Use email to find user" });
+
+    if (searchError) {
+      console.error("Error searching users:", searchError);
+      return NextResponse.json(
+        { error: "Failed to search users" },
+        { status: 500 }
+      );
+    }
+
+    const foundUser = users.users.find((u) => u.email === email);
+
+    if (!foundUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ userId: foundUser.id, email: foundUser.email });
+  } catch (error: any) {
+    console.error("Error in get user:", error);
+    return NextResponse.json(
+      { error: error.message || "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

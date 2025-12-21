@@ -1,13 +1,22 @@
 import Link from "next/link";
-import { fetchWorks, fetchUserWorkAverages } from "@/lib/queries/works";
-import { getSupabaseSessionUser } from "@/lib/queries/scenes";
+import { fetchWorks, searchWorks, fetchUserWorkAverages } from "@/lib/queries/works";
+import { getSupabaseSessionUser, fetchUserPrivateScenes } from "@/lib/queries/scenes";
+import { SearchBar } from "@/components/works/search-bar";
 import { t } from "@/locales/fr";
 
-export default async function ScenesPage() {
+type Props = {
+  searchParams: Promise<{ q?: string }>;
+};
+
+export default async function ScenesPage({ searchParams }: Props) {
+  const params = await searchParams;
+  const query = params.q || "";
+  
   const user = await getSupabaseSessionUser();
-  const [works, averages] = await Promise.all([
-    fetchWorks(),
+  const [works, averages, privateScenes] = await Promise.all([
+    query ? searchWorks(query) : fetchWorks(),
     user ? fetchUserWorkAverages(user.id) : Promise.resolve([]),
+    user ? fetchUserPrivateScenes(user.id) : Promise.resolve([]),
   ]);
 
   const averageByWork = new Map(averages.map((item) => [item.workId, item.average]));
@@ -25,6 +34,49 @@ export default async function ScenesPage() {
           {t.scenes.works.bibliotheque.description}
         </p>
       </div>
+
+      <SearchBar />
+
+      {user && privateScenes.length > 0 && (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <h2 className="font-display text-xl font-semibold text-[#3b1f4a]">
+              {t.scenes.works.privateScenes.title || "Mes scènes privées"}
+            </h2>
+            <p className="text-sm text-[#524b5a]">
+              {t.scenes.works.privateScenes.description || "Scènes créées spécialement pour vous"}
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {privateScenes.map((scene) => (
+              <Link
+                key={scene.id}
+                href={`/scenes/${scene.id}`}
+                className="group flex h-full flex-col gap-3 rounded-2xl border border-[#f4c95d] bg-[#f4c95d33] p-5 shadow-sm transition hover:-translate-y-[1px] hover:shadow-lg"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-display text-lg font-semibold text-[#3b1f4a]">
+                    {scene.title}
+                  </h3>
+                  <span className="rounded-full bg-[#f4c95d] px-2 py-1 text-xs font-semibold text-[#3b1f4a]">
+                    {t.scenes.works.privateScenes.badge || "Privée"}
+                  </span>
+                </div>
+                {scene.author && (
+                  <p className="text-sm text-[#524b5a]">
+                    {t.common.labels.par} {scene.author}
+                  </p>
+                )}
+                {scene.summary && (
+                  <p className="text-sm text-[#1c1b1f] leading-relaxed line-clamp-2">
+                    {scene.summary}
+                  </p>
+                )}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         {works.map((work) => {

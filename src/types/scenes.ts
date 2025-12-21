@@ -3,6 +3,8 @@ export type Work = {
   title: string;
   author: string | null;
   summary: string | null;
+  is_public_domain?: boolean;
+  total_lines_count?: number | null;
 };
 
 export type WorkWithScenes = Work & {
@@ -16,6 +18,20 @@ export type Scene = {
   author: string | null;
   summary: string | null;
   chapter: string | null;
+  owner_user_id?: string | null;
+  is_private?: boolean;
+};
+
+export type AccessType = "free_slot" | "purchased" | "private";
+
+export type UserWorkAccess = {
+  id: string;
+  user_id: string;
+  work_id: string | null;
+  scene_id: string | null;
+  access_type: AccessType;
+  purchase_id: string | null;
+  created_at: string;
 };
 
 export type Character = {

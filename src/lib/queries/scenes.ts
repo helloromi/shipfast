@@ -50,7 +50,8 @@ export async function fetchScenes(): Promise<Scene[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("scenes")
-    .select("id, work_id, title, author, summary, chapter")
+    .select("id, work_id, title, author, summary, chapter, is_private, owner_user_id")
+    .eq("is_private", false)
     .order("title", { ascending: true });
 
   if (error) {
@@ -65,6 +66,34 @@ export async function fetchScenes(): Promise<Scene[]> {
     author: scene.author,
     summary: scene.summary,
     chapter: scene.chapter,
+    is_private: scene.is_private ?? false,
+    owner_user_id: scene.owner_user_id ?? null,
+  }));
+}
+
+export async function fetchUserPrivateScenes(userId: string): Promise<Scene[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("scenes")
+    .select("id, work_id, title, author, summary, chapter, is_private, owner_user_id")
+    .eq("is_private", true)
+    .eq("owner_user_id", userId)
+    .order("title", { ascending: true });
+
+  if (error) {
+    console.error(error);
+    return [];
+  }
+
+  return (data ?? []).map((scene) => ({
+    id: scene.id,
+    work_id: scene.work_id ?? null,
+    title: scene.title,
+    author: scene.author,
+    summary: scene.summary,
+    chapter: scene.chapter,
+    is_private: scene.is_private ?? true,
+    owner_user_id: scene.owner_user_id ?? null,
   }));
 }
 
