@@ -1,3 +1,5 @@
+"use server";
+
 import { createServerClient, type CookieOptions } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 
