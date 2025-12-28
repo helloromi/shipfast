@@ -1,18 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSupabaseSessionUser } from "@/lib/queries/scenes";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { CreateSceneForm } from "@/components/admin/create-scene-form";
-
-async function isAdmin(userId: string): Promise<boolean> {
-  const adminEmails = process.env.ADMIN_EMAILS?.split(",") || [];
-  if (adminEmails.length === 0) return false;
-  
-  // Récupérer l'email de l'utilisateur
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  return user?.email ? adminEmails.includes(user.email) : false;
-}
+import { isAdmin } from "@/lib/utils/admin";
 
 export default async function AdminCreateScenePage() {
   const user = await getSupabaseSessionUser();

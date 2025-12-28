@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { isAdmin } from "@/lib/utils/admin";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,9 +13,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Vérifier que l'utilisateur est admin (même logique que dans create/route.ts)
-    const adminEmails = process.env.ADMIN_EMAILS?.split(",") || [];
-    if (adminEmails.length === 0 || !adminEmails.includes(user.email || "")) {
+    // Vérifier que l'utilisateur est admin
+    const admin = await isAdmin(user.id);
+    if (!admin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

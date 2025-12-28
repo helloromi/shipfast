@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { UserWorkAccess, AccessType } from "@/types/scenes";
+import { isAdmin } from "@/lib/utils/admin";
 
 const FREE_SLOT_LIMIT = 20;
 
@@ -163,6 +164,10 @@ export async function hasAccess(
   sceneId?: string
 ): Promise<boolean> {
   if (!userId) return false;
+
+  // Les admins ont un accès complet à tout
+  const admin = await isAdmin(userId);
+  if (admin) return true;
 
   // Vérifier si l'utilisateur a déjà un accès (gratuit, acheté, ou privé)
   const access = await getUserWorkAccess(userId, workId, sceneId);

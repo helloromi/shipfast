@@ -1,9 +1,10 @@
 import { canAccessFreeSlot, hasAccess, createFreeSlotAccess } from "@/lib/queries/access";
 import { User } from "@supabase/supabase-js";
+import { isAdmin } from "./admin";
 
 export type AccessCheckResult = {
   hasAccess: boolean;
-  accessType: "free_slot" | "purchased" | "private" | "none";
+  accessType: "free_slot" | "purchased" | "private" | "admin" | "none";
   canUseFreeSlot: boolean;
   freeSlotInfo?: {
     usedLines: number;
@@ -22,6 +23,16 @@ export async function checkAccess(
     return {
       hasAccess: false,
       accessType: "none",
+      canUseFreeSlot: false,
+    };
+  }
+
+  // Les admins ont un accès complet à tout
+  const admin = await isAdmin(user.id);
+  if (admin) {
+    return {
+      hasAccess: true,
+      accessType: "admin",
       canUseFreeSlot: false,
     };
   }

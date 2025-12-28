@@ -135,10 +135,15 @@ export function AccessGate({
             {t.scenes.works.access.freeSlotAvailable || "Slot gratuit disponible"}
           </p>
           <p className="mt-1 text-xs text-[#524b5a]">
-            {t.scenes.works.access.freeSlotInfo || 
-              `Vous avez utilisé ${accessCheck.freeSlotInfo.usedLines} répliques sur ${accessCheck.freeSlotInfo.limit}. ` +
-              `Cette scène contient ${accessCheck.freeSlotInfo.sceneLines} répliques. ` +
-              `Il vous reste ${accessCheck.freeSlotInfo.remaining} répliques gratuites.`}
+            {t.scenes.works.access.freeSlotInfo
+              ? t.scenes.works.access.freeSlotInfo
+                  .replace("{used}", accessCheck.freeSlotInfo.usedLines.toString())
+                  .replace("{limit}", accessCheck.freeSlotInfo.limit.toString())
+                  .replace("{sceneLines}", accessCheck.freeSlotInfo.sceneLines.toString())
+                  .replace("{remaining}", accessCheck.freeSlotInfo.remaining.toString())
+              : `Vous avez utilisé ${accessCheck.freeSlotInfo.usedLines} répliques sur ${accessCheck.freeSlotInfo.limit}. ` +
+                `Cette scène contient ${accessCheck.freeSlotInfo.sceneLines} répliques. ` +
+                `Il vous reste ${accessCheck.freeSlotInfo.remaining} répliques gratuites.`}
           </p>
           <button
             onClick={handleUseFreeSlot}
@@ -152,11 +157,15 @@ export function AccessGate({
         </div>
       )}
 
-      {(!accessCheck.canUseFreeSlot || accessCheck.freeSlotInfo?.remaining === 0) && (
+      {!accessCheck.canUseFreeSlot && (
         <div className="flex flex-col gap-3">
           <p className="text-sm text-[#524b5a]">
-            {t.scenes.works.access.purchaseRequired ||
-              "Vous avez atteint la limite du slot gratuit. Débloquez cette œuvre pour continuer."}
+            {accessCheck.freeSlotInfo && accessCheck.freeSlotInfo.remaining === 0
+              ? "Vous avez atteint la limite du slot gratuit (20 répliques). Débloquez cette œuvre pour continuer."
+              : accessCheck.freeSlotInfo
+              ? `Cette scène contient ${accessCheck.freeSlotInfo.sceneLines} répliques, mais il ne vous reste que ${accessCheck.freeSlotInfo.remaining} répliques gratuites. Débloquez cette œuvre pour continuer.`
+              : t.scenes.works.access.purchaseRequired ||
+                "Vous devez débloquer cette œuvre pour y accéder."}
           </p>
           <CheckoutButton
             workId={workId}

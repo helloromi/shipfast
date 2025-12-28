@@ -1,21 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
-
-// Vérifier si l'utilisateur est admin
-async function isAdmin(userId: string): Promise<boolean> {
-  // Pour le MVP, on peut utiliser une variable d'environnement ou une table d'admins
-  // Ici, on utilise une variable d'env simple
-  const adminEmails = process.env.ADMIN_EMAILS?.split(",") || [];
-  if (adminEmails.length === 0) return false;
-  
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user || user.id !== userId) return false;
-  
-  return user.email ? adminEmails.includes(user.email) : false;
-}
+import { isAdmin } from "@/lib/utils/admin";
 
 export async function POST(request: NextRequest) {
   try {
