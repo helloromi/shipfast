@@ -8,6 +8,8 @@ export const learn = {
     taReplique: "Ta réplique",
     repliqueAdverse: "Réplique adverse (contexte)",
     carte: "carte",
+    taVersion: "Ta version",
+    original: "Original",
   },
   scores: {
     rate: {
@@ -52,5 +54,6 @@ export const learn = {
     liste: "Liste",
   },
 };
+
 
 
