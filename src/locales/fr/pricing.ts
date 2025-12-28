@@ -1,15 +1,9 @@
 export const pricing = {
   title: "Tarifs transparents",
-  subtitle: "Tu paies uniquement pour ce que tu utilises",
+  subtitle: "Tu paies uniquement pour les scènes que tu veux apprendre",
   model: {
-    perScene: "À partir de 2€ par scène",
-    perLines: "1€ pour 10 répliques, minimum 2€",
-    calculator: {
-      label: "Combien de répliques ?",
-      placeholder: "Ex: 50",
-      result: "Prix estimé :",
-      button: "Calculer",
-    },
+    perScene: "2€ par scène",
+    description: "Prix fixe pour chaque scène, peu importe le nombre de répliques",
   },
   credibility: {
     secure: "Paiement sécurisé",

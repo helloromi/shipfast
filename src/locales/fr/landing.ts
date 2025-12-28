@@ -78,7 +78,7 @@ export const landing = {
       },
       q2: {
         question: "Combien ça coûte ?",
-        answer: "L'inscription est gratuite. Tu paies uniquement pour les scènes que tu veux apprendre (à partir de 2€ par scène).",
+        answer: "L'inscription est gratuite. Tu paies 2€ par scène complète, peu importe le nombre de répliques.",
       },
       q3: {
         question: "Puis-je utiliser mes propres textes ?",

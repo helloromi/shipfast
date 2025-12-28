@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { stripe } from "@/lib/stripe/client";
-import { countSceneLines } from "@/lib/queries/access";
 import { getSiteUrl } from "@/lib/url";
 
 export async function POST(request: NextRequest) {
@@ -25,13 +24,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculer le prix basé sur le nombre de répliques
-    let linesCount = 0;
+    // Prix fixe par scène : 2€
+    const PRICE_PER_SCENE_EUROS = 2;
+    const priceInCents = PRICE_PER_SCENE_EUROS * 100;
+
     let title = "";
     let description = "";
+    let scenesCount = 0;
 
     if (sceneId) {
-      linesCount = await countSceneLines(sceneId);
       const { data: scene } = await supabase
         .from("scenes")
         .select("title, author")
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
       if (scene) {
         title = scene.title;
         description = `Scène: ${scene.title}${scene.author ? ` par ${scene.author}` : ""}`;
+        scenesCount = 1;
       }
     } else if (workId) {
       const { data: work } = await supabase
@@ -53,28 +55,25 @@ export async function POST(request: NextRequest) {
         title = work.title;
         description = `Œuvre: ${work.title}${work.author ? ` par ${work.author}` : ""}`;
 
-        // Compter toutes les répliques de toutes les scènes de l'œuvre
-        const { data: scenes } = await supabase
+        // Compter toutes les scènes de l'œuvre
+        const { count } = await supabase
           .from("scenes")
-          .select("id")
+          .select("*", { count: "exact", head: true })
           .eq("work_id", workId);
 
-        if (scenes) {
-          for (const scene of scenes) {
-            const count = await countSceneLines(scene.id);
-            linesCount += count;
-          }
-        }
+        scenesCount = count ?? 0;
       }
     }
 
-    // Prix : 1€ par 10 répliques, minimum 2€
-    const pricePer10Lines = 1; // en euros
-    const minPrice = 2; // minimum 2€
-    const priceInCents = Math.max(
-      minPrice * 100,
-      Math.ceil((linesCount / 10) * pricePer10Lines * 100)
-    );
+    // Calculer le prix total : 2€ par scène
+    const totalPriceInCents = scenesCount * priceInCents;
+
+    if (scenesCount === 0) {
+      return NextResponse.json(
+        { error: "No scenes found" },
+        { status: 400 }
+      );
+    }
 
     const siteUrl = getSiteUrl();
     const successUrl = `${siteUrl}/api/payments/success?session_id={CHECKOUT_SESSION_ID}`;
@@ -87,10 +86,10 @@ export async function POST(request: NextRequest) {
           price_data: {
             currency: "eur",
             product_data: {
-              name: title || "Accès à l'œuvre",
-              description: description || `Débloquer l'accès (${linesCount} répliques)`,
+              name: title || "Accès à la scène",
+              description: description || (sceneId ? "Débloquer l'accès à cette scène" : `Débloquer l'accès à cette œuvre (${scenesCount} scène${scenesCount > 1 ? "s" : ""})`),
             },
-            unit_amount: priceInCents,
+            unit_amount: totalPriceInCents,
           },
           quantity: 1,
         },
@@ -102,7 +101,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         work_id: workId || "",
         scene_id: sceneId || "",
-        lines_count: linesCount.toString(),
+        scenes_count: scenesCount.toString(),
       },
     });
 
@@ -115,4 +114,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
 
