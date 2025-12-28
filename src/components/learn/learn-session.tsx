@@ -456,25 +456,6 @@ export function LearnSession({
           </div>
         )}
 
-        {!isHidden && (
-          <div className="grid gap-2 rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] p-3 text-sm">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                Ta version
-              </div>
-              <div className="whitespace-pre-wrap text-[#1c1b1f]">
-                {(drafts[currentFlashcard.id] ?? "").trim() || "—"}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                Original
-              </div>
-              <div className="whitespace-pre-wrap text-[#1c1b1f]">{currentFlashcard.text}</div>
-            </div>
-          </div>
-        )}
-
         <div className="flex items-center justify-between gap-2">
           <div className="flex gap-2">
             <button

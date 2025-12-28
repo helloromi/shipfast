@@ -6,8 +6,6 @@ export const learn = {
     mode: "Mode :",
     restantes: "Restantes :",
     taReplique: "Ta réplique",
-    taVersion: "Ta version",
-    original: "Original",
     repliqueAdverse: "Réplique adverse (contexte)",
     carte: "carte",
   },
