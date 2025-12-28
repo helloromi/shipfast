@@ -20,8 +20,8 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Côté-Cour",
-  description: "Entraînement de textes pour comédiens (masquage + feedback).",
+  title: "Côté-Cour - Maîtrise tes textes 3x plus vite",
+  description: "Importe ta scène, révèle tes répliques au fur et à mesure, et reçois un feedback instantané. Simple, efficace, sans configuration.",
 };
 
 export default async function RootLayout({

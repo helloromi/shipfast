@@ -250,5 +250,21 @@ export async function fetchUserProgressScenes(userId: string): Promise<SceneProg
   }));
 }
 
+export async function countPublicScenes(): Promise<number> {
+  const supabase = await createSupabaseServerClient();
+  const { count, error } = await supabase
+    .from("scenes")
+    .select("*", { count: "exact", head: true })
+    .eq("is_private", false);
+
+  if (error) {
+    console.error(error);
+    return 0;
+  }
+
+  return count ?? 0;
+}
+
+
 
 

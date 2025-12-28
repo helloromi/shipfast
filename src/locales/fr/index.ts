@@ -3,6 +3,7 @@ import { home } from "./home";
 import { landing } from "./landing";
 import { learn } from "./learn";
 import { login } from "./login";
+import { pricing } from "./pricing";
 import { scenes } from "./scenes";
 import { stats } from "./stats";
 
@@ -14,6 +15,7 @@ export const t = {
   login,
   learn,
   stats,
+  pricing,
 };
 
 export type Translations = typeof t;
