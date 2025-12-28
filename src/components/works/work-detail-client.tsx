@@ -240,3 +240,4 @@ export function WorkDetailClient({ work }: WorkDetailClientProps) {
   );
 }
 
+

@@ -62,3 +62,4 @@ export async function grantFreeSlotAccess(
   const access = await createFreeSlotAccess(userId, sceneId);
   return access !== null;
 }
+

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { User } from "@supabase/supabase-js";
-import { checkAccess, grantFreeSlotAccess, AccessCheckResult } from "@/lib/utils/access-control";
+import { AccessCheckResult } from "@/lib/utils/access-control";
 import { CheckoutButton } from "@/components/payments/checkout-button";
 import { t } from "@/locales/fr";
 
@@ -39,9 +39,31 @@ export function AccessGate({
         return;
       }
 
-      const result = await checkAccess(user, sceneId, workId);
-      setAccessCheck(result);
-      setLoading(false);
+      try {
+        const response = await fetch("/api/access/check", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ sceneId, workId }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to check access");
+        }
+
+        const result = await response.json();
+        setAccessCheck(result);
+      } catch (error) {
+        console.error("Error checking access:", error);
+        setAccessCheck({
+          hasAccess: false,
+          accessType: "none",
+          canUseFreeSlot: false,
+        });
+      } finally {
+        setLoading(false);
+      }
     };
 
     check();
@@ -51,15 +73,31 @@ export function AccessGate({
     if (!user || !accessCheck?.canUseFreeSlot) return;
 
     setGranting(true);
-    const success = await grantFreeSlotAccess(user.id, sceneId);
-    setGranting(false);
+    try {
+      const response = await fetch("/api/access/grant-free-slot", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sceneId }),
+      });
 
-    if (success) {
-      if (onAccessGranted) {
-        onAccessGranted();
-      } else {
-        router.refresh();
+      if (!response.ok) {
+        throw new Error("Failed to grant free slot access");
       }
+
+      const { success } = await response.json();
+      if (success) {
+        if (onAccessGranted) {
+          onAccessGranted();
+        } else {
+          router.refresh();
+        }
+      }
+    } catch (error) {
+      console.error("Error granting free slot access:", error);
+    } finally {
+      setGranting(false);
     }
   };
 
@@ -132,3 +170,4 @@ export function AccessGate({
     </div>
   );
 }
+

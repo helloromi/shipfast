@@ -66,3 +66,4 @@ export function ScoreEvolutionChart({ data }: ScoreEvolutionChartProps) {
   );
 }
 
+
