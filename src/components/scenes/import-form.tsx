@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Toast } from "@/components/ui/toast";
 import { useSupabase } from "@/components/supabase-provider";
 import { t } from "@/locales/fr";
@@ -17,10 +17,15 @@ type ProcessingState = {
 export function ImportForm() {
   const router = useRouter();
   const { supabase, session } = useSupabase();
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [processing, setProcessing] = useState<ProcessingState>({ stage: "idle" });
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
+
+  const totalSizeMb = useMemo(
+    () => files.reduce((acc, f) => acc + f.size, 0) / 1024 / 1024,
+    [files]
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -39,35 +44,41 @@ export function ImportForm() {
     e.stopPropagation();
     setIsDragging(false);
 
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      setFile(droppedFile);
+    const droppedFiles = Array.from(e.dataTransfer.files || []).slice(0, 10);
+    if (droppedFiles.length) {
+      setFiles(droppedFiles);
     }
   }, []);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
+    const selectedFiles = e.target.files ? Array.from(e.target.files).slice(0, 10) : [];
+    if (selectedFiles.length) {
+      setFiles(selectedFiles);
     }
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    if (!file) {
+    if (!files.length) {
       setToast({ message: t.scenes.import.errors.noFile, variant: "error" });
       return;
     }
 
     // Validation basique
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (file.size > maxSize) {
+    const maxSize = 10 * 1024 * 1024; // 10MB par fichier
+    const maxTotal = 20 * 1024 * 1024; // 20MB total
+    if (files.some((f) => f.size > maxSize)) {
       setToast({ message: t.scenes.import.errors.fileTooLarge, variant: "error" });
       return;
     }
 
     const supportedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"];
-    if (!supportedTypes.includes(file.type)) {
+    if (files.some((f) => !supportedTypes.includes(f.type))) {
       setToast({ message: t.scenes.import.errors.unsupportedFormat, variant: "error" });
+      return;
+    }
+
+    if (files.reduce((acc, f) => acc + f.size, 0) > maxTotal) {
+      setToast({ message: "Taille totale des fichiers trop élevée (max 20MB).", variant: "error" });
       return;
     }
 
@@ -79,38 +90,42 @@ export function ImportForm() {
     try {
       setProcessing({ stage: "uploading" });
 
-      // Étape 1 : Uploader le fichier vers Supabase Storage
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("scene-imports")
-        .upload(fileName, file, {
-          cacheControl: "3600",
-          upsert: false,
-        });
-
-      if (uploadError) {
-        throw new Error(`Erreur lors de l'upload : ${uploadError.message}`);
+      // Étape 1 : Uploader les fichiers vers Supabase Storage
+      const uploads: string[] = [];
+      for (const f of files) {
+        const fileExt = f.name.split(".").pop();
+        const fileName = `${session.user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("scene-imports")
+          .upload(fileName, f, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+        if (uploadError || !uploadData?.path) {
+          throw new Error(`Erreur lors de l'upload : ${uploadError?.message || "inconnue"}`);
+        }
+        uploads.push(uploadData.path);
       }
 
       setProcessing({ stage: "extracting" });
 
-      // Étape 2 : Envoyer le chemin du fichier à l'API pour traitement
+      // Étape 2 : Envoyer la liste des fichiers à l'API pour traitement
       const response = await fetch("/api/scenes/import", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          filePath: uploadData.path,
+          filePaths: uploads,
         }),
       });
 
       const data = await response.json();
 
-      // Nettoyer le fichier après traitement (même en cas d'erreur)
-      await supabase.storage.from("scene-imports").remove([uploadData.path]);
+      // Nettoyer les fichiers après traitement (même en cas d'erreur)
+      if (uploads.length) {
+        await supabase.storage.from("scene-imports").remove(uploads);
+      }
 
       if (!response.ok) {
         throw new Error(data.error || data.details || t.scenes.import.errors.generic);
@@ -136,7 +151,7 @@ export function ImportForm() {
         variant: "error",
       });
     }
-  }, [file]);
+  }, [files, session, supabase, router]);
 
   const handleViewScene = useCallback(() => {
     if (processing.sceneId) {
@@ -145,7 +160,7 @@ export function ImportForm() {
   }, [processing.sceneId, router]);
 
   const handleImportAnother = useCallback(() => {
-    setFile(null);
+    setFiles([]);
     setProcessing({ stage: "idle" });
   }, []);
 
@@ -179,6 +194,7 @@ export function ImportForm() {
           }`}
         >
           <input
+            multiple
             type="file"
             id="file-input"
             accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
@@ -203,9 +219,9 @@ export function ImportForm() {
             </div>
             <div className="flex flex-col gap-2">
               <p className="text-sm font-semibold text-[#1c1b1f]">
-                {file ? file.name : t.scenes.import.dropzone.title}
+                {files.length ? `${files.length} fichier(s) sélectionné(s)` : t.scenes.import.dropzone.title}
               </p>
-              {!file && (
+              {!files.length && (
                 <>
                   <p className="text-xs text-[#524b5a]">
                     {t.scenes.import.dropzone.or}{" "}
@@ -213,14 +229,16 @@ export function ImportForm() {
                   </p>
                   <p className="text-xs text-[#7a7184]">{t.scenes.import.dropzone.supportedFormats}</p>
                   <p className="text-xs text-[#7a7184]">{t.scenes.import.dropzone.maxSize}</p>
+                  <p className="text-xs text-[#7a7184]">Jusqu'à 10 fichiers, total 20MB</p>
                 </>
               )}
             </div>
-            {file && (
-              <div className="mt-2 flex items-center gap-2 text-xs text-[#524b5a]">
-                <span>{(file.size / 1024 / 1024).toFixed(2)} MB</span>
-                <span>•</span>
-                <span>{file.type}</span>
+            {files.length > 0 && (
+              <div className="mt-2 flex flex-col items-center gap-1 text-xs text-[#524b5a]">
+                <span>Total : {totalSizeMb.toFixed(2)} MB</span>
+                <span className="max-w-sm truncate text-center">
+                  {files.map((f) => f.name).join(", ")}
+                </span>
               </div>
             )}
           </div>
@@ -301,7 +319,7 @@ export function ImportForm() {
       )}
 
       {/* Bouton d'import */}
-      {processing.stage === "idle" && file && (
+      {processing.stage === "idle" && files.length > 0 && (
         <button
           onClick={handleSubmit}
           className="w-full rounded-full bg-[#3b1f4a] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#2d1638] disabled:opacity-50"

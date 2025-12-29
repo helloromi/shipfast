@@ -128,22 +128,32 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
       pdfParser.on("pdfParser_dataReady", (data: any) => {
         try {
           const parts: string[] = [];
-          if (data?.Pages && Array.isArray(data.Pages)) {
-            data.Pages.forEach((page: any) => {
-              if (page?.Texts && Array.isArray(page.Texts)) {
-                page.Texts.forEach((t: any) => {
-                  if (t?.R && Array.isArray(t.R)) {
-                    t.R.forEach((r: any) => {
-                      if (r?.T) {
-                        // pdf2json encode le texte en URL-encoding
+          const pages = Array.isArray(data?.Pages)
+            ? data.Pages
+            : Array.isArray(data?.formImage?.Pages)
+              ? data.formImage.Pages
+              : [];
+
+          pages.forEach((page: any) => {
+            if (Array.isArray(page?.Texts)) {
+              page.Texts.forEach((t: any) => {
+                if (Array.isArray(t?.R)) {
+                  t.R.forEach((r: any) => {
+                    if (r?.T) {
+                      try {
                         parts.push(decodeURIComponent(r.T));
+                      } catch {
+                        parts.push(r.T);
                       }
-                    });
-                  }
-                });
-              }
-            });
-          }
+                    }
+                  });
+                }
+              });
+            }
+            // Ajoute un séparateur de page pour éviter de coller tout le texte
+            parts.push("\n");
+          });
+
           resolve(parts.join(" ").trim());
         } catch (e) {
           reject(e);

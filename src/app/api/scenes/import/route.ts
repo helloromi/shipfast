@@ -17,52 +17,55 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
-    // Récupérer le chemin du fichier depuis le body JSON
+    // Récupérer les chemins des fichiers depuis le body JSON
     const body = await request.json();
-    const { filePath } = body;
+    const { filePaths } = body;
 
-    if (!filePath) {
+    if (!filePaths || !Array.isArray(filePaths) || filePaths.length === 0) {
       return NextResponse.json({ error: "Aucun chemin de fichier fourni" }, { status: 400 });
     }
 
-    // Télécharger le fichier depuis Supabase Storage
-    console.log(`[Import] Téléchargement du fichier depuis Storage: ${filePath}...`);
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from("scene-imports")
-      .download(filePath);
+    // Télécharger et concaténer le texte de tous les fichiers (images ou PDF)
+    let aggregatedText = "";
+    for (const filePath of filePaths) {
+      console.log(`[Import] Téléchargement du fichier depuis Storage: ${filePath}...`);
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from("scene-imports")
+        .download(filePath);
 
-    if (downloadError || !fileData) {
-      console.error("Erreur lors du téléchargement:", downloadError);
-      return NextResponse.json(
-        { error: "Erreur lors du téléchargement du fichier", details: downloadError?.message },
-        { status: 500 }
-      );
+      if (downloadError || !fileData) {
+        console.error("Erreur lors du téléchargement:", downloadError);
+        return NextResponse.json(
+          { error: "Erreur lors du téléchargement du fichier", details: downloadError?.message },
+          { status: 500 }
+        );
+      }
+
+      const fileName = filePath.split("/").pop() || "file";
+      const file = new File([fileData], fileName, { type: fileData.type });
+
+      console.log(`[Import] Extraction du texte depuis ${file.name}...`);
+      const extractionResult = await extractTextFromFile(file);
+
+      if (!extractionResult.success) {
+        return NextResponse.json(
+          {
+            error: "Erreur lors de l'extraction du texte",
+            details: extractionResult.error,
+          },
+          { status: 400 }
+        );
+      }
+
+      if (extractionResult.text?.trim()) {
+        aggregatedText += `${extractionResult.text.trim()}\n\n`;
+      }
     }
 
-    // Convertir le Blob en File pour l'extraction
-    const fileName = filePath.split("/").pop() || "file";
-    const file = new File([fileData], fileName, { type: fileData.type });
-
-    // Étape 1 : Extraction du texte
-    console.log(`[Import] Extraction du texte depuis ${file.name}...`);
-    const extractionResult = await extractTextFromFile(file);
-
-    if (!extractionResult.success) {
+    if (!aggregatedText.trim()) {
       return NextResponse.json(
         {
-          error: "Erreur lors de l'extraction du texte",
-          details: extractionResult.error,
-        },
-        { status: 400 }
-      );
-    }
-
-    const extractedText = extractionResult.text;
-
-    if (!extractedText || extractedText.trim().length === 0) {
-      return NextResponse.json(
-        {
-          error: "Aucun texte n'a pu être extrait du fichier",
+          error: "Aucun texte n'a pu être extrait des fichiers",
         },
         { status: 400 }
       );
@@ -70,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     // Étape 2 : Parsing avec l'IA
     console.log(`[Import] Parsing du texte avec l'IA...`);
-    const parseResult = await parseTextWithAI(extractedText);
+    const parseResult = await parseTextWithAI(aggregatedText);
 
     if (!parseResult.success || !parseResult.data) {
       return NextResponse.json(
@@ -78,7 +81,7 @@ export async function POST(request: NextRequest) {
           error: "Erreur lors du parsing du texte",
           details: parseResult.error || "Erreur inconnue",
           // Optionnel : retourner le texte brut pour permettre une édition manuelle
-          rawText: extractedText,
+          rawText: aggregatedText,
         },
         { status: 400 }
       );
