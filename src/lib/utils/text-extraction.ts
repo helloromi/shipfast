@@ -121,7 +121,7 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const pdfjsLib = require("pdfjs-dist");
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const workerSrc = require("pdfjs-dist/build/pdf.worker.min.js");
+    const workerSrc = require("pdfjs-dist/build/pdf.worker.min.mjs");
 
     if (pdfjsLib.GlobalWorkerOptions) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
@@ -130,10 +130,7 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
     const arrayBuffer = await fileToArrayBuffer(file);
 
     // Charger le document PDF
-    const loadingTask = pdfjsLib.getDocument({
-      data: arrayBuffer,
-      disableWorker: true, // important en environnement Node (pas de DOM)
-    });
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, disableWorker: true });
     const pdf = await loadingTask.promise;
 
     const numPages = pdf.numPages;
