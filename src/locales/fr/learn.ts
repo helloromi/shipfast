@@ -42,10 +42,10 @@ export const learn = {
     ecrisReplique: "Écris ta réplique",
   },
   messages: {
-    feedbackEnregistre: "Feedback enregistré pour cette réplique.",
-    feedbackEnregistreToast: "✅ Feedback enregistré !",
+    feedbackEnregistre: "Retour enregistré pour cette réplique.",
+    feedbackEnregistreToast: "✅ Retour enregistré !",
     sessionTerminee: "Session terminée",
-    resumeFeedbacks: "Résumé de tes feedbacks :",
+    resumeFeedbacks: "Résumé de ta session :",
     aucuneReplique: "Aucune réplique utilisateur à noter.",
     erreur: "Erreur:",
   },

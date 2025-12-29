@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
 
 import { Header } from "@/components/header";
 import { SupabaseProvider } from "@/components/supabase-provider";
@@ -50,6 +51,7 @@ export default async function RootLayout({
             <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">{children}</main>
           </div>
         </SupabaseProvider>
+        <Analytics />
       </body>
     </html>
   );

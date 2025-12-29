@@ -170,7 +170,9 @@ ${text}`;
 
     // S'assurer que tous les personnages des lignes sont dans la liste des personnages
     const characterNames = new Set(parsedData.characters.map((c: string) => c.trim()));
-    const linesCharacterNames = new Set(validLines.map((l) => l.characterName));
+    const linesCharacterNames = new Set(
+      validLines.map((l: { characterName: string; text: string; order: number }) => l.characterName)
+    );
 
     // Ajouter les personnages manquants
     linesCharacterNames.forEach((name) => {
