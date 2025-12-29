@@ -17,6 +17,36 @@ const TESSERACT_CACHE_PATH = process.env.TESSERACT_CACHE_PATH || "/tmp/tesseract
 const TESSERACT_LANG_PATH =
   process.env.TESSERACT_LANG_PATH || "https://tessdata.projectnaptha.com/4.0.0_fast";
 
+function formatOpenAIError(error: any): string {
+  // openai-node expose souvent: status, error (objet), code, type, param, request_id
+  const name = error?.name;
+  const message = error?.message || "Erreur inconnue";
+  const status = error?.status ?? error?.response?.status;
+  const requestId = error?.request_id || error?.response?.headers?.["x-request-id"];
+
+  // Certains formats: error.error = { message, type, code, param }
+  const inner = error?.error || error?.response?.data?.error;
+  const innerMsg = inner?.message;
+  const innerType = inner?.type;
+  const innerCode = inner?.code;
+  const innerParam = inner?.param;
+
+  if (name === "AbortError") {
+    return `OpenAI timeout (AbortError)`;
+  }
+
+  const parts = [
+    status ? `status=${status}` : null,
+    innerType ? `type=${innerType}` : null,
+    innerCode ? `code=${innerCode}` : null,
+    innerParam ? `param=${innerParam}` : null,
+    requestId ? `requestId=${requestId}` : null,
+    (innerMsg || message) ? `message=${innerMsg || message}` : null,
+  ].filter(Boolean);
+
+  return parts.length ? parts.join(" | ") : message;
+}
+
 /**
  * OCR local (Node) via Tesseract sur un buffer image.
  */
@@ -151,7 +181,7 @@ async function extractTextWithOpenAIVisionFromBuffer(
     return {
       text: "",
       success: false,
-      error: `Erreur OpenAI Vision : ${error.message || "inconnue"}`,
+      error: `Erreur OpenAI Vision : ${formatOpenAIError(error)}`,
     };
   }
 }
@@ -171,6 +201,9 @@ async function extractTextWithOpenAIVisionFromPngBuffers(buffers: Buffer[]): Pro
 
   try {
     const openai = new OpenAI({ apiKey });
+    const timeoutMs = Number(process.env.OPENAI_PDF_OCR_TIMEOUT_MS || "45000");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     const content: any[] = [
       {
         type: "text",
@@ -186,17 +219,25 @@ async function extractTextWithOpenAIVisionFromPngBuffers(buffers: Buffer[]): Pro
       });
     }
 
-    const completion = await openai.chat.completions.create({
+    const completion = await openai.chat.completions.create(
+      {
       model: "gpt-4o-mini",
       messages: [{ role: "user", content }],
-    });
+      },
+      { signal: controller.signal }
+    );
+    clearTimeout(timeout);
 
     const text = completion.choices[0]?.message?.content?.trim();
     if (!text) return { text: "", success: false, error: "Aucun texte extrait via OpenAI Vision (PDF)." };
     return { text, success: true };
   } catch (error: any) {
     console.error("Erreur OpenAI Vision (PDF):", error);
-    return { text: "", success: false, error: `Erreur OpenAI Vision (PDF) : ${error.message || "inconnue"}` };
+    return {
+      text: "",
+      success: false,
+      error: `Erreur OpenAI Vision (PDF) : ${formatOpenAIError(error)}`,
+    };
   }
 }
 
@@ -407,8 +448,18 @@ export async function extractTextFromPDF(
       if (visionBatch.success && visionBatch.text.trim()) {
         return { text: visionBatch.text.trim(), success: true };
       }
-      // En Hobby, on évite de tomber sur Tesseract si OpenAI échoue (risque de timeout).
-      ocrErrors.push(visionBatch.error || "OpenAI Vision batch a échoué.");
+      const openAiErr = visionBatch.error || "OpenAI Vision batch a échoué.";
+      ocrErrors.push(openAiErr);
+
+      // Par défaut: si OpenAI a échoué ET qu'on est en environnement serverless contraint,
+      // on ne tente pas Tesseract (trop risqué pour les timeouts).
+      if (process.env.ALLOW_TESSERACT_FALLBACK !== "1") {
+        return {
+          text: "",
+          success: false,
+          error: `OCR OpenAI a échoué. Détails: ${openAiErr}`,
+        };
+      }
     }
 
     // 2b) Fallback Tesseract page-à-page si pas de clé OpenAI (ou si tu exécutes hors constraints serverless).

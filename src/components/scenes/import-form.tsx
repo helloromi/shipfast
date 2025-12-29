@@ -193,7 +193,12 @@ export function ImportForm() {
           if (evt.current && evt.total) detailParts.push(`${evt.current}/${evt.total}`);
           if (evt.page && evt.totalPages) detailParts.push(`page ${evt.page}/${evt.totalPages}`);
           const detail = detailParts.length ? detailParts.join(" • ") : evt.message || "";
-          setProcessing({ stage, progress, detail });
+          setProcessing((prev) => {
+            const prevProgress = typeof prev.progress === "number" ? prev.progress : 0;
+            const nextProgress =
+              typeof progress === "number" ? Math.max(prevProgress, Math.max(0, Math.min(1, progress))) : prev.progress;
+            return { stage, progress: nextProgress, detail };
+          });
         }
 
         if (evt.type === "done") {
