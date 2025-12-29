@@ -10,6 +10,12 @@ const SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/we
 const SUPPORTED_PDF_TYPE = "application/pdf";
 const MAX_PDF_OCR_PAGES = 10;
 const PDFJS_WORKER_READY = !!PdfjsWorkerMessageHandler;
+const PDF_OCR_SCALE = Number(process.env.PDF_OCR_SCALE || "1.5");
+const IMPORT_SOFT_TIMEOUT_MS = Number(process.env.IMPORT_SOFT_TIMEOUT_MS || "0"); // 0 = désactivé
+const TESSERACT_CACHE_PATH = process.env.TESSERACT_CACHE_PATH || "/tmp/tesseract-cache";
+// "fast" est beaucoup plus léger que "best" => startup plus rapide en serverless.
+const TESSERACT_LANG_PATH =
+  process.env.TESSERACT_LANG_PATH || "https://tessdata.projectnaptha.com/4.0.0_fast";
 
 /**
  * OCR local (Node) via Tesseract sur un buffer image.
@@ -18,7 +24,10 @@ async function extractTextWithTesseractFromBuffer(buffer: Buffer): Promise<Extra
   try {
     const {
       data: { text },
-    } = await Tesseract.recognize(buffer, "fra");
+    } = await Tesseract.recognize(buffer, "fra", {
+      langPath: TESSERACT_LANG_PATH,
+      cachePath: TESSERACT_CACHE_PATH,
+    });
     const cleaned = (text || "").trim();
     if (!cleaned) return { text: "", success: false, error: "OCR Tesseract vide." };
     return { text: cleaned, success: true };
@@ -36,6 +45,13 @@ export interface ExtractionResult {
   success: boolean;
   error?: string;
 }
+
+export type ExtractionProgressEvent =
+  | {
+      type: "pdf_ocr_page";
+      page: number;
+      totalPages: number;
+    };
 
 /**
  * Valide le type et la taille d'un fichier
@@ -133,6 +149,50 @@ async function extractTextWithOpenAIVisionFromBuffer(
   }
 }
 
+/**
+ * OCR via OpenAI Vision sur plusieurs images (1 seule requête) — bien plus rapide en serverless que N requêtes.
+ */
+async function extractTextWithOpenAIVisionFromPngBuffers(buffers: Buffer[]): Promise<ExtractionResult> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return {
+      text: "",
+      success: false,
+      error: "OPENAI_API_KEY non configurée pour l'OCR PDF.",
+    };
+  }
+
+  try {
+    const openai = new OpenAI({ apiKey });
+    const content: any[] = [
+      {
+        type: "text",
+        text: "Transcris tout le texte lisible présent dans ces images (dans l'ordre). Ne réponds que par le texte brut, en conservant les retours à la ligne quand c'est pertinent.",
+      },
+    ];
+
+    for (const b of buffers) {
+      const base64 = b.toString("base64");
+      content.push({
+        type: "image_url",
+        image_url: { url: `data:image/png;base64,${base64}` },
+      });
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content }],
+    });
+
+    const text = completion.choices[0]?.message?.content?.trim();
+    if (!text) return { text: "", success: false, error: "Aucun texte extrait via OpenAI Vision (PDF)." };
+    return { text, success: true };
+  } catch (error: any) {
+    console.error("Erreur OpenAI Vision (PDF):", error);
+    return { text: "", success: false, error: `Erreur OpenAI Vision (PDF) : ${error.message || "inconnue"}` };
+  }
+}
+
 async function extractTextWithOpenAIVision(file: File): Promise<ExtractionResult> {
   const buffer = await fileToBuffer(file);
   return extractTextWithOpenAIVisionFromBuffer(buffer, file.type);
@@ -160,6 +220,8 @@ export async function extractTextFromImage(file: File): Promise<ExtractionResult
     const {
       data: { text },
     } = await Tesseract.recognize(buffer, "fra", {
+      langPath: TESSERACT_LANG_PATH,
+      cachePath: TESSERACT_CACHE_PATH,
       logger: (m) => {
         // Optionnel : logger la progression
         if (m.status === "recognizing text") {
@@ -198,7 +260,10 @@ export async function extractTextFromImage(file: File): Promise<ExtractionResult
 /**
  * Extrait le texte d'un PDF en utilisant directement pdfjs-dist legacy (compatible Node.js)
  */
-export async function extractTextFromPDF(file: File): Promise<ExtractionResult> {
+export async function extractTextFromPDF(
+  file: File,
+  onProgress?: (event: ExtractionProgressEvent) => void
+): Promise<ExtractionResult> {
   const validation = validateFile(file);
   if (!validation.valid) {
     return {
@@ -209,6 +274,7 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
   }
 
   try {
+    const startedAt = Date.now();
     // 1) Extraction texte natif via pdf2json
     const pdfParser = new PDFParser();
     const buffer = await fileToBuffer(file);
@@ -283,33 +349,50 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
       };
     }
 
+    // Sur Vercel Hobby, l'OCR CPU (Tesseract) est très susceptible de dépasser le timeout.
+    // Si OPENAI_API_KEY est présente, on privilégie OpenAI Vision en 1 seule requête.
     const pagesToProcess = Math.min(numPages, MAX_PDF_OCR_PAGES);
+    const renderedPngs: Buffer[] = [];
     const partsOCR: string[] = [];
     const ocrErrors: string[] = [];
 
     for (let pageNum = 1; pageNum <= pagesToProcess; pageNum++) {
+      if (IMPORT_SOFT_TIMEOUT_MS > 0 && Date.now() - startedAt > IMPORT_SOFT_TIMEOUT_MS) {
+        return {
+          text: "",
+          success: false,
+          error:
+            "Traitement trop long pour le serveur (timeout). Essayez avec moins de pages, ou activez un plan/timeout plus élevé côté hébergement.",
+        };
+      }
+      onProgress?.({ type: "pdf_ocr_page", page: pageNum, totalPages: pagesToProcess });
       const page = await pdf.getPage(pageNum);
-      const viewport = page.getViewport({ scale: 2 });
+      const viewport = page.getViewport({ scale: Number.isFinite(PDF_OCR_SCALE) ? PDF_OCR_SCALE : 1.5 });
       const canvas = createCanvas(viewport.width, viewport.height);
       const context = canvas.getContext("2d");
       await page.render({ canvasContext: context, viewport }).promise;
       const pngBuffer = canvas.toBuffer("image/png");
+      renderedPngs.push(pngBuffer);
+    }
 
-      // 2a) OCR local (Tesseract) d'abord — très efficace sur des scans propres comme tes captures.
-      const tesseractResult = await extractTextWithTesseractFromBuffer(pngBuffer);
+    // 2a) OpenAI Vision (batch) si possible — beaucoup plus adapté au serverless Hobby.
+    if (process.env.OPENAI_API_KEY && renderedPngs.length > 0) {
+      const visionBatch = await extractTextWithOpenAIVisionFromPngBuffers(renderedPngs);
+      if (visionBatch.success && visionBatch.text.trim()) {
+        return { text: visionBatch.text.trim(), success: true };
+      }
+      // En Hobby, on évite de tomber sur Tesseract si OpenAI échoue (risque de timeout).
+      ocrErrors.push(visionBatch.error || "OpenAI Vision batch a échoué.");
+    }
+
+    // 2b) Fallback Tesseract page-à-page si pas de clé OpenAI (ou si tu exécutes hors constraints serverless).
+    for (let i = 0; i < renderedPngs.length; i++) {
+      const pageNum = i + 1;
+      const tesseractResult = await extractTextWithTesseractFromBuffer(renderedPngs[i]);
       if (tesseractResult.success && tesseractResult.text.trim()) {
         partsOCR.push(tesseractResult.text.trim());
-        continue;
-      }
-
-      // 2b) Fallback Vision (si OPENAI_API_KEY configurée)
-      const visionResult = await extractTextWithOpenAIVisionFromBuffer(pngBuffer, "image/png");
-      if (visionResult.success && visionResult.text.trim()) {
-        partsOCR.push(visionResult.text.trim());
       } else if (tesseractResult.error) {
         ocrErrors.push(`p${pageNum}: ${tesseractResult.error}`);
-      } else if (visionResult.error) {
-        ocrErrors.push(`p${pageNum}: ${visionResult.error}`);
       } else {
         ocrErrors.push(`p${pageNum}: OCR vide`);
       }
@@ -344,14 +427,17 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
 /**
  * Extrait le texte d'un fichier (image ou PDF) automatiquement selon le type
  */
-export async function extractTextFromFile(file: File): Promise<ExtractionResult> {
+export async function extractTextFromFile(
+  file: File,
+  onProgress?: (event: ExtractionProgressEvent) => void
+): Promise<ExtractionResult> {
   const isImage = SUPPORTED_IMAGE_TYPES.includes(file.type);
   const isPDF = file.type === SUPPORTED_PDF_TYPE;
 
   if (isImage) {
     return extractTextFromImage(file);
   } else if (isPDF) {
-    return extractTextFromPDF(file);
+    return extractTextFromPDF(file, onProgress);
   } else {
     return {
       text: "",

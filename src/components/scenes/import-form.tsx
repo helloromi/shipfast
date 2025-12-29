@@ -6,13 +6,67 @@ import { Toast } from "@/components/ui/toast";
 import { useSupabase } from "@/components/supabase-provider";
 import { t } from "@/locales/fr";
 
-type ProcessingStage = "idle" | "uploading" | "extracting" | "parsing" | "creating" | "success" | "error";
+type ProcessingStage =
+  | "idle"
+  | "uploading"
+  | "downloading"
+  | "extracting"
+  | "parsing"
+  | "creating"
+  | "success"
+  | "error";
 
 type ProcessingState = {
   stage: ProcessingStage;
   error?: string;
   sceneId?: string;
+  progress?: number; // 0..1
+  detail?: string;
 };
+
+type ImportStreamEvent =
+  | {
+      type: "progress";
+      stage: "downloading" | "extracting" | "parsing" | "creating";
+      message?: string;
+      progress?: number;
+      current?: number;
+      total?: number;
+      fileName?: string;
+      page?: number;
+      totalPages?: number;
+    }
+  | { type: "done"; sceneId: string }
+  | { type: "error"; error: string; details?: string };
+
+async function consumeNdjsonStream(
+  response: Response,
+  onEvent: (evt: ImportStreamEvent) => void
+): Promise<void> {
+  const body = response.body;
+  if (!body) throw new Error("Réponse vide (stream indisponible).");
+
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      onEvent(JSON.parse(trimmed) as ImportStreamEvent);
+    }
+  }
+
+  const tail = buffer.trim();
+  if (tail) onEvent(JSON.parse(tail) as ImportStreamEvent);
+}
 
 export function ImportForm() {
   const router = useRouter();
@@ -88,11 +142,17 @@ export function ImportForm() {
     }
 
     try {
-      setProcessing({ stage: "uploading" });
+      setProcessing({ stage: "uploading", progress: 0.02, detail: "" });
 
       // Étape 1 : Uploader les fichiers vers Supabase Storage
       const uploads: string[] = [];
-      for (const f of files) {
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        setProcessing({
+          stage: "uploading",
+          progress: (i / Math.max(1, files.length)) * 0.2,
+          detail: `Envoi de "${f.name}" (${i + 1}/${files.length})`,
+        });
         const fileExt = f.name.split(".").pop();
         const fileName = `${session.user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
@@ -107,33 +167,56 @@ export function ImportForm() {
         uploads.push(uploadData.path);
       }
 
-      setProcessing({ stage: "extracting" });
+      setProcessing({ stage: "downloading", progress: 0.22, detail: "" });
 
       // Étape 2 : Envoyer la liste des fichiers à l'API pour traitement
       const response = await fetch("/api/scenes/import", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-Import-Stream": "1",
         },
         body: JSON.stringify({
           filePaths: uploads,
         }),
       });
 
-      const data = await response.json();
+      let finalSceneId: string | undefined;
+      let streamError: string | undefined;
+
+      await consumeNdjsonStream(response, (evt) => {
+        if (evt.type === "progress") {
+          const stage: ProcessingStage = evt.stage;
+          const progress = typeof evt.progress === "number" ? evt.progress : undefined;
+          const detailParts: string[] = [];
+          if (evt.fileName) detailParts.push(evt.fileName);
+          if (evt.current && evt.total) detailParts.push(`${evt.current}/${evt.total}`);
+          if (evt.page && evt.totalPages) detailParts.push(`page ${evt.page}/${evt.totalPages}`);
+          const detail = detailParts.length ? detailParts.join(" • ") : evt.message || "";
+          setProcessing({ stage, progress, detail });
+        }
+
+        if (evt.type === "done") {
+          finalSceneId = evt.sceneId;
+        }
+
+        if (evt.type === "error") {
+          streamError = evt.details || evt.error;
+        }
+      });
 
       // Nettoyer les fichiers après traitement (même en cas d'erreur)
       if (uploads.length) {
         await supabase.storage.from("scene-imports").remove(uploads);
       }
 
-      if (!response.ok) {
-        throw new Error(data.error || data.details || t.scenes.import.errors.generic);
-      }
+      if (streamError) throw new Error(streamError);
+      if (!finalSceneId) throw new Error(t.scenes.import.errors.generic);
 
       setProcessing({
         stage: "success",
-        sceneId: data.sceneId,
+        sceneId: finalSceneId,
+        progress: 1,
       });
 
       setToast({
@@ -168,6 +251,8 @@ export function ImportForm() {
     switch (processing.stage) {
       case "uploading":
         return t.scenes.import.processing.uploading;
+      case "downloading":
+        return t.scenes.import.processing.downloading;
       case "extracting":
         return t.scenes.import.processing.extracting;
       case "parsing":
@@ -251,7 +336,29 @@ export function ImportForm() {
           <div className="flex flex-col items-center gap-4">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#e7e1d9] border-t-[#3b1f4a]"></div>
             <p className="text-sm font-medium text-[#1c1b1f]">{getProcessingMessage()}</p>
-            <p className="text-xs text-[#7a7184]">Cela peut prendre quelques instants...</p>
+            {processing.detail ? (
+              <p className="text-xs text-[#7a7184]">{processing.detail}</p>
+            ) : (
+              <p className="text-xs text-[#7a7184]">Cela peut prendre quelques instants...</p>
+            )}
+
+            <div className="w-full max-w-md">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-[#e7e1d9]">
+                {typeof processing.progress === "number" ? (
+                  <div
+                    className="h-full rounded-full bg-[#3b1f4a] transition-[width] duration-300"
+                    style={{ width: `${Math.max(0, Math.min(1, processing.progress)) * 100}%` }}
+                  />
+                ) : (
+                  <div className="h-full w-1/3 animate-pulse rounded-full bg-[#3b1f4a]" />
+                )}
+              </div>
+              {typeof processing.progress === "number" && (
+                <p className="mt-2 text-center text-[11px] text-[#7a7184]">
+                  {Math.round(Math.max(0, Math.min(1, processing.progress)) * 100)}%
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}

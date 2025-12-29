@@ -93,6 +93,7 @@ export const scenes = {
     },
     processing: {
       uploading: "Téléchargement du fichier...",
+      downloading: "Récupération du fichier...",
       extracting: "Extraction du texte...",
       parsing: "Analyse du texte avec l'IA...",
       creating: "Création de la scène...",
