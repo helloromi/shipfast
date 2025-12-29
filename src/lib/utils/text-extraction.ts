@@ -104,7 +104,7 @@ export async function extractTextFromImage(file: File): Promise<ExtractionResult
 }
 
 /**
- * Extrait le texte d'un PDF en utilisant pdf-parse (compatible Node.js)
+ * Extrait le texte d'un PDF en utilisant directement pdfjs-dist legacy (compatible Node.js)
  */
 export async function extractTextFromPDF(file: File): Promise<ExtractionResult> {
   const validation = validateFile(file);
@@ -117,17 +117,44 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
   }
 
   try {
-    // Importer pdf-parse (compatible Node.js, pas besoin de worker)
-    // pdf-parse est un module CommonJS, on utilise require pour Node.js
+    // Utiliser directement pdfjs-dist avec la version legacy
+    // On utilise une version plus ancienne qui est compatible Node.js
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const pdfParse = require("pdf-parse");
+    const pdfjsLib = require("pdfjs-dist");
+    
+    // Configurer pour Node.js (pas de worker nécessaire en legacy)
+    if (pdfjsLib.GlobalWorkerOptions) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+    }
 
-    const buffer = await fileToBuffer(file);
+    const arrayBuffer = await fileToArrayBuffer(file);
 
-    // Extraire le texte du PDF
-    const pdfData = await pdfParse(buffer);
+    // Charger le document PDF
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
 
-    const fullText = pdfData.text.trim();
+    const numPages = pdf.numPages;
+    const textParts: string[] = [];
+
+    // Extraire le texte de chaque page
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+
+      // Concaténer tous les items de texte de la page
+      const pageText = textContent.items
+        .map((item: any) => {
+          if ("str" in item) {
+            return item.str;
+          }
+          return "";
+        })
+        .join(" ");
+
+      textParts.push(pageText);
+    }
+
+    const fullText = textParts.join("\n\n").trim();
 
     if (!fullText) {
       return {
