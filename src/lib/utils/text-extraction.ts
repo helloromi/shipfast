@@ -1,11 +1,15 @@
 import Tesseract from "tesseract.js";
 import OpenAI from "openai";
 import { createCanvas } from "canvas";
+import PDFParser from "pdf2json";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+import { WorkerMessageHandler as PdfjsWorkerMessageHandler } from "pdfjs-dist/legacy/build/pdf.worker.mjs";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const SUPPORTED_PDF_TYPE = "application/pdf";
 const MAX_PDF_OCR_PAGES = 10;
+const PDFJS_WORKER_READY = !!PdfjsWorkerMessageHandler;
 
 export interface ExtractionResult {
   text: string;
@@ -186,8 +190,6 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
 
   try {
     // 1) Extraction texte natif via pdf2json
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const PDFParser = require("pdf2json");
     const pdfParser = new PDFParser();
     const buffer = await fileToBuffer(file);
 
@@ -237,16 +239,17 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
     }
 
     // 2) Fallback OCR page-à-page via OpenAI Vision si texte natif vide (legacy build pour éviter le worker)
-    // Note: pdfjs-dist est fourni en ESM (.mjs). En runtime Node.js (Next), on doit utiliser import().
-    // On privilégie le build legacy (plus compatible Node), avec fallback sur le build standard.
-    let pdfjsLib: any;
-    try {
-      pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    } catch {
-      pdfjsLib = await import("pdfjs-dist/build/pdf.mjs");
+    // IMPORTANT: En prod (Vercel/Next), pdf.js peut échouer à monter le "fake worker" si le worker
+    // n'est pas résolu correctement. On force workerSrc vers le module worker, ET on l'importe explicitement
+    // pour s'assurer qu'il est bien inclus dans le bundle Turbopack.
+    (pdfjsLib as any).GlobalWorkerOptions = (pdfjsLib as any).GlobalWorkerOptions || {};
+    (pdfjsLib as any).GlobalWorkerOptions.workerSrc = "pdfjs-dist/legacy/build/pdf.worker.mjs";
+    if (!PDFJS_WORKER_READY) {
+      console.warn("[PDF] pdfjs worker non prêt (unexpected).");
     }
+
     const arrayBuffer = await fileToArrayBuffer(file);
-    const loadingTask = pdfjsLib.getDocument({
+    const loadingTask = (pdfjsLib as any).getDocument({
       data: arrayBuffer,
       disableWorker: true, // pas de worker => pas besoin de workerSrc
     });
