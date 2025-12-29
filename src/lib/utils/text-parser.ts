@@ -169,13 +169,13 @@ ${text}`;
     }
 
     // S'assurer que tous les personnages des lignes sont dans la liste des personnages
-    const characterNames = new Set(parsedData.characters.map((c: string) => c.trim()));
-    const linesCharacterNames = new Set(
+    const characterNames = new Set<string>(parsedData.characters.map((c: string) => c.trim()));
+    const linesCharacterNames = new Set<string>(
       validLines.map((l: { characterName: string; text: string; order: number }) => l.characterName)
     );
 
     // Ajouter les personnages manquants
-    linesCharacterNames.forEach((name) => {
+    linesCharacterNames.forEach((name: string) => {
       if (!characterNames.has(name)) {
         characterNames.add(name);
       }
@@ -184,7 +184,7 @@ ${text}`;
     const result: ParsedScene = {
       title: parsedData.title.trim(),
       author: parsedData.author && typeof parsedData.author === "string" ? parsedData.author.trim() : undefined,
-      characters: Array.from(characterNames).filter((name) => name.length > 0),
+      characters: Array.from(characterNames).filter((name: string) => name.length > 0),
       lines: validLines,
     };
 
