@@ -1,13 +1,20 @@
 import Tesseract from "tesseract.js";
-import * as pdfjsLib from "pdfjs-dist";
 
-// Configurer pdfjs-dist pour fonctionner dans Node.js/Next.js
-// Le worker sera chargé depuis le CDN en production, ou depuis node_modules en développement
-if (typeof window === "undefined") {
-  // En Node.js, on utilise le CDN pour le worker
-  // Note: En production, vous pouvez copier le worker dans public/ et l'utiliser localement
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-}
+// Type pour pdfjs-dist
+type PDFJSLib = {
+  getDocument: (options: { data: ArrayBuffer }) => { promise: Promise<PDFDocument> };
+  version: string;
+  GlobalWorkerOptions: { workerSrc: string };
+};
+
+type PDFDocument = {
+  numPages: number;
+  getPage: (pageNum: number) => Promise<PDFPage>;
+};
+
+type PDFPage = {
+  getTextContent: () => Promise<{ items: Array<{ str?: string }> }>;
+};
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -126,6 +133,10 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
   }
 
   try {
+    // Importer dynamiquement la version legacy de pdfjs-dist pour Node.js
+    // La version legacy est compatible avec les environnements serveur
+    const pdfjsLib = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as unknown as PDFJSLib;
+
     const arrayBuffer = await fileToArrayBuffer(file);
 
     // Charger le document PDF
