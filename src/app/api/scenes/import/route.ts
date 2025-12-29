@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { extractTextFromFile, type ExtractionProgressEvent } from "@/lib/utils/text-extraction";
+import { extractTextFromFile, type ExtractionProgressEventV2 } from "@/lib/utils/text-extraction";
 import { parseTextWithAI } from "@/lib/utils/text-parser";
 
 export const runtime = "nodejs"; // Nécessaire pour Tesseract.js et pdfjs-dist
@@ -100,10 +100,13 @@ export async function POST(request: NextRequest) {
                   progress: Math.min(0.1 + (index / Math.max(1, totalFiles)) * 0.6, 0.7),
                 });
 
-                const extractionResult = await extractTextFromFile(file, (evt: ExtractionProgressEvent) => {
+                let aiTicks = 0;
+                const extractionResult = await extractTextFromFile(file, (evt: ExtractionProgressEventV2) => {
+                  const perFileBase = 0.1 + (index / Math.max(1, totalFiles)) * 0.6;
+                  const perFileSpan = 0.6 / Math.max(1, totalFiles);
+
+                  // Compat ancien event
                   if (evt.type === "pdf_ocr_page") {
-                    const perFileBase = 0.1 + (index / Math.max(1, totalFiles)) * 0.6;
-                    const perFileSpan = 0.6 / Math.max(1, totalFiles);
                     const pageProgress = (evt.page / Math.max(1, evt.totalPages)) * perFileSpan;
                     write({
                       type: "progress",
@@ -116,6 +119,54 @@ export async function POST(request: NextRequest) {
                       totalPages: evt.totalPages,
                       progress: Math.min(perFileBase + pageProgress, 0.8),
                     });
+                    return;
+                  }
+
+                  if (evt.type === "pdf_progress") {
+                    if (evt.phase === "render" && evt.page && evt.totalPages) {
+                      const pageProgress = (evt.page / Math.max(1, evt.totalPages)) * (perFileSpan * 0.6);
+                      write({
+                        type: "progress",
+                        stage: "extracting",
+                        message: evt.message || "Préparation du PDF...",
+                        current: index + 1,
+                        total: totalFiles,
+                        fileName: file.name,
+                        page: evt.page,
+                        totalPages: evt.totalPages,
+                        progress: Math.min(perFileBase + pageProgress, 0.75),
+                      });
+                      return;
+                    }
+
+                    if (evt.phase === "ai") {
+                      aiTicks += 1;
+                      write({
+                        type: "progress",
+                        stage: "extracting",
+                        message: evt.message || "Analyse OCR (OpenAI)...",
+                        current: index + 1,
+                        total: totalFiles,
+                        fileName: file.name,
+                        progress: Math.min(perFileBase + perFileSpan * (0.78 + Math.min(aiTicks, 30) * 0.003), 0.88),
+                      });
+                      return;
+                    }
+
+                    if (evt.phase === "tesseract" && evt.page && evt.totalPages) {
+                      const pageProgress = perFileSpan * (0.6 + (evt.page / Math.max(1, evt.totalPages)) * 0.35);
+                      write({
+                        type: "progress",
+                        stage: "extracting",
+                        message: evt.message || "OCR (Tesseract) en cours...",
+                        current: index + 1,
+                        total: totalFiles,
+                        fileName: file.name,
+                        page: evt.page,
+                        totalPages: evt.totalPages,
+                        progress: Math.min(perFileBase + pageProgress, 0.88),
+                      });
+                    }
                   }
                 });
 

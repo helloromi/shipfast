@@ -53,6 +53,13 @@ export type ExtractionProgressEvent =
       totalPages: number;
     };
 
+// Événements de progression pour éviter une UI "bloquée" pendant les appels IA / OCR.
+export type PdfOcrPhase = "render" | "ai" | "tesseract";
+export type ExtractionPdfProgressEvent =
+  | { type: "pdf_progress"; phase: PdfOcrPhase; page?: number; totalPages?: number; message?: string };
+
+export type ExtractionProgressEventV2 = ExtractionProgressEvent | ExtractionPdfProgressEvent;
+
 /**
  * Valide le type et la taille d'un fichier
  */
@@ -262,7 +269,7 @@ export async function extractTextFromImage(file: File): Promise<ExtractionResult
  */
 export async function extractTextFromPDF(
   file: File,
-  onProgress?: (event: ExtractionProgressEvent) => void
+  onProgress?: (event: ExtractionProgressEventV2) => void
 ): Promise<ExtractionResult> {
   const validation = validateFile(file);
   if (!validation.valid) {
@@ -365,7 +372,13 @@ export async function extractTextFromPDF(
             "Traitement trop long pour le serveur (timeout). Essayez avec moins de pages, ou activez un plan/timeout plus élevé côté hébergement.",
         };
       }
-      onProgress?.({ type: "pdf_ocr_page", page: pageNum, totalPages: pagesToProcess });
+      onProgress?.({
+        type: "pdf_progress",
+        phase: "render",
+        page: pageNum,
+        totalPages: pagesToProcess,
+        message: "Rendu des pages...",
+      });
       const page = await pdf.getPage(pageNum);
       const viewport = page.getViewport({ scale: Number.isFinite(PDF_OCR_SCALE) ? PDF_OCR_SCALE : 1.5 });
       const canvas = createCanvas(viewport.width, viewport.height);
@@ -377,7 +390,20 @@ export async function extractTextFromPDF(
 
     // 2a) OpenAI Vision (batch) si possible — beaucoup plus adapté au serverless Hobby.
     if (process.env.OPENAI_API_KEY && renderedPngs.length > 0) {
+      onProgress?.({ type: "pdf_progress", phase: "ai", message: "Analyse OCR (OpenAI)..." });
+      // Heartbeat pour éviter l'impression de freeze pendant l'appel réseau.
+      let hb = 0;
+      const heartbeat = setInterval(() => {
+        hb += 1;
+        onProgress?.({
+          type: "pdf_progress",
+          phase: "ai",
+          message: hb % 2 === 0 ? "Analyse OCR (OpenAI)..." : "Analyse OCR (OpenAI)…",
+        });
+      }, 1200);
+
       const visionBatch = await extractTextWithOpenAIVisionFromPngBuffers(renderedPngs);
+      clearInterval(heartbeat);
       if (visionBatch.success && visionBatch.text.trim()) {
         return { text: visionBatch.text.trim(), success: true };
       }
@@ -388,6 +414,13 @@ export async function extractTextFromPDF(
     // 2b) Fallback Tesseract page-à-page si pas de clé OpenAI (ou si tu exécutes hors constraints serverless).
     for (let i = 0; i < renderedPngs.length; i++) {
       const pageNum = i + 1;
+      onProgress?.({
+        type: "pdf_progress",
+        phase: "tesseract",
+        page: pageNum,
+        totalPages: renderedPngs.length,
+        message: "OCR (Tesseract) en cours...",
+      });
       const tesseractResult = await extractTextWithTesseractFromBuffer(renderedPngs[i]);
       if (tesseractResult.success && tesseractResult.text.trim()) {
         partsOCR.push(tesseractResult.text.trim());
@@ -429,7 +462,7 @@ export async function extractTextFromPDF(
  */
 export async function extractTextFromFile(
   file: File,
-  onProgress?: (event: ExtractionProgressEvent) => void
+  onProgress?: (event: ExtractionProgressEventV2) => void
 ): Promise<ExtractionResult> {
   const isImage = SUPPORTED_IMAGE_TYPES.includes(file.type);
   const isPDF = file.type === SUPPORTED_PDF_TYPE;
