@@ -117,11 +117,8 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
   }
 
   try {
-    // Utiliser pdfjs-dist côté serveur, sans worker (évite DOM/window/workerSrc)
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const pdfjsLib = require("pdfjs-dist/legacy/build/pdf.js");
-
-    // Désactiver les workers en environnement Node
+    // Importer pdfjs-dist (ESM) et désactiver le worker pour un usage côté serveur
+    const pdfjsLib: any = await import("pdfjs-dist/build/pdf.mjs");
     if (pdfjsLib.GlobalWorkerOptions) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = "";
     }
