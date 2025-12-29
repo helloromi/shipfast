@@ -11,6 +11,26 @@ const SUPPORTED_PDF_TYPE = "application/pdf";
 const MAX_PDF_OCR_PAGES = 10;
 const PDFJS_WORKER_READY = !!PdfjsWorkerMessageHandler;
 
+/**
+ * OCR local (Node) via Tesseract sur un buffer image.
+ */
+async function extractTextWithTesseractFromBuffer(buffer: Buffer): Promise<ExtractionResult> {
+  try {
+    const {
+      data: { text },
+    } = await Tesseract.recognize(buffer, "fra");
+    const cleaned = (text || "").trim();
+    if (!cleaned) return { text: "", success: false, error: "OCR Tesseract vide." };
+    return { text: cleaned, success: true };
+  } catch (error: any) {
+    return {
+      text: "",
+      success: false,
+      error: `Erreur OCR Tesseract : ${error.message || "inconnue"}`,
+    };
+  }
+}
+
 export interface ExtractionResult {
   text: string;
   success: boolean;
@@ -254,8 +274,18 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
     });
     const pdf = await loadingTask.promise;
 
-    const pagesToProcess = Math.min(pdf.numPages ?? 0, MAX_PDF_OCR_PAGES);
+    const numPages = pdf.numPages ?? 0;
+    if (!numPages) {
+      return {
+        text: "",
+        success: false,
+        error: "PDF illisible (0 page détectée par pdfjs).",
+      };
+    }
+
+    const pagesToProcess = Math.min(numPages, MAX_PDF_OCR_PAGES);
     const partsOCR: string[] = [];
+    const ocrErrors: string[] = [];
 
     for (let pageNum = 1; pageNum <= pagesToProcess; pageNum++) {
       const page = await pdf.getPage(pageNum);
@@ -265,9 +295,23 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
       await page.render({ canvasContext: context, viewport }).promise;
       const pngBuffer = canvas.toBuffer("image/png");
 
+      // 2a) OCR local (Tesseract) d'abord — très efficace sur des scans propres comme tes captures.
+      const tesseractResult = await extractTextWithTesseractFromBuffer(pngBuffer);
+      if (tesseractResult.success && tesseractResult.text.trim()) {
+        partsOCR.push(tesseractResult.text.trim());
+        continue;
+      }
+
+      // 2b) Fallback Vision (si OPENAI_API_KEY configurée)
       const visionResult = await extractTextWithOpenAIVisionFromBuffer(pngBuffer, "image/png");
       if (visionResult.success && visionResult.text.trim()) {
         partsOCR.push(visionResult.text.trim());
+      } else if (tesseractResult.error) {
+        ocrErrors.push(`p${pageNum}: ${tesseractResult.error}`);
+      } else if (visionResult.error) {
+        ocrErrors.push(`p${pageNum}: ${visionResult.error}`);
+      } else {
+        ocrErrors.push(`p${pageNum}: OCR vide`);
       }
     }
 
@@ -276,7 +320,10 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
       return {
         text: "",
         success: false,
-        error: "Aucun texte n'a pu être extrait du PDF, même après OCR (probablement un scan illisible).",
+        error:
+          ocrErrors.length > 0
+            ? `Aucun texte n'a pu être extrait du PDF après OCR. Détails: ${ocrErrors.slice(0, 5).join(" | ")}`
+            : "Aucun texte n'a pu être extrait du PDF, même après OCR.",
       };
     }
 
