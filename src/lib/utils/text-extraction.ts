@@ -117,45 +117,44 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
   }
 
   try {
-    // Importer pdfjs-dist (ESM) et désactiver le worker pour un usage côté serveur
-    const pdfjsLib: any = await import("pdfjs-dist/build/pdf.mjs");
-    if (pdfjsLib.GlobalWorkerOptions) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "";
-    }
+    // Utiliser pdf2json (CJS), sans dépendance aux workers/DOM
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const PDFParser = require("pdf2json");
+    const pdfParser = new PDFParser();
+    const buffer = await fileToBuffer(file);
 
-    const arrayBuffer = await fileToArrayBuffer(file);
-
-    // Charger le document PDF
-    const loadingTask = pdfjsLib.getDocument({
-      data: arrayBuffer,
-      disableWorker: true, // important en environnement Node (pas de DOM/Worker)
-    });
-    const pdf = await loadingTask.promise;
-
-    const numPages = pdf.numPages;
-    const textParts: string[] = [];
-
-    // Extraire le texte de chaque page
-    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const textContent = await page.getTextContent();
-
-      // Concaténer tous les items de texte de la page
-      const pageText = textContent.items
-        .map((item: any) => {
-          if ("str" in item) {
-            return item.str;
+    const text = await new Promise<string>((resolve, reject) => {
+      pdfParser.on("pdfParser_dataError", (err: any) => reject(err));
+      pdfParser.on("pdfParser_dataReady", (data: any) => {
+        try {
+          const parts: string[] = [];
+          if (data?.Pages && Array.isArray(data.Pages)) {
+            data.Pages.forEach((page: any) => {
+              if (page?.Texts && Array.isArray(page.Texts)) {
+                page.Texts.forEach((t: any) => {
+                  if (t?.R && Array.isArray(t.R)) {
+                    t.R.forEach((r: any) => {
+                      if (r?.T) {
+                        // pdf2json encode le texte en URL-encoding
+                        parts.push(decodeURIComponent(r.T));
+                      }
+                    });
+                  }
+                });
+              }
+            });
           }
-          return "";
-        })
-        .join(" ");
+          resolve(parts.join(" ").trim());
+        } catch (e) {
+          reject(e);
+        }
+      });
 
-      textParts.push(pageText);
-    }
+      // Lancer le parsing
+      pdfParser.parseBuffer(buffer);
+    });
 
-    const fullText = textParts.join("\n\n").trim();
-
-    if (!fullText) {
+    if (!text) {
       return {
         text: "",
         success: false,
@@ -164,7 +163,7 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
     }
 
     return {
-      text: fullText,
+      text,
       success: true,
     };
   } catch (error: any) {

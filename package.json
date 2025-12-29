@@ -17,6 +17,7 @@
     "next": "16.0.10",
     "openai": "^6.15.0",
     "pdf-parse": "^2.4.5",
+    "pdf2json": "^4.0.0",
     "pdfjs-dist": "^4.4.168",
     "react": "19.2.1",
     "react-dom": "19.2.1",
