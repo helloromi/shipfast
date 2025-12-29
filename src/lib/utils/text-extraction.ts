@@ -1,4 +1,5 @@
 import Tesseract from "tesseract.js";
+import OpenAI from "openai";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -50,6 +51,61 @@ async function fileToArrayBuffer(file: File): Promise<ArrayBuffer> {
 }
 
 /**
+ * Fallback OCR via OpenAI Vision pour les images si Tesseract échoue
+ */
+async function extractTextWithOpenAIVision(file: File): Promise<ExtractionResult> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return {
+      text: "",
+      success: false,
+      error: "OPENAI_API_KEY non configurée pour le fallback OCR.",
+    };
+  }
+
+  try {
+    const openai = new OpenAI({ apiKey });
+    const buffer = await fileToBuffer(file);
+    const base64 = buffer.toString("base64");
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini", // Vision supportée
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Transcris tout le texte lisible présent dans cette image. Ne réponds que par le texte brut extrait.",
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${file.type};base64,${base64}`,
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    const content = completion.choices[0]?.message?.content?.trim();
+    if (!content) {
+      return { text: "", success: false, error: "Aucun texte extrait via OpenAI Vision." };
+    }
+
+    return { text: content, success: true };
+  } catch (error: any) {
+    console.error("Erreur OpenAI Vision:", error);
+    return {
+      text: "",
+      success: false,
+      error: `Erreur OpenAI Vision : ${error.message || "inconnue"}`,
+    };
+  }
+}
+
+/**
  * Extrait le texte d'une image en utilisant Tesseract.js (OCR)
  */
 export async function extractTextFromImage(file: File): Promise<ExtractionResult> {
@@ -82,10 +138,13 @@ export async function extractTextFromImage(file: File): Promise<ExtractionResult
     const cleanedText = text.trim();
 
     if (!cleanedText) {
+      // Fallback OpenAI Vision
+      const visionResult = await extractTextWithOpenAIVision(file);
+      if (visionResult.success) return visionResult;
       return {
         text: "",
         success: false,
-        error: "Aucun texte n'a pu être extrait de l'image. Vérifiez que l'image contient du texte lisible.",
+        error: visionResult.error || "Aucun texte n'a pu être extrait de l'image.",
       };
     }
 
