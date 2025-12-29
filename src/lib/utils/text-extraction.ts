@@ -117,8 +117,10 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
   }
 
   try {
-    // Importer pdf-parse dynamiquement (compatible Node.js, pas besoin de worker)
-    const pdfParse = (await import("pdf-parse")).default;
+    // Importer pdf-parse (compatible Node.js, pas besoin de worker)
+    // pdf-parse est un module CommonJS, on utilise require pour Node.js
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pdfParse = require("pdf-parse");
 
     const buffer = await fileToBuffer(file);
 
