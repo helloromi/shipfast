@@ -2,6 +2,7 @@ export const common = {
   nav: {
     bibliotheque: "Bibliothèque",
     accueil: "Accueil",
+    importer: "Importer",
   },
   header: {
     appName: "Côté-Cour",

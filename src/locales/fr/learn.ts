@@ -1,12 +1,12 @@
 export const learn = {
   sectionLabel: "Mode apprentissage",
   labels: {
-    tuJoues: "Tu joues :",
-    personnageChoisi: "Personnage choisi :",
+    tuJoues: "Tu joues",
+    personnageChoisi: "Personnage choisi",
     mode: "Mode :",
-    restantes: "Restantes :",
+    restantes: "Restantes",
     taReplique: "Ta réplique",
-    repliqueAdverse: "Réplique adverse (contexte)",
+    repliqueAdverse: "Réplique adverse",
     carte: "carte",
     taVersion: "Ta version",
     original: "Original",

@@ -37,7 +37,14 @@ export function Header() {
             {t.common.header.appName}
           </Link>
           <nav className="hidden items-center gap-3 text-sm font-medium text-[#524b5a] sm:flex">
-            {navItems.concat(session?.user ? [{ href: "/home", label: t.common.nav.accueil }] : []).map((item) => {
+            {navItems.concat(
+              session?.user
+                ? [
+                    { href: "/home", label: t.common.nav.accueil },
+                    { href: "/scenes/import", label: t.common.nav.importer },
+                  ]
+                : []
+            ).map((item) => {
               const active = pathname?.startsWith(item.href);
               return (
                 <Link
@@ -92,5 +99,6 @@ export function Header() {
     </header>
   );
 }
+
 
 

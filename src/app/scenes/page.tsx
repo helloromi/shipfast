@@ -35,7 +35,25 @@ export default async function ScenesPage({ searchParams }: Props) {
         </p>
       </div>
 
-      <SearchBar />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <SearchBar />
+        {user && (
+          <Link
+            href="/scenes/import"
+            className="flex items-center justify-center gap-2 rounded-full bg-[#3b1f4a] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#2d1638] sm:w-auto"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            {t.common.nav.importer}
+          </Link>
+        )}
+      </div>
 
       {user && privateScenes.length > 0 && (
         <div className="flex flex-col gap-4">
@@ -123,5 +141,6 @@ export default async function ScenesPage({ searchParams }: Props) {
     </div>
   );
 }
+
 
 

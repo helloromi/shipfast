@@ -80,4 +80,37 @@ export const scenes = {
       badge: "Privée",
     },
   },
+  import: {
+    sectionLabel: "Importer une scène",
+    title: "Importer depuis un fichier",
+    description: "Téléchargez une photo ou un PDF de votre scène. Le texte sera extrait automatiquement et la scène sera créée pour vous.",
+    dropzone: {
+      title: "Glissez-déposez votre fichier ici",
+      or: "ou",
+      browse: "Parcourir",
+      supportedFormats: "Formats supportés : JPG, PNG, WEBP, PDF",
+      maxSize: "Taille maximale : 10MB",
+    },
+    processing: {
+      uploading: "Téléchargement du fichier...",
+      extracting: "Extraction du texte...",
+      parsing: "Analyse du texte avec l'IA...",
+      creating: "Création de la scène...",
+    },
+    success: {
+      title: "Scène créée avec succès !",
+      message: "Votre scène a été importée et est maintenant disponible dans vos scènes privées.",
+      viewScene: "Voir la scène",
+      importAnother: "Importer une autre scène",
+    },
+    errors: {
+      noFile: "Aucun fichier sélectionné",
+      fileTooLarge: "Le fichier est trop volumineux",
+      unsupportedFormat: "Format de fichier non supporté",
+      extractionFailed: "Impossible d'extraire le texte du fichier",
+      parsingFailed: "Impossible d'analyser le texte",
+      creationFailed: "Erreur lors de la création de la scène",
+      generic: "Une erreur est survenue lors de l'import",
+    },
+  },
 };
