@@ -1,21 +1,5 @@
 import Tesseract from "tesseract.js";
 
-// Type pour pdfjs-dist
-type PDFJSLib = {
-  getDocument: (options: { data: ArrayBuffer }) => { promise: Promise<PDFDocument> };
-  version: string;
-  GlobalWorkerOptions: { workerSrc: string };
-};
-
-type PDFDocument = {
-  numPages: number;
-  getPage: (pageNum: number) => Promise<PDFPage>;
-};
-
-type PDFPage = {
-  getTextContent: () => Promise<{ items: Array<{ str?: string }> }>;
-};
-
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const SUPPORTED_PDF_TYPE = "application/pdf";
@@ -120,7 +104,7 @@ export async function extractTextFromImage(file: File): Promise<ExtractionResult
 }
 
 /**
- * Extrait le texte d'un PDF en utilisant pdfjs-dist
+ * Extrait le texte d'un PDF en utilisant pdf-parse (compatible Node.js)
  */
 export async function extractTextFromPDF(file: File): Promise<ExtractionResult> {
   const validation = validateFile(file);
@@ -133,38 +117,15 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
   }
 
   try {
-    // Importer dynamiquement la version legacy de pdfjs-dist pour Node.js
-    // La version legacy est compatible avec les environnements serveur
-    const pdfjsLib = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as unknown as PDFJSLib;
+    // Importer pdf-parse dynamiquement (compatible Node.js, pas besoin de worker)
+    const pdfParse = (await import("pdf-parse")).default;
 
-    const arrayBuffer = await fileToArrayBuffer(file);
+    const buffer = await fileToBuffer(file);
 
-    // Charger le document PDF
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-    const pdf = await loadingTask.promise;
+    // Extraire le texte du PDF
+    const pdfData = await pdfParse(buffer);
 
-    const numPages = pdf.numPages;
-    const textParts: string[] = [];
-
-    // Extraire le texte de chaque page
-    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const textContent = await page.getTextContent();
-
-      // Concaténer tous les items de texte de la page
-      const pageText = textContent.items
-        .map((item: any) => {
-          if ("str" in item) {
-            return item.str;
-          }
-          return "";
-        })
-        .join(" ");
-
-      textParts.push(pageText);
-    }
-
-    const fullText = textParts.join("\n\n").trim();
+    const fullText = pdfData.text.trim();
 
     if (!fullText) {
       return {
