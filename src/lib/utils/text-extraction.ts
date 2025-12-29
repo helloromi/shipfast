@@ -236,8 +236,9 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
       return { text, success: true };
     }
 
-    // 2) Fallback OCR page-à-page via OpenAI Vision si texte natif vide
-    const pdfjsLib: any = await import("pdfjs-dist/build/pdf.mjs");
+    // 2) Fallback OCR page-à-page via OpenAI Vision si texte natif vide (legacy build pour éviter le worker)
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pdfjsLib: any = require("pdfjs-dist/legacy/build/pdf.js");
     const arrayBuffer = await fileToArrayBuffer(file);
     const loadingTask = pdfjsLib.getDocument({
       data: arrayBuffer,
