@@ -1,9 +1,11 @@
 import Tesseract from "tesseract.js";
 import OpenAI from "openai";
+import { createCanvas } from "canvas";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const SUPPORTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const SUPPORTED_PDF_TYPE = "application/pdf";
+const MAX_PDF_OCR_PAGES = 10;
 
 export interface ExtractionResult {
   text: string;
@@ -53,7 +55,10 @@ async function fileToArrayBuffer(file: File): Promise<ArrayBuffer> {
 /**
  * Fallback OCR via OpenAI Vision pour les images si Tesseract échoue
  */
-async function extractTextWithOpenAIVision(file: File): Promise<ExtractionResult> {
+async function extractTextWithOpenAIVisionFromBuffer(
+  buffer: Buffer,
+  mimeType: string
+): Promise<ExtractionResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return {
@@ -65,7 +70,6 @@ async function extractTextWithOpenAIVision(file: File): Promise<ExtractionResult
 
   try {
     const openai = new OpenAI({ apiKey });
-    const buffer = await fileToBuffer(file);
     const base64 = buffer.toString("base64");
 
     const completion = await openai.chat.completions.create({
@@ -81,7 +85,7 @@ async function extractTextWithOpenAIVision(file: File): Promise<ExtractionResult
             {
               type: "image_url",
               image_url: {
-                url: `data:${file.type};base64,${base64}`,
+                url: `data:${mimeType};base64,${base64}`,
               },
             },
           ],
@@ -103,6 +107,11 @@ async function extractTextWithOpenAIVision(file: File): Promise<ExtractionResult
       error: `Erreur OpenAI Vision : ${error.message || "inconnue"}`,
     };
   }
+}
+
+async function extractTextWithOpenAIVision(file: File): Promise<ExtractionResult> {
+  const buffer = await fileToBuffer(file);
+  return extractTextWithOpenAIVisionFromBuffer(buffer, file.type);
 }
 
 /**
@@ -176,7 +185,7 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
   }
 
   try {
-    // Utiliser pdf2json (CJS), sans dépendance aux workers/DOM
+    // 1) Extraction texte natif via pdf2json
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const PDFParser = require("pdf2json");
     const pdfParser = new PDFParser();
@@ -209,7 +218,7 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
                 }
               });
             }
-            // Ajoute un séparateur de page pour éviter de coller tout le texte
+            // Séparateur de page
             parts.push("\n");
           });
 
@@ -223,16 +232,50 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
       pdfParser.parseBuffer(buffer);
     });
 
-    if (!text) {
+    if (text) {
+      return { text, success: true };
+    }
+
+    // 2) Fallback OCR page-à-page via OpenAI Vision si texte natif vide
+    const pdfjsLib: any = await import("pdfjs-dist/build/pdf.mjs");
+    if (pdfjsLib.GlobalWorkerOptions) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+    }
+    const arrayBuffer = await fileToArrayBuffer(file);
+    const loadingTask = pdfjsLib.getDocument({
+      data: arrayBuffer,
+      disableWorker: true,
+    });
+    const pdf = await loadingTask.promise;
+
+    const pagesToProcess = Math.min(pdf.numPages ?? 0, MAX_PDF_OCR_PAGES);
+    const partsOCR: string[] = [];
+
+    for (let pageNum = 1; pageNum <= pagesToProcess; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const viewport = page.getViewport({ scale: 2 });
+      const canvas = createCanvas(viewport.width, viewport.height);
+      const context = canvas.getContext("2d");
+      await page.render({ canvasContext: context, viewport }).promise;
+      const pngBuffer = canvas.toBuffer("image/png");
+
+      const visionResult = await extractTextWithOpenAIVisionFromBuffer(pngBuffer, "image/png");
+      if (visionResult.success && visionResult.text.trim()) {
+        partsOCR.push(visionResult.text.trim());
+      }
+    }
+
+    const ocrText = partsOCR.join("\n\n").trim();
+    if (!ocrText) {
       return {
         text: "",
         success: false,
-        error: "Aucun texte n'a pu être extrait du PDF. Vérifiez que le PDF contient du texte (et non seulement des images).",
+        error: "Aucun texte n'a pu être extrait du PDF, même après OCR (probablement un scan illisible).",
       };
     }
 
     return {
-      text,
+      text: ocrText,
       success: true,
     };
   } catch (error: any) {
