@@ -2,7 +2,7 @@ import Tesseract from "tesseract.js";
 import OpenAI from "openai";
 import { createCanvas } from "canvas";
 import PDFParser from "pdf2json";
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+import { GlobalWorkerOptions, getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { WorkerMessageHandler as PdfjsWorkerMessageHandler } from "pdfjs-dist/legacy/build/pdf.worker.mjs";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -242,14 +242,13 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
     // IMPORTANT: En prod (Vercel/Next), pdf.js peut échouer à monter le "fake worker" si le worker
     // n'est pas résolu correctement. On force workerSrc vers le module worker, ET on l'importe explicitement
     // pour s'assurer qu'il est bien inclus dans le bundle Turbopack.
-    (pdfjsLib as any).GlobalWorkerOptions = (pdfjsLib as any).GlobalWorkerOptions || {};
-    (pdfjsLib as any).GlobalWorkerOptions.workerSrc = "pdfjs-dist/legacy/build/pdf.worker.mjs";
+    GlobalWorkerOptions.workerSrc = "pdfjs-dist/legacy/build/pdf.worker.mjs";
     if (!PDFJS_WORKER_READY) {
       console.warn("[PDF] pdfjs worker non prêt (unexpected).");
     }
 
     const arrayBuffer = await fileToArrayBuffer(file);
-    const loadingTask = (pdfjsLib as any).getDocument({
+    const loadingTask = getDocument({
       data: arrayBuffer,
       disableWorker: true, // pas de worker => pas besoin de workerSrc
     });
