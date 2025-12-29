@@ -237,8 +237,14 @@ export async function extractTextFromPDF(file: File): Promise<ExtractionResult> 
     }
 
     // 2) Fallback OCR page-à-page via OpenAI Vision si texte natif vide (legacy build pour éviter le worker)
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const pdfjsLib: any = require("pdfjs-dist/legacy/build/pdf.js");
+    // Note: pdfjs-dist est fourni en ESM (.mjs). En runtime Node.js (Next), on doit utiliser import().
+    // On privilégie le build legacy (plus compatible Node), avec fallback sur le build standard.
+    let pdfjsLib: any;
+    try {
+      pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    } catch {
+      pdfjsLib = await import("pdfjs-dist/build/pdf.mjs");
+    }
     const arrayBuffer = await fileToArrayBuffer(file);
     const loadingTask = pdfjsLib.getDocument({
       data: arrayBuffer,
