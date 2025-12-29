@@ -17,13 +17,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
-    // Récupérer le fichier depuis FormData
-    const formData = await request.formData();
-    const file = formData.get("file") as File;
+    // Récupérer le chemin du fichier depuis le body JSON
+    const body = await request.json();
+    const { filePath } = body;
 
-    if (!file) {
-      return NextResponse.json({ error: "Aucun fichier fourni" }, { status: 400 });
+    if (!filePath) {
+      return NextResponse.json({ error: "Aucun chemin de fichier fourni" }, { status: 400 });
     }
+
+    // Télécharger le fichier depuis Supabase Storage
+    console.log(`[Import] Téléchargement du fichier depuis Storage: ${filePath}...`);
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from("scene-imports")
+      .download(filePath);
+
+    if (downloadError || !fileData) {
+      console.error("Erreur lors du téléchargement:", downloadError);
+      return NextResponse.json(
+        { error: "Erreur lors du téléchargement du fichier", details: downloadError?.message },
+        { status: 500 }
+      );
+    }
+
+    // Convertir le Blob en File pour l'extraction
+    const fileName = filePath.split("/").pop() || "file";
+    const file = new File([fileData], fileName, { type: fileData.type });
 
     // Étape 1 : Extraction du texte
     console.log(`[Import] Extraction du texte depuis ${file.name}...`);

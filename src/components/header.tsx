@@ -37,29 +37,51 @@ export function Header() {
             {t.common.header.appName}
           </Link>
           <nav className="hidden items-center gap-3 text-sm font-medium text-[#524b5a] sm:flex">
-            {navItems.concat(
-              session?.user
-                ? [
-                    { href: "/home", label: t.common.nav.accueil },
-                    { href: "/scenes/import", label: t.common.nav.importer },
-                  ]
-                : []
-            ).map((item) => {
-              const active = pathname?.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`rounded-full px-3 py-1 transition ${
-                    active
-                      ? "bg-[#3b1f4a] text-white shadow-sm"
-                      : "hover:bg-[#f4c95d33] hover:text-[#3b1f4a]"
-                  }`}
-                >
-                  {item.label}
-                </Link>
+            {(() => {
+              const allItems = navItems.concat(
+                session?.user
+                  ? [
+                      { href: "/home", label: t.common.nav.accueil },
+                      { href: "/scenes/import", label: t.common.nav.importer },
+                    ]
+                  : []
               );
-            })}
+              
+              // Trier par longueur de href (du plus long au plus court) pour vérifier les plus spécifiques en premier
+              const sortedItems = [...allItems].sort((a, b) => b.href.length - a.href.length);
+              
+              return sortedItems.map((item) => {
+                // Vérifier si ce lien est actif
+                // Pour éviter les conflits, on vérifie d'abord les liens les plus longs
+                let active = false;
+                if (pathname) {
+                  // Correspondance exacte
+                  if (pathname === item.href) {
+                    active = true;
+                  } else if (pathname.startsWith(item.href + "/")) {
+                    // Vérifier qu'aucun lien plus spécifique ne correspond
+                    const moreSpecificMatch = sortedItems.find(
+                      (other) => other.href.length > item.href.length && pathname.startsWith(other.href)
+                    );
+                    active = !moreSpecificMatch;
+                  }
+                }
+                
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`rounded-full px-3 py-1 transition ${
+                      active
+                        ? "bg-[#3b1f4a] text-white shadow-sm"
+                        : "hover:bg-[#f4c95d33] hover:text-[#3b1f4a]"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              });
+            })()}
           </nav>
         </div>
         <div className="relative flex items-center gap-3">

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { Toast } from "@/components/ui/toast";
+import { useSupabase } from "@/components/supabase-provider";
 import { t } from "@/locales/fr";
 
 type ProcessingStage = "idle" | "uploading" | "extracting" | "parsing" | "creating" | "success" | "error";
@@ -15,6 +16,7 @@ type ProcessingState = {
 
 export function ImportForm() {
   const router = useRouter();
+  const { supabase, session } = useSupabase();
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [processing, setProcessing] = useState<ProcessingState>({ stage: "idle" });
@@ -69,19 +71,46 @@ export function ImportForm() {
       return;
     }
 
-    // Créer FormData
-    const formData = new FormData();
-    formData.append("file", file);
+    if (!session?.user) {
+      setToast({ message: "Vous devez être connecté", variant: "error" });
+      return;
+    }
 
     try {
       setProcessing({ stage: "uploading" });
 
+      // Étape 1 : Uploader le fichier vers Supabase Storage
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("scene-imports")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw new Error(`Erreur lors de l'upload : ${uploadError.message}`);
+      }
+
+      setProcessing({ stage: "extracting" });
+
+      // Étape 2 : Envoyer le chemin du fichier à l'API pour traitement
       const response = await fetch("/api/scenes/import", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          filePath: uploadData.path,
+        }),
       });
 
       const data = await response.json();
+
+      // Nettoyer le fichier après traitement (même en cas d'erreur)
+      await supabase.storage.from("scene-imports").remove([uploadData.path]);
 
       if (!response.ok) {
         throw new Error(data.error || data.details || t.scenes.import.errors.generic);
