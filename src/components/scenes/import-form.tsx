@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Toast } from "@/components/ui/toast";
 import { useSupabase } from "@/components/supabase-provider";
 import { t } from "@/locales/fr";
+import type { ParsedScene } from "@/lib/utils/text-parser";
 
 type ProcessingStage =
   | "idle"
@@ -13,6 +14,7 @@ type ProcessingStage =
   | "extracting"
   | "parsing"
   | "creating"
+  | "review"
   | "success"
   | "error";
 
@@ -36,7 +38,7 @@ type ImportStreamEvent =
       page?: number;
       totalPages?: number;
     }
-  | { type: "done"; sceneId: string }
+  | { type: "done"; mode: "preview" | "create"; sceneId?: string; draft?: ParsedScene }
   | { type: "error"; error: string; details?: string };
 
 async function consumeNdjsonStream(
@@ -75,6 +77,10 @@ export function ImportForm() {
   const [isDragging, setIsDragging] = useState(false);
   const [processing, setProcessing] = useState<ProcessingState>({ stage: "idle" });
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
+  const [draft, setDraft] = useState<ParsedScene | null>(null);
+  const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
+  const [draftTitle, setDraftTitle] = useState("");
+  const [draftAuthor, setDraftAuthor] = useState("");
 
   const totalSizeMb = useMemo(
     () => files.reduce((acc, f) => acc + f.size, 0) / 1024 / 1024,
@@ -178,11 +184,13 @@ export function ImportForm() {
         },
         body: JSON.stringify({
           filePaths: uploads,
+          action: "preview",
         }),
       });
 
       let finalSceneId: string | undefined;
       let streamError: string | undefined;
+      let parsedDraft: ParsedScene | undefined;
 
       await consumeNdjsonStream(response, (evt) => {
         if (evt.type === "progress") {
@@ -202,7 +210,8 @@ export function ImportForm() {
         }
 
         if (evt.type === "done") {
-          finalSceneId = evt.sceneId;
+          if (evt.mode === "create") finalSceneId = evt.sceneId;
+          if (evt.mode === "preview") parsedDraft = evt.draft;
         }
 
         if (evt.type === "error") {
@@ -216,18 +225,13 @@ export function ImportForm() {
       }
 
       if (streamError) throw new Error(streamError);
-      if (!finalSceneId) throw new Error(t.scenes.import.errors.generic);
+      if (!parsedDraft) throw new Error(t.scenes.import.errors.generic);
 
-      setProcessing({
-        stage: "success",
-        sceneId: finalSceneId,
-        progress: 1,
-      });
-
-      setToast({
-        message: t.scenes.import.success.message,
-        variant: "success",
-      });
+      setDraft(parsedDraft);
+      setDraftTitle(parsedDraft.title || "");
+      setDraftAuthor(parsedDraft.author || "");
+      setSelectedOrders(new Set(parsedDraft.lines.map((l) => l.order)));
+      setProcessing({ stage: "review", progress: 1, detail: "" });
     } catch (error: any) {
       console.error("Erreur lors de l'import:", error);
       setProcessing({
@@ -240,6 +244,67 @@ export function ImportForm() {
       });
     }
   }, [files, session, supabase, router]);
+
+  const handleReviewBack = useCallback(() => {
+    setDraft(null);
+    setSelectedOrders(new Set());
+    setProcessing({ stage: "idle" });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    if (!draft) return;
+    setSelectedOrders(new Set(draft.lines.map((l) => l.order)));
+  }, [draft]);
+
+  const handleSelectNone = useCallback(() => {
+    setSelectedOrders(new Set());
+  }, []);
+
+  const toggleOrder = useCallback((order: number) => {
+    setSelectedOrders((prev) => {
+      const next = new Set(prev);
+      if (next.has(order)) next.delete(order);
+      else next.add(order);
+      return next;
+    });
+  }, []);
+
+  const handleCommit = useCallback(async () => {
+    if (!draft) return;
+    const keepOrders = Array.from(selectedOrders).sort((a, b) => a - b);
+    if (keepOrders.length === 0) {
+      setToast({ message: "Sélectionnez au moins une réplique.", variant: "error" });
+      return;
+    }
+
+    try {
+      setProcessing({ stage: "creating", progress: 0.95, detail: "Création de la scène..." });
+
+      const response = await fetch("/api/scenes/import/commit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          draft: {
+            ...draft,
+            title: draftTitle,
+            author: draftAuthor || undefined,
+          },
+          keepOrders,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.details || data.error || t.scenes.import.errors.generic);
+      }
+
+      setProcessing({ stage: "success", sceneId: data.sceneId, progress: 1 });
+      setToast({ message: t.scenes.import.success.message, variant: "success" });
+    } catch (e: any) {
+      setProcessing({ stage: "error", error: e?.message || t.scenes.import.errors.generic });
+      setToast({ message: e?.message || t.scenes.import.errors.generic, variant: "error" });
+    }
+  }, [draft, selectedOrders, draftTitle, draftAuthor]);
 
   const handleViewScene = useCallback(() => {
     if (processing.sceneId) {
@@ -271,6 +336,104 @@ export function ImportForm() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Étape de relecture / nettoyage */}
+      {processing.stage === "review" && draft && (
+        <div className="rounded-2xl border border-[#e7e1d9] bg-white/90 p-6">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-1">
+                <p className="text-sm font-semibold text-[#1c1b1f]">{t.scenes.import.review.title}</p>
+                <p className="text-xs text-[#7a7184]">{t.scenes.import.review.description}</p>
+              </div>
+              <button
+                onClick={handleReviewBack}
+                className="rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33]"
+              >
+                {t.scenes.import.review.back}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                  {t.scenes.import.review.fieldTitle}
+                </label>
+                <input
+                  value={draftTitle}
+                  onChange={(e) => setDraftTitle(e.target.value)}
+                  className="rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] focus:border-[#3b1f4a]"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                  {t.scenes.import.review.fieldAuthor}
+                </label>
+                <input
+                  value={draftAuthor}
+                  onChange={(e) => setDraftAuthor(e.target.value)}
+                  className="rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] focus:border-[#3b1f4a]"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-xs text-[#7a7184]">
+                <span className="font-semibold text-[#3b1f4a]">{selectedOrders.size}</span>{" "}
+                {t.scenes.import.review.keptCount}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={handleSelectAll}
+                  className="rounded-full border border-[#e7e1d9] bg-white px-3 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33]"
+                >
+                  {t.scenes.import.review.selectAll}
+                </button>
+                <button
+                  onClick={handleSelectNone}
+                  className="rounded-full border border-[#e7e1d9] bg-white px-3 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33]"
+                >
+                  {t.scenes.import.review.selectNone}
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-[50vh] overflow-y-auto rounded-xl border border-[#e7e1d9] bg-white/92">
+              <div className="flex flex-col">
+                {draft.lines.map((l) => {
+                  const checked = selectedOrders.has(l.order);
+                  return (
+                    <label
+                      key={l.order}
+                      className="flex cursor-pointer gap-3 border-b border-[#f0ece6] px-4 py-3 hover:bg-[#f9f7f3]"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleOrder(l.order)}
+                        className="mt-1 h-4 w-4 accent-[#3b1f4a]"
+                      />
+                      <div className="flex flex-col gap-1">
+                        <div className="text-xs font-semibold text-[#7a7184]">
+                          {l.order}. <span className="text-[#3b1f4a]">{l.characterName}</span>
+                        </div>
+                        <p className="text-sm text-[#1c1b1f]">{l.text}</p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button
+              onClick={handleCommit}
+              className="w-full rounded-full bg-[#3b1f4a] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#2d1638]"
+            >
+              {t.scenes.import.review.create}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Zone de drop */}
       {processing.stage === "idle" && (
         <div

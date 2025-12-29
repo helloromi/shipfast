@@ -98,6 +98,17 @@ export const scenes = {
       parsing: "Analyse du texte avec l'IA...",
       creating: "Création de la scène...",
     },
+    review: {
+      title: "Nettoyer l'import",
+      description: "Décochez les répliques à supprimer (utile si le fichier contient plusieurs scènes).",
+      keptCount: "répliques conservées",
+      selectAll: "Tout garder",
+      selectNone: "Tout retirer",
+      create: "Créer la scène avec les répliques sélectionnées",
+      back: "Retour",
+      fieldTitle: "Titre",
+      fieldAuthor: "Auteur (optionnel)",
+    },
     success: {
       title: "Scène créée avec succès !",
       message: "Votre scène a été importée et est maintenant disponible dans vos scènes privées.",

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { extractTextFromFile, type ExtractionProgressEventV2 } from "@/lib/utils/text-extraction";
-import { parseTextWithAI } from "@/lib/utils/text-parser";
+import { parseTextWithAI, type ParsedScene } from "@/lib/utils/text-parser";
 
 export const runtime = "nodejs"; // Nécessaire pour Tesseract.js et pdfjs-dist
 export const maxDuration = 300; // 5 minutes max pour le traitement
@@ -20,7 +20,9 @@ type ImportStreamEvent =
     }
   | {
       type: "done";
-      sceneId: string;
+      mode: "preview" | "create";
+      sceneId?: string;
+      draft?: ParsedScene;
     }
   | {
       type: "error";
@@ -41,7 +43,8 @@ export async function POST(request: NextRequest) {
 
     // Récupérer les chemins des fichiers depuis le body JSON
     const body = await request.json();
-    const { filePaths } = body;
+    const { filePaths, action } = body;
+    const importAction: "preview" | "create" = action === "preview" ? "preview" : "create";
 
     if (!filePaths || !Array.isArray(filePaths) || filePaths.length === 0) {
       return NextResponse.json({ error: "Aucun chemin de fichier fourni" }, { status: 400 });
@@ -213,6 +216,18 @@ export async function POST(request: NextRequest) {
               }
 
               const parsedScene = parseResult.data;
+
+              // Mode preview: on s'arrête ici et on laisse l'utilisateur sélectionner les répliques à garder.
+              if (importAction === "preview") {
+                write({
+                  type: "done",
+                  mode: "preview",
+                  draft: parsedScene,
+                });
+                controller.close();
+                return;
+              }
+
               write({
                 type: "progress",
                 stage: "creating",
@@ -285,7 +300,7 @@ export async function POST(request: NextRequest) {
                 access_type: "private",
               });
 
-              write({ type: "done", sceneId });
+              write({ type: "done", mode: "create", sceneId });
               controller.close();
             } catch (error: any) {
               write({
@@ -371,6 +386,14 @@ export async function POST(request: NextRequest) {
     }
 
     const parsedScene = parseResult.data;
+
+    if (importAction === "preview") {
+      return NextResponse.json({
+        success: true,
+        mode: "preview",
+        draft: parsedScene,
+      });
+    }
 
     // Étape 3 : Créer la scène privée
     console.log(`[Import] Création de la scène "${parsedScene.title}"...`);
