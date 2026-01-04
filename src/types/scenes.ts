@@ -55,6 +55,7 @@ export type LineWithCharacter = Line & {
 export type SceneWithRelations = Scene & {
   characters: Character[];
   lines: LineWithCharacter[];
+  work?: Pick<Work, "id" | "title"> | null;
 };
 
 export type UserLineFeedback = {

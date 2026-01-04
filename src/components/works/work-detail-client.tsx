@@ -86,6 +86,19 @@ export function WorkDetailClient({ work }: WorkDetailClientProps) {
         ? t.scenes.works.selection.uneScene
         : `${selectedCount} ${t.scenes.works.selection.plusieursScenes}`;
 
+  const progressForAverage = (average?: number) => {
+    if (average === undefined || average === null) {
+      return { label: t.common.progress.notStarted, dot: "bg-[#e11d48]" };
+    }
+    if (average >= 2.5) {
+      return { label: t.common.progress.mastered, dot: "bg-[#2cb67d]" };
+    }
+    if (average > 0) {
+      return { label: t.common.progress.inProgress, dot: "bg-[#f59e0b]" };
+    }
+    return { label: t.common.progress.notStarted, dot: "bg-[#e11d48]" };
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -127,6 +140,7 @@ export function WorkDetailClient({ work }: WorkDetailClientProps) {
             {work.scenes.map((scene: SceneWithStats) => {
               const isSelected = selectedScenes.has(scene.id);
               const range = sceneRanges.get(scene.id);
+              const progress = progressForAverage(scene.average);
               return (
                 <div
                   key={scene.id}
@@ -148,11 +162,14 @@ export function WorkDetailClient({ work }: WorkDetailClientProps) {
                         <h3 className="font-display text-lg font-semibold text-[#3b1f4a]">
                           {scene.title}
                         </h3>
-                        {scene.average !== undefined && (
-                          <span className="rounded-full bg-[#d9f2e4] px-3 py-1 text-xs font-semibold text-[#1c6b4f]">
-                            {t.common.labels.maitrise}: {scene.average.toFixed(2)} / 3
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <span className={`h-2.5 w-2.5 rounded-full ${progress.dot}`} aria-label={progress.label} />
+                          {scene.average !== undefined && (
+                            <span className="rounded-full bg-[#d9f2e4] px-3 py-1 text-xs font-semibold text-[#1c6b4f]">
+                              {t.common.labels.maitrise}: {scene.average.toFixed(2)} / 3
+                            </span>
+                          )}
+                        </div>
                       </div>
                       {scene.chapter && (
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-[#7a7184]">
@@ -239,6 +256,7 @@ export function WorkDetailClient({ work }: WorkDetailClientProps) {
     </div>
   );
 }
+
 
 
 

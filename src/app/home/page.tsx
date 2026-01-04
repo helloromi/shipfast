@@ -17,6 +17,19 @@ export default async function HomePage() {
     fetchUserStatsSummary(user.id),
   ]);
 
+  const progressForAverage = (average?: number) => {
+    if (average === undefined || average === null) {
+      return { label: t.common.progress.notStarted, dot: "bg-[#e11d48]" };
+    }
+    if (average >= 2.5) {
+      return { label: t.common.progress.mastered, dot: "bg-[#2cb67d]" };
+    }
+    if (average > 0) {
+      return { label: t.common.progress.inProgress, dot: "bg-[#f59e0b]" };
+    }
+    return { label: t.common.progress.notStarted, dot: "bg-[#e11d48]" };
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -51,9 +64,12 @@ export default async function HomePage() {
               <h2 className="font-display text-xl font-semibold text-[#3b1f4a]">
                 {item.title}
               </h2>
-              <span className="rounded-full bg-[#d9f2e4] px-3 py-1 text-xs font-semibold text-[#1c6b4f]">
-                {t.home.labels.maitrise} {item.average.toFixed(2)} {t.home.labels.sur}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 rounded-full ${progressForAverage(item.average).dot}`} aria-label={progressForAverage(item.average).label} />
+                <span className="rounded-full bg-[#d9f2e4] px-3 py-1 text-xs font-semibold text-[#1c6b4f]">
+                  {t.home.labels.maitrise} {item.average.toFixed(2)} {t.home.labels.sur}
+                </span>
+              </div>
             </div>
             <p className="text-sm text-[#524b5a]">
               {item.author ? `${t.common.labels.par} ${item.author}` : t.common.labels.auteurInconnu}
@@ -91,6 +107,7 @@ export default async function HomePage() {
     </div>
   );
 }
+
 
 
 

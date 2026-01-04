@@ -7,6 +7,7 @@ type SceneAverage = {
 };
 
 type SceneQueryResult = Scene & {
+  works?: { id: string; title: string } | null;
   characters: Character[];
   lines: {
     id: string;
@@ -104,10 +105,12 @@ export async function fetchSceneWithRelations(id: string): Promise<SceneWithRela
     .select(
       `
         id,
+        work_id,
         title,
         author,
         summary,
         chapter,
+        works ( id, title ),
         characters ( id, name ),
         lines (
           id,
@@ -135,6 +138,7 @@ export async function fetchSceneWithRelations(id: string): Promise<SceneWithRela
       ...line,
       scene_id: id,
     })),
+    work: data.works ?? null,
   };
 }
 

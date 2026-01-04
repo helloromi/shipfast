@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { useSupabase } from "@/components/supabase-provider";
 import { Toast } from "@/components/ui/toast";
@@ -32,6 +32,7 @@ type ToastState = {
 };
 
 type InputMode = "write" | "revealOnly";
+type HintMode = "nextWord" | "initials";
 
 type ScoreOption = {
   value: number;
@@ -47,6 +48,33 @@ const scoreOptions: ScoreOption[] = [
   { value: 3, emoji: t.learn.scores.parfait.emoji, label: t.learn.scores.parfait.label, color: "bg-[#2cb67d] text-white hover:bg-[#239b6a]" },
 ];
 
+function isLikelyStageDirection(line: Pick<LearnLine, "text" | "characterName">) {
+  const name = (line.characterName || "").trim().toLowerCase();
+  if (/(didascalie|didas|sc[eè]ne|narrateur|stage)/i.test(name)) return true;
+  const text = (line.text || "").trim();
+  if (!text) return false;
+  if ((text.startsWith("[") && text.endsWith("]")) || (text.startsWith("(") && text.endsWith(")"))) {
+    return true;
+  }
+  return false;
+}
+
+function renderCue(text: string, lastWords = 5) {
+  const trimmed = (text || "").trim();
+  if (!trimmed) return null;
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length <= lastWords) {
+    return <strong>{trimmed}</strong>;
+  }
+  const head = words.slice(0, Math.max(0, words.length - lastWords)).join(" ");
+  const tail = words.slice(-lastWords).join(" ");
+  return (
+    <>
+      {head} <strong>{tail}</strong>
+    </>
+  );
+}
+
 export function LearnSession({
   sceneTitle,
   sceneId,
@@ -56,11 +84,17 @@ export function LearnSession({
   userId,
 }: LearnSessionProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { supabase } = useSupabase();
+
+  const isZen = searchParams?.get("zen") === "1";
 
   const [showSetupModal, setShowSetupModal] = useState(true);
   const [limitCount, setLimitCount] = useState<number | null>(null); // null => toutes
   const [inputMode, setInputMode] = useState<InputMode>("write");
+  const [hintMode, setHintMode] = useState<HintMode>("nextWord");
+  const [hintProgress, setHintProgress] = useState<Record<string, number>>({});
+  const [showStageDirections, setShowStageDirections] = useState(true);
 
   const [lineState, setLineState] = useState<Record<string, LineState>>(() =>
     lines.reduce(
@@ -87,12 +121,15 @@ export function LearnSession({
   const [mode, setMode] = useState<"list" | "flashcard">("list");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
+  const [showZenReview, setShowZenReview] = useState(false);
+  const [zenSaving, setZenSaving] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
   const timeInterval = useRef<NodeJS.Timeout | null>(null);
+  const lineRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   // IMPORTANT: on ne veut pas "réutiliser" les brouillons d'une session à l'autre.
   // On lie donc la clé de persistance à la session (créée côté serveur).
   const storageKey = useMemo(() => {
@@ -106,6 +143,13 @@ export function LearnSession({
     const isMobile = window.innerWidth < 768;
     queueMicrotask(() => setMode(isMobile ? "flashcard" : "list"));
   }, []);
+
+  // En mode Zen, on force un flow "une réplique à la fois" et on épure l'UI.
+  useEffect(() => {
+    if (!isZen) return;
+    queueMicrotask(() => setMode("flashcard"));
+    queueMicrotask(() => setInputMode("revealOnly"));
+  }, [isZen]);
 
   // Timer pour afficher le temps écoulé
   useEffect(() => {
@@ -167,6 +211,31 @@ export function LearnSession({
     return lines.filter((l) => l.order <= lastUserLine.order);
   }, [lines, limitCount, userLines]);
 
+  const visibleLines = useMemo(() => {
+    if (showStageDirections) return displayLines;
+    return displayLines.filter((l) => !isLikelyStageDirection(l));
+  }, [displayLines, showStageDirections]);
+
+  const cueLineIds = useMemo(() => {
+    // Pour chaque réplique utilisateur, identifier la réplique (non didascalie) immédiatement précédente
+    // et marquer cette réplique comme "amorce" (mise en gras des 5 derniers mots).
+    const ids = new Set<string>();
+    const sorted = [...visibleLines].sort((a, b) => a.order - b.order);
+    for (let i = 0; i < sorted.length; i += 1) {
+      const line = sorted[i];
+      if (!line.isUserLine) continue;
+      for (let j = i - 1; j >= 0; j -= 1) {
+        const prev = sorted[j];
+        if (isLikelyStageDirection(prev)) continue;
+        if (!prev.isUserLine) {
+          ids.add(prev.id);
+        }
+        break;
+      }
+    }
+    return ids;
+  }, [visibleLines]);
+
   useEffect(() => {
     // Sécurité : si on change la limite, on revient au début du paquet.
     setCurrentIndex(0);
@@ -211,8 +280,49 @@ export function LearnSession({
     }
   };
 
+  const lineById = useMemo(() => new Map(lines.map((l) => [l.id, l])), [lines]);
+
+  const getWordCount = (text: string) => (text || "").trim().split(/\s+/).filter(Boolean).length;
+
+  const renderHintedText = (text: string, revealedWords: number) => {
+    const trimmed = (text || "").trim();
+    if (!trimmed) return "—";
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    const shown = Math.max(0, Math.min(revealedWords, words.length));
+    const out = words.map((w, idx) => {
+      if (idx < shown) return w;
+      if (hintMode === "initials") {
+        const first = w.trim().charAt(0);
+        return first ? `${first}…` : "…";
+      }
+      // nextWord: masquer le mot
+      return "▢▢▢";
+    });
+    return out.join(" ");
+  };
+
   const revealLine = (lineId: string) => {
+    const text = lineById.get(lineId)?.text ?? "";
+    const total = getWordCount(text);
+    if (total > 0) {
+      setHintProgress((prev) => ({ ...prev, [lineId]: total }));
+    }
     setLineState((prev) => ({ ...prev, [lineId]: "revealed" }));
+  };
+
+  const revealNextWord = (lineId: string) => {
+    const text = lineById.get(lineId)?.text ?? "";
+    const total = getWordCount(text);
+    if (total <= 0) return;
+    setHintProgress((prev) => {
+      const cur = prev[lineId] ?? 0;
+      const nextCount = Math.min(total, cur + 1);
+      const next = { ...prev, [lineId]: nextCount };
+      if (nextCount >= total) {
+        queueMicrotask(() => revealLine(lineId));
+      }
+      return next;
+    });
   };
 
   const saveScore = async (lineId: string, score: number) => {
@@ -266,6 +376,22 @@ export function LearnSession({
         setCurrentIndex(idx + 1);
       }
     }
+
+    if (mode === "list") {
+      // Auto-scroll intelligent: centrer la prochaine réplique utilisateur (non notée) dans l'écran.
+      const sorted = [...visibleLines].sort((a, b) => a.order - b.order);
+      const current = sorted.find((l) => l.id === lineId);
+      const currentOrder = current?.order ?? -Infinity;
+      const nextUser = sorted.find(
+        (l) => l.isUserLine && l.order > currentOrder && lineState[l.id] === "hidden"
+      ) ?? sorted.find((l) => l.isUserLine && l.order > currentOrder);
+      if (nextUser) {
+        queueMicrotask(() => {
+          const el = lineRefs.current.get(nextUser.id);
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      }
+    }
   };
 
   const resetLocalState = () => {
@@ -287,6 +413,7 @@ export function LearnSession({
         {} as Record<string, number | null>
       )
     );
+    setHintProgress({});
     // Nouvelle session d'apprentissage côté UI -> on vide la saisie.
     setDrafts({});
     if (typeof window !== "undefined" && storageKey) {
@@ -302,6 +429,8 @@ export function LearnSession({
     if (timeInterval.current) {
       clearInterval(timeInterval.current);
     }
+    setShowZenReview(false);
+    setZenSaving(false);
     setShowSummary(false);
     setToast(null);
     setCurrentIndex(0);
@@ -312,9 +441,11 @@ export function LearnSession({
   const flashcardContext =
     currentFlashcard &&
     (() => {
-      const idx = displayLines.findIndex((l) => l.id === currentFlashcard.id);
+      const idx = visibleLines.findIndex((l) => l.id === currentFlashcard.id);
       for (let i = idx - 1; i >= 0; i -= 1) {
-        if (!displayLines[i].isUserLine) return displayLines[i];
+        const candidate = visibleLines[i];
+        if (isLikelyStageDirection(candidate)) continue;
+        if (!candidate.isUserLine) return candidate;
       }
       return null;
     })();
@@ -338,15 +469,105 @@ export function LearnSession({
 
   const legend = t.learn.scores.legend;
 
+  const toggleZen = () => {
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    if (isZen) params.delete("zen");
+    else params.set("zen", "1");
+    const qs = params.toString();
+    router.replace(qs ? `?${qs}` : "?", { scroll: false });
+  };
+
+  const zenCompleted = useMemo(() => {
+    if (!isZen) return false;
+    if (showSetupModal) return false;
+    if (userLines.length === 0) return false;
+    return userLines.every((l) => lineState[l.id] !== "hidden");
+  }, [isZen, showSetupModal, userLines, lineState]);
+
+  useEffect(() => {
+    if (!isZen) return;
+    if (!zenCompleted) return;
+    setShowZenReview(true);
+  }, [isZen, zenCompleted]);
+
+  const saveZenScores = async () => {
+    if (zenSaving) return;
+    const missing = userLines.some((l) => scoreValue[l.id] === null || scoreValue[l.id] === undefined);
+    if (missing) {
+      setToast({ message: t.learn.messages.attribueScores, variant: "error" });
+      return;
+    }
+
+    const rows = userLines.map((l) => ({
+      line_id: l.id,
+      user_id: userId,
+      score: scoreValue[l.id] as number,
+    }));
+
+    setZenSaving(true);
+    setToast(null);
+    const { error } = await supabase.from("user_line_feedback").insert(rows);
+    setZenSaving(false);
+    if (error) {
+      setToast({ message: `${t.learn.messages.erreur} ${error.message}`, variant: "error" });
+      return;
+    }
+
+    // Marquer comme "scored" côté UI
+    setLineState((prev) => {
+      const next = { ...prev };
+      userLines.forEach((l) => {
+        next[l.id] = "scored";
+      });
+      return next;
+    });
+
+    // Terminer la session
+    if (sessionId) {
+      const scores = userLines
+        .map((l) => scoreValue[l.id])
+        .filter((s): s is number => s !== null && s !== undefined);
+      const averageScore =
+        scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+      fetch("/api/sessions/end", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          completedLines: userLines.length,
+          averageScore,
+        }),
+      }).catch((error) => {
+        console.error("Error ending session:", error);
+      });
+    }
+    if (timeInterval.current) {
+      clearInterval(timeInterval.current);
+    }
+
+    setToast({ message: t.learn.messages.feedbackEnregistreToast, variant: "success" });
+    setShowZenReview(false);
+    setShowSummary(true);
+  };
+
   const renderListMode = () => (
     <div className="flex flex-col gap-2">
-      {displayLines.map((line) => {
+      {visibleLines.map((line) => {
         const state = lineState[line.id];
         const isHidden = state === "hidden";
+        const isCue = cueLineIds.has(line.id);
+        const isStage = isLikelyStageDirection(line);
         return (
           <div
             key={line.id}
-            className="flex flex-col gap-2 rounded-2xl border border-[#e7e1d9] bg-white/90 p-4 shadow-sm shadow-[#3b1f4a0f]"
+            ref={(el) => {
+              lineRefs.current.set(line.id, el);
+            }}
+            className={`flex flex-col gap-2 rounded-2xl border p-4 shadow-sm shadow-[#3b1f4a0f] ${
+              line.isUserLine
+                ? "border-[#f4c95d66] bg-[#f4c95d1f]"
+                : "border-[#e7e1d9] bg-white/90"
+            }`}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
@@ -358,14 +579,18 @@ export function LearnSession({
             </div>
 
             <p
-              className={`text-sm text-[#1c1b1f] ${
-                isHidden ? "blur-sm select-none" : ""
-              }`}
+              className={`text-sm ${
+                line.isUserLine ? "text-[#1c1b1f]" : "text-[#3f3946]"
+              } ${isStage ? "italic text-[#6a6274]" : ""} ${isHidden ? "blur-sm select-none" : ""}`}
             >
-              {line.text}
+              {line.isUserLine && isHidden
+                ? renderHintedText(line.text, hintProgress[line.id] ?? 0)
+                : isCue && !line.isUserLine && !isHidden
+                  ? renderCue(line.text, 5)
+                  : line.text}
             </p>
 
-            {line.isUserLine && canWrite && (
+            {line.isUserLine && canWrite && !isZen && (
               <div className="flex flex-col gap-2">
                 <textarea
                   value={drafts[line.id] ?? ""}
@@ -384,14 +609,30 @@ export function LearnSession({
 
             {line.isUserLine && state !== "scored" && (
               isHidden ? (
-                <button
-                  onClick={() => revealLine(line.id)}
-                  className="w-fit rounded-full bg-[#ff6b6b] px-3 py-1 text-sm font-semibold text-white shadow-sm hover:-translate-y-[1px] hover:bg-[#e75a5a]"
-                >
-                  {t.learn.buttons.reveler}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => revealNextWord(line.id)}
+                    className="w-fit rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a33]"
+                  >
+                    {t.learn.buttons.indice}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => revealLine(line.id)}
+                    className="w-fit rounded-full bg-[#ff6b6b] px-3 py-1 text-sm font-semibold text-white shadow-sm hover:-translate-y-[1px] hover:bg-[#e75a5a]"
+                  >
+                    {t.learn.buttons.reveler}
+                  </button>
+                </div>
               ) : (
-                renderScoreButtons(line.id, Boolean(saving[line.id]))
+                isZen ? (
+                  <div className="text-xs font-medium text-[#7a7184]">
+                    {t.learn.buttons.reveler} ✓
+                  </div>
+                ) : (
+                  renderScoreButtons(line.id, Boolean(saving[line.id]))
+                )
               )
             )}
 
@@ -401,7 +642,7 @@ export function LearnSession({
               </div>
             )}
 
-            {line.isUserLine && !isHidden && canWrite && (
+            {line.isUserLine && !isHidden && canWrite && !isZen && (
               <div className="mt-2 grid gap-2 rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] p-3 text-sm">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
@@ -436,31 +677,35 @@ export function LearnSession({
 
     const state = lineState[currentFlashcard.id];
     const isHidden = state === "hidden";
+    const isLast = currentIndex >= userLines.length - 1;
+    const hinted = isHidden ? renderHintedText(currentFlashcard.text, hintProgress[currentFlashcard.id] ?? 0) : null;
 
     return (
       <div className="flex flex-col gap-3 rounded-2xl border border-[#e7e1d9] bg-white/90 p-4 shadow-sm shadow-[#3b1f4a0f]">
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-            {currentFlashcard.characterName} — {t.learn.labels.carte} {currentIndex + 1}/{userLines.length}
+        {!isZen && (
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+              {currentFlashcard.characterName} — {t.learn.labels.carte} {currentIndex + 1}/{userLines.length}
+            </div>
+            <div className="text-xs font-medium text-[#7a7184]">
+              {t.learn.labels.restantes} : {remainingCount}
+            </div>
           </div>
-          <div className="text-xs font-medium text-[#7a7184]">
-            {t.learn.labels.restantes} : {remainingCount}
-          </div>
-        </div>
+        )}
 
         {flashcardContext && (
           <div className="rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] px-3 py-2 text-sm text-[#1c1b1f]">
             <div className="text-xs uppercase text-[#7a7184]">{t.learn.labels.repliqueAdverse}</div>
-            <div>{flashcardContext.text}</div>
+            <div>{renderCue(flashcardContext.text, 5) ?? flashcardContext.text}</div>
           </div>
         )}
 
         <div
           className={`rounded-xl border border-[#e7e1d9] px-3 py-3 text-sm text-[#1c1b1f] ${
-            isHidden ? "blur-sm select-none" : ""
+            isHidden ? "select-none" : ""
           }`}
         >
-          {currentFlashcard.text}
+          {isHidden ? hinted : currentFlashcard.text}
         </div>
 
         <textarea
@@ -474,21 +719,43 @@ export function LearnSession({
           placeholder={t.learn.placeholders.ecrisReplique}
           rows={2}
           className={`w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a] ${
-            canWrite ? "" : "hidden"
+            canWrite && !isZen ? "" : "hidden"
           }`}
         />
 
         {state !== "scored" && (
           <div className="flex flex-col gap-2">
             {isHidden ? (
-              <button
-                onClick={() => revealLine(currentFlashcard.id)}
-                className="w-full rounded-full bg-[#ff6b6b] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:-translate-y-[1px] hover:bg-[#e75a5a]"
-              >
-                {t.learn.buttons.reveler}
-              </button>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => revealNextWord(currentFlashcard.id)}
+                  className="w-full rounded-full border border-[#e7e1d9] bg-white px-3 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a33]"
+                >
+                  {t.learn.buttons.indice}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => revealLine(currentFlashcard.id)}
+                  className="w-full rounded-full bg-[#ff6b6b] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:-translate-y-[1px] hover:bg-[#e75a5a]"
+                >
+                  {t.learn.buttons.reveler}
+                </button>
+              </div>
             ) : (
-              renderScoreButtons(currentFlashcard.id, Boolean(saving[currentFlashcard.id]))
+              isZen ? (
+                <button
+                  onClick={() => {
+                    if (!isLast) setCurrentIndex((i) => Math.min(userLines.length - 1, i + 1));
+                    else setShowZenReview(true);
+                  }}
+                  className="w-full rounded-full bg-[#3b1f4a] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#2d1638]"
+                >
+                  {isLast ? t.learn.buttons.terminer : t.learn.buttons.suivant}
+                </button>
+              ) : (
+                renderScoreButtons(currentFlashcard.id, Boolean(saving[currentFlashcard.id]))
+              )
             )}
           </div>
         )}
@@ -499,62 +766,110 @@ export function LearnSession({
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-              disabled={currentIndex === 0}
-              className="rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] disabled:opacity-50"
-            >
-              {t.learn.buttons.precedent}
-            </button>
+        {!isZen && (
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
+                disabled={currentIndex === 0}
+                className="rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] disabled:opacity-50"
+              >
+                {t.learn.buttons.precedent}
+              </button>
+              <button
+                onClick={() => setCurrentIndex((i) => Math.min(userLines.length - 1, i + 1))}
+                disabled={currentIndex >= userLines.length - 1}
+                className="rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] disabled:opacity-50"
+              >
+                {t.learn.buttons.suivant}
+              </button>
+            </div>
             <button
               onClick={() => setCurrentIndex((i) => Math.min(userLines.length - 1, i + 1))}
               disabled={currentIndex >= userLines.length - 1}
-              className="rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] disabled:opacity-50"
+              className="rounded-full bg-[#ff6b6b] px-3 py-1 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a] disabled:opacity-50"
             >
-              {t.learn.buttons.suivant}
+              {t.learn.buttons.passer}
             </button>
           </div>
-          <button
-            onClick={() => setCurrentIndex((i) => Math.min(userLines.length - 1, i + 1))}
-            disabled={currentIndex >= userLines.length - 1}
-            className="rounded-full bg-[#ff6b6b] px-3 py-1 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a] disabled:opacity-50"
-          >
-            {t.learn.buttons.passer}
-          </button>
-        </div>
+        )}
       </div>
     );
   };
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-2xl border border-[#e7e1d9] bg-white/90 p-4 shadow-sm shadow-[#3b1f4a0f]">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">{t.learn.sectionLabel}</p>
-        <h2 className="font-display text-xl font-semibold text-[#1c1b1f]">{sceneTitle}</h2>
-        <p className="text-sm text-[#524b5a]">
-          {t.learn.labels.tuJoues} : <span className="font-semibold text-[#1c1b1f]">{userCharacterName}</span>
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-[#524b5a]">
-          <span className="rounded-full bg-[#f4c95d33] px-2 py-1 font-semibold text-[#3b1f4a]">
-            {t.learn.labels.mode} : {mode === "flashcard" ? t.learn.modes.flashcard : t.learn.modes.liste}
-          </span>
-          <span className="rounded-full bg-[#3b1f4a0d] px-2 py-1 font-semibold text-[#3b1f4a]">
-            {t.learn.labels.session} : {limitCount === null ? t.learn.labels.toutes : `${limitCount}`} ·{" "}
-            {canWrite ? t.learn.labels.modeEcriture : t.learn.labels.modeRevelerSeulement}
-          </span>
-          <span className="text-xs font-semibold text-[#7a7184]">
-            {t.learn.labels.restantes} : {remainingCount}
-          </span>
-          {elapsedTime > 0 && (
-            <span className="text-xs font-semibold text-[#7a7184]">
-              {Math.floor(elapsedTime / 60)} min {elapsedTime % 60} s
+      {!isZen ? (
+        <div className="rounded-2xl border border-[#e7e1d9] bg-white/90 p-4 shadow-sm shadow-[#3b1f4a0f]">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">{t.learn.sectionLabel}</p>
+              <h2 className="font-display text-xl font-semibold text-[#1c1b1f]">{sceneTitle}</h2>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <button
+                type="button"
+                onClick={toggleZen}
+                className="rounded-full border border-[#e7e1d9] bg-white px-3 py-2 text-xs font-semibold text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a33]"
+              >
+                {t.learn.buttons.activerZen}
+              </button>
+              <button
+                type="button"
+                onClick={() => setHintMode((m) => (m === "nextWord" ? "initials" : "nextWord"))}
+                className="rounded-full bg-[#3b1f4a0d] px-3 py-2 text-xs font-semibold text-[#3b1f4a] transition hover:bg-[#3b1f4a14]"
+              >
+                {t.learn.labels.indiceMode} {hintMode === "nextWord" ? t.learn.labels.indiceMotSuivant : t.learn.labels.indiceInitiales}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowStageDirections((v) => !v)}
+                className="rounded-full bg-[#f4c95d33] px-3 py-2 text-xs font-semibold text-[#3b1f4a] transition hover:bg-[#f4c95d44]"
+              >
+                {t.learn.labels.didascalies} : {showStageDirections ? t.learn.labels.affichees : t.learn.labels.masquees}
+              </button>
+            </div>
+          </div>
+          <p className="text-sm text-[#524b5a]">
+            {t.learn.labels.tuJoues} : <span className="font-semibold text-[#1c1b1f]">{userCharacterName}</span>
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-[#524b5a]">
+            <span className="rounded-full bg-[#f4c95d33] px-2 py-1 font-semibold text-[#3b1f4a]">
+              {t.learn.labels.mode} : {mode === "flashcard" ? t.learn.modes.flashcard : t.learn.modes.liste}
             </span>
-          )}
-          <span className="text-xs text-[#7a7184]">{legend}</span>
+            <span className="rounded-full bg-[#3b1f4a0d] px-2 py-1 font-semibold text-[#3b1f4a]">
+              {t.learn.labels.session} : {limitCount === null ? t.learn.labels.toutes : `${limitCount}`} ·{" "}
+              {canWrite ? t.learn.labels.modeEcriture : t.learn.labels.modeRevelerSeulement}
+            </span>
+            <span className="text-xs font-semibold text-[#7a7184]">
+              {t.learn.labels.restantes} : {remainingCount}
+            </span>
+            {elapsedTime > 0 && (
+              <span className="text-xs font-semibold text-[#7a7184]">
+                {Math.floor(elapsedTime / 60)} min {elapsedTime % 60} s
+              </span>
+            )}
+            <span className="text-xs text-[#7a7184]">{legend}</span>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowStageDirections((v) => !v)}
+            className="rounded-full border border-[#e7e1d9] bg-white/90 px-4 py-2 text-xs font-semibold text-[#3b1f4a] shadow-sm backdrop-blur transition hover:border-[#3b1f4a33]"
+          >
+            {t.learn.labels.didascalies} : {showStageDirections ? t.learn.labels.affichees : t.learn.labels.masquees}
+          </button>
+          <button
+            type="button"
+            onClick={toggleZen}
+            className="rounded-full border border-[#e7e1d9] bg-white/90 px-4 py-2 text-xs font-semibold text-[#3b1f4a] shadow-sm backdrop-blur transition hover:border-[#3b1f4a33]"
+          >
+            {t.learn.buttons.quitterZen}
+          </button>
+        </div>
+      )}
 
       {mode === "flashcard" ? renderFlashcard() : renderListMode()}
 
@@ -716,6 +1031,82 @@ export function LearnSession({
                 className="w-full rounded-full bg-[#ff6b6b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a] sm:w-auto"
               >
                 Retourner à l’accueil
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showZenReview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-[#e7e1d9] bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col gap-1">
+                <h3 className="font-display text-lg font-semibold text-[#1c1b1f]">
+                  {t.learn.messages.noterSessionTitre}
+                </h3>
+                <p className="text-sm text-[#524b5a]">
+                  {t.learn.messages.noterSessionDesc}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowZenReview(false)}
+                className="rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33]"
+              >
+                {t.learn.buttons.fermer}
+              </button>
+            </div>
+
+            <div className="mt-5 max-h-[55vh] overflow-y-auto rounded-2xl border border-[#e7e1d9] bg-white/95">
+              <div className="flex flex-col">
+                {userLines.map((l) => {
+                  const selected = scoreValue[l.id];
+                  return (
+                    <div key={l.id} className="border-b border-[#f0ece6] p-4">
+                      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                        {userCharacterName} · Réplique {l.order}
+                      </div>
+                      <div className="text-sm text-[#1c1b1f]">{l.text}</div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {scoreOptions.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() =>
+                              setScoreValue((prev) => ({
+                                ...prev,
+                                [l.id]: opt.value,
+                              }))
+                            }
+                            className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold shadow-sm transition ${
+                              selected === opt.value ? opt.color : "border border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a33]"
+                            }`}
+                          >
+                            <span>{opt.emoji}</span>
+                            <span>{opt.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-xs text-[#7a7184]">
+                {userLines.filter((l) => scoreValue[l.id] !== null && scoreValue[l.id] !== undefined).length}
+                {" / "}
+                {userLines.length} {t.learn.messages.notees}
+              </div>
+              <button
+                type="button"
+                disabled={zenSaving}
+                onClick={() => void saveZenScores()}
+                className="rounded-full bg-[#3b1f4a] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#2d1638] disabled:opacity-50"
+              >
+                {zenSaving ? t.learn.messages.enregistrement : t.learn.buttons.enregistrerScores}
               </button>
             </div>
           </div>

@@ -14,6 +14,12 @@ export const learn = {
     carte: "carte",
     taVersion: "Ta version",
     original: "Original",
+    indiceMode: "Indice :",
+    indiceMotSuivant: "mot suivant",
+    indiceInitiales: "initiales",
+    didascalies: "Didascalies",
+    affichees: "affichées",
+    masquees: "masquées",
   },
   scores: {
     rate: {
@@ -38,11 +44,17 @@ export const learn = {
   },
   buttons: {
     reveler: "Révéler",
+    indice: "Indice",
     precedent: "← Précédent",
     suivant: "Suivant →",
     passer: "Passer",
+    terminer: "Terminer",
     recommencer: "Recommencer",
     retournerAccueil: "Retourner à l'accueil",
+    activerZen: "Activer le mode Zen",
+    quitterZen: "Quitter le mode Zen",
+    fermer: "Fermer",
+    enregistrerScores: "Enregistrer les scores",
   },
   placeholders: {
     ecrisReplique: "Écris ta réplique",
@@ -66,6 +78,12 @@ export const learn = {
     resumeFeedbacks: "Résumé de ta session :",
     aucuneReplique: "Aucune réplique utilisateur à noter.",
     erreur: "Erreur:",
+    attribueScores: "Attribue un score à chaque réplique avant d’enregistrer.",
+    noterSessionTitre: "Noter la session",
+    noterSessionDesc:
+      "Donne un score à chaque réplique (le score n’apparaît qu’à la fin, pour éviter la pression pendant l’effort).",
+    enregistrement: "Enregistrement...",
+    notees: "notées",
   },
   modes: {
     flashcard: "Flashcard",

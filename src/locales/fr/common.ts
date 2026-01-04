@@ -19,6 +19,11 @@ export const common = {
     maitrise: "Maîtrise",
     par: "Par",
   },
+  progress: {
+    notStarted: "Non commencé",
+    inProgress: "En cours",
+    mastered: "Su par cœur",
+  },
   buttons: {
     continuer: "Continuer",
     details: "Détails",

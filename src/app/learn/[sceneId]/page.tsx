@@ -56,6 +56,11 @@ export default async function LearnPage({ params, searchParams }: Props) {
       ? `Répliques ${startLine}-${endLine} sur ${scene.lines.length}`
       : null;
 
+  const breadcrumbParts = [scene.work?.title, scene.chapter, scene.title].filter(
+    (v): v is string => Boolean(v && String(v).trim().length > 0)
+  );
+  const breadcrumb = breadcrumbParts.join(" > ");
+
   return (
     <AccessGate
       user={user}
@@ -68,6 +73,11 @@ export default async function LearnPage({ params, searchParams }: Props) {
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">
               {t.learn.sectionLabel}
             </p>
+            {breadcrumb && (
+              <p className="text-xs font-semibold text-[#7a7184]">
+                {breadcrumb}
+              </p>
+            )}
             <h1 className="font-display text-2xl font-semibold text-[#1c1b1f]">{scene.title}</h1>
             <p className="text-sm text-[#524b5a]">
               {t.learn.labels.personnageChoisi} :{" "}
@@ -91,6 +101,7 @@ export default async function LearnPage({ params, searchParams }: Props) {
     </AccessGate>
   );
 }
+
 
 
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { useSupabase } from "@/components/supabase-provider";
@@ -14,9 +14,13 @@ const navItems = [
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { session, supabase } = useSupabase();
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const isZenLearn = Boolean(pathname?.startsWith("/learn/")) && searchParams?.get("zen") === "1";
+  if (isZenLearn) return null;
 
   const handleLogout = async () => {
     setLoading(true);
