@@ -26,8 +26,17 @@ export function LineMasteryChart({ data }: LineMasteryChartProps) {
     );
   }
 
+  const preview = (raw: string, words = 7) => {
+    const text = String(raw ?? "").replace(/\s+/g, " ").trim();
+    if (!text) return "";
+    const parts = text.split(" ");
+    const slice = parts.slice(0, words).join(" ");
+    return parts.length > words ? `${slice}…` : slice;
+  };
+
   const chartData = data.map((d) => ({
-    label: `#${d.order}`,
+    label: `#${d.userIndex}`,
+    short: preview(d.text),
     mastery: d.mastery,
     attempts: d.attempts,
     text: d.text,
@@ -45,6 +54,7 @@ export function LineMasteryChart({ data }: LineMasteryChartProps) {
             tickLine={false}
             axisLine={false}
             interval="preserveStartEnd"
+            tickFormatter={(_, idx) => (chartData[idx] ? `${chartData[idx].label} ${chartData[idx].short}` : "")}
           />
           <YAxis
             domain={[0, 3]}
@@ -73,7 +83,7 @@ export function LineMasteryChart({ data }: LineMasteryChartProps) {
             labelFormatter={(_, payload) => {
               const p = payload?.[0]?.payload as any;
               if (!p) return "";
-              const text = String(p.text ?? "").trim();
+              const text = preview(String(p.text ?? ""), 10);
               return text ? `${p.label} — ${text}` : String(p.label ?? "");
             }}
           />

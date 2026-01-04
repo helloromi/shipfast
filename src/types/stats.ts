@@ -44,6 +44,7 @@ export type UserStatsSummary = {
 export type LineMasteryPoint = {
   lineId: string;
   order: number;
+  userIndex: number; // #1, #2... pour le personnage joué (ordre parmi ses répliques)
   text: string;
   mastery: number; // 0..3
   attempts: number;

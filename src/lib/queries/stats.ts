@@ -294,12 +294,16 @@ export async function fetchLineMastery(
   const points: LineMasteryPoint[] = Array.from(agg.entries()).map(([lineId, v]) => ({
     lineId,
     order: v.order,
+    userIndex: 0, // rempli après tri
     text: v.text,
     attempts: v.attempts,
     mastery: v.sumW > 0 ? v.sumWS / v.sumW : 0,
   }));
 
   points.sort((a, b) => a.order - b.order);
+  for (let i = 0; i < points.length; i += 1) {
+    points[i].userIndex = i + 1;
+  }
   return points;
 }
 
