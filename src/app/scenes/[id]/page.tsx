@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { fetchSceneWithRelations, fetchUserProgressScenes, getSupabaseSessionUser } from "@/lib/queries/scenes";
-import { fetchSceneStats } from "@/lib/queries/stats";
+import { fetchLineMastery, fetchSceneStats } from "@/lib/queries/stats";
 import { SceneStatsDetail } from "@/components/stats/scene-stats-detail";
 import { t } from "@/locales/fr";
 
@@ -32,6 +32,9 @@ export default async function SceneDetailPage({ params }: Props) {
   const lastCharacterId = userProgress?.lastCharacterId;
   const lastCharacterName = userProgress?.lastCharacterName;
 
+  const lineMastery =
+    user && lastCharacterId ? await fetchLineMastery(user.id, id, lastCharacterId) : [];
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -60,6 +63,7 @@ export default async function SceneDetailPage({ params }: Props) {
       {user && sceneStats && (
         <SceneStatsDetail
           stats={sceneStats}
+          lineMastery={lineMastery}
           sceneId={id}
           lastCharacterId={lastCharacterId ?? null}
           lastCharacterName={lastCharacterName ?? null}
@@ -126,5 +130,7 @@ export default async function SceneDetailPage({ params }: Props) {
     </div>
   );
 }
+
+
 
 

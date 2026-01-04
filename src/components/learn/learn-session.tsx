@@ -31,6 +31,8 @@ type ToastState = {
   variant: "success" | "error";
 };
 
+type InputMode = "write" | "revealOnly";
+
 type ScoreOption = {
   value: number;
   emoji: string;
@@ -55,6 +57,10 @@ export function LearnSession({
 }: LearnSessionProps) {
   const router = useRouter();
   const { supabase } = useSupabase();
+
+  const [showSetupModal, setShowSetupModal] = useState(true);
+  const [limitCount, setLimitCount] = useState<number | null>(null); // null => toutes
+  const [inputMode, setInputMode] = useState<InputMode>("write");
 
   const [lineState, setLineState] = useState<Record<string, LineState>>(() =>
     lines.reduce(
@@ -87,7 +93,12 @@ export function LearnSession({
   const [elapsedTime, setElapsedTime] = useState(0);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
   const timeInterval = useRef<NodeJS.Timeout | null>(null);
-  const storageKey = useMemo(() => `drafts:${sceneTitle}`, [sceneTitle]);
+  // IMPORTANT: on ne veut pas "réutiliser" les brouillons d'une session à l'autre.
+  // On lie donc la clé de persistance à la session (créée côté serveur).
+  const storageKey = useMemo(() => {
+    if (!sessionId) return null;
+    return `drafts:${sceneId}:${characterId}:${sessionId}`;
+  }, [sceneId, characterId, sessionId]);
 
   // Mode auto : desktop -> liste, mobile -> flashcard
   useEffect(() => {
@@ -95,34 +106,6 @@ export function LearnSession({
     const isMobile = window.innerWidth < 768;
     queueMicrotask(() => setMode(isMobile ? "flashcard" : "list"));
   }, []);
-
-  // Démarrer le tracking de session
-  useEffect(() => {
-    const startSession = async () => {
-      const userLines = lines.filter((l) => l.isUserLine);
-      try {
-        const response = await fetch("/api/sessions/start", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sceneId,
-            characterId,
-            totalLines: userLines.length,
-          }),
-        });
-        if (response.ok) {
-          const data = await response.json();
-          if (data.sessionId) {
-            setSessionId(data.sessionId);
-            setSessionStartTime(Date.now());
-          }
-        }
-      } catch (error) {
-        console.error("Error starting session:", error);
-      }
-    };
-    startSession();
-  }, [sceneId, characterId, lines]);
 
   // Timer pour afficher le temps écoulé
   useEffect(() => {
@@ -142,6 +125,7 @@ export function LearnSession({
   // Charger les brouillons depuis localStorage
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!storageKey) return;
     try {
       const raw = window.localStorage.getItem(storageKey);
       if (raw) {
@@ -156,6 +140,7 @@ export function LearnSession({
   // Sauvegarder les brouillons (debounce)
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (!storageKey) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       try {
@@ -169,7 +154,24 @@ export function LearnSession({
     };
   }, [drafts, storageKey]);
 
-  const userLines = useMemo(() => lines.filter((l) => l.isUserLine), [lines]);
+  const userLinesAll = useMemo(() => lines.filter((l) => l.isUserLine), [lines]);
+  const userLines = useMemo(() => {
+    if (limitCount === null) return userLinesAll;
+    return userLinesAll.slice(0, limitCount);
+  }, [limitCount, userLinesAll]);
+
+  const displayLines = useMemo(() => {
+    if (limitCount === null) return lines;
+    const lastUserLine = userLines[userLines.length - 1];
+    if (!lastUserLine) return [];
+    return lines.filter((l) => l.order <= lastUserLine.order);
+  }, [lines, limitCount, userLines]);
+
+  useEffect(() => {
+    // Sécurité : si on change la limite, on revient au début du paquet.
+    setCurrentIndex(0);
+  }, [limitCount]);
+
   const remainingCount = useMemo(
     () => userLines.filter((l) => scoreValue[l.id] === null || scoreValue[l.id] === undefined).length,
     [userLines, scoreValue]
@@ -185,6 +187,29 @@ export function LearnSession({
     });
     return counts;
   }, [scoreValue, userLines]);
+
+  const startTrackingSession = async (totalLines: number) => {
+    try {
+      const response = await fetch("/api/sessions/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sceneId,
+          characterId,
+          totalLines,
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.sessionId) {
+          setSessionId(data.sessionId);
+          setSessionStartTime(Date.now());
+        }
+      }
+    } catch (error) {
+      console.error("Error starting session:", error);
+    }
+  };
 
   const revealLine = (lineId: string) => {
     setLineState((prev) => ({ ...prev, [lineId]: "revealed" }));
@@ -262,18 +287,34 @@ export function LearnSession({
         {} as Record<string, number | null>
       )
     );
+    // Nouvelle session d'apprentissage côté UI -> on vide la saisie.
+    setDrafts({});
+    if (typeof window !== "undefined" && storageKey) {
+      try {
+        window.localStorage.removeItem(storageKey);
+      } catch {
+        // ignore
+      }
+    }
+    setSessionId(null);
+    setSessionStartTime(null);
+    setElapsedTime(0);
+    if (timeInterval.current) {
+      clearInterval(timeInterval.current);
+    }
     setShowSummary(false);
     setToast(null);
     setCurrentIndex(0);
   };
 
+  const canWrite = inputMode === "write";
   const currentFlashcard = mode === "flashcard" ? userLines[currentIndex] : null;
   const flashcardContext =
     currentFlashcard &&
     (() => {
-      const idx = lines.findIndex((l) => l.id === currentFlashcard.id);
+      const idx = displayLines.findIndex((l) => l.id === currentFlashcard.id);
       for (let i = idx - 1; i >= 0; i -= 1) {
-        if (!lines[i].isUserLine) return lines[i];
+        if (!displayLines[i].isUserLine) return displayLines[i];
       }
       return null;
     })();
@@ -299,7 +340,7 @@ export function LearnSession({
 
   const renderListMode = () => (
     <div className="flex flex-col gap-2">
-      {lines.map((line) => {
+      {displayLines.map((line) => {
         const state = lineState[line.id];
         const isHidden = state === "hidden";
         return (
@@ -324,7 +365,7 @@ export function LearnSession({
               {line.text}
             </p>
 
-            {line.isUserLine && (
+            {line.isUserLine && canWrite && (
               <div className="flex flex-col gap-2">
                 <textarea
                   value={drafts[line.id] ?? ""}
@@ -360,7 +401,7 @@ export function LearnSession({
               </div>
             )}
 
-            {line.isUserLine && !isHidden && (
+            {line.isUserLine && !isHidden && canWrite && (
               <div className="mt-2 grid gap-2 rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] p-3 text-sm">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
@@ -430,9 +471,11 @@ export function LearnSession({
               [currentFlashcard.id]: e.target.value,
             }))
           }
-          placeholder="Écris ta réplique"
+          placeholder={t.learn.placeholders.ecrisReplique}
           rows={2}
-          className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
+          className={`w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a] ${
+            canWrite ? "" : "hidden"
+          }`}
         />
 
         {state !== "scored" && (
@@ -442,7 +485,7 @@ export function LearnSession({
                 onClick={() => revealLine(currentFlashcard.id)}
                 className="w-full rounded-full bg-[#ff6b6b] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:-translate-y-[1px] hover:bg-[#e75a5a]"
               >
-                Révéler
+                {t.learn.buttons.reveler}
               </button>
             ) : (
               renderScoreButtons(currentFlashcard.id, Boolean(saving[currentFlashcard.id]))
@@ -497,6 +540,10 @@ export function LearnSession({
           <span className="rounded-full bg-[#f4c95d33] px-2 py-1 font-semibold text-[#3b1f4a]">
             {t.learn.labels.mode} : {mode === "flashcard" ? t.learn.modes.flashcard : t.learn.modes.liste}
           </span>
+          <span className="rounded-full bg-[#3b1f4a0d] px-2 py-1 font-semibold text-[#3b1f4a]">
+            {t.learn.labels.session} : {limitCount === null ? t.learn.labels.toutes : `${limitCount}`} ·{" "}
+            {canWrite ? t.learn.labels.modeEcriture : t.learn.labels.modeRevelerSeulement}
+          </span>
           <span className="text-xs font-semibold text-[#7a7184]">
             {t.learn.labels.restantes} : {remainingCount}
           </span>
@@ -512,6 +559,111 @@ export function LearnSession({
       {mode === "flashcard" ? renderFlashcard() : renderListMode()}
 
       {toast && <Toast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+
+      {showSetupModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t.learn.setup.title}
+        >
+          <div className="w-full max-w-lg rounded-2xl border border-[#e7e1d9] bg-white p-6 shadow-2xl">
+            <div className="flex flex-col gap-1">
+              <h3 className="font-display text-lg font-semibold text-[#1c1b1f]">{t.learn.setup.title}</h3>
+              <p className="text-sm text-[#524b5a]">{t.learn.setup.description}</p>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-5">
+              <div className="flex flex-col gap-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                  {t.learn.setup.limitLabel}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {[5, 10, 15].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setLimitCount(n)}
+                      className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                        limitCount === n
+                          ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
+                          : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setLimitCount(null)}
+                    className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                      limitCount === null
+                        ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
+                        : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
+                    }`}
+                  >
+                    {t.learn.labels.toutes}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                  {t.learn.setup.modeLabel}
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setInputMode("revealOnly")}
+                    className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
+                      inputMode === "revealOnly"
+                        ? "border-[#3b1f4a] bg-[#3b1f4a0d]"
+                        : "border-[#e7e1d9] bg-white hover:border-[#3b1f4a66]"
+                    }`}
+                  >
+                    <div className="font-semibold text-[#1c1b1f]">{t.learn.setup.revealOnlyTitle}</div>
+                    <div className="mt-1 text-xs text-[#524b5a]">{t.learn.setup.revealOnlyDesc}</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInputMode("write")}
+                    className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
+                      inputMode === "write"
+                        ? "border-[#3b1f4a] bg-[#3b1f4a0d]"
+                        : "border-[#e7e1d9] bg-white hover:border-[#3b1f4a66]"
+                    }`}
+                  >
+                    <div className="font-semibold text-[#1c1b1f]">{t.learn.setup.writeTitle}</div>
+                    <div className="mt-1 text-xs text-[#524b5a]">{t.learn.setup.writeDesc}</div>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => router.push(`/scenes/${sceneId}`)}
+                className="w-full rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] sm:w-auto"
+              >
+                {t.learn.setup.cancel}
+              </button>
+              <button
+                type="button"
+                disabled={userLines.length === 0}
+                onClick={() => {
+                  resetLocalState();
+                  setShowSetupModal(false);
+                  void startTrackingSession(userLines.length);
+                }}
+                className="w-full rounded-full bg-[#ff6b6b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a] disabled:opacity-50 sm:w-auto"
+              >
+                {t.learn.setup.start}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showSummary && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -550,6 +702,7 @@ export function LearnSession({
                 onClick={() => {
                   resetLocalState();
                   setShowSummary(false);
+                  setShowSetupModal(true);
                 }}
                 className="w-full rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] sm:w-auto"
               >
@@ -571,5 +724,7 @@ export function LearnSession({
     </div>
   );
 }
+
+
 
 

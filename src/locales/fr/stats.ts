@@ -26,11 +26,16 @@ export const stats = {
     startWith: "Commencer avec",
     continueWith: "Continuer avec",
     character: "ce personnage",
+    lineMastery: "Maîtrise par réplique",
   },
   charts: {
     score: "Score",
+    mastery: "Maîtrise",
+    attempts: "essais",
     noData: "Aucune donnée disponible",
   },
 };
+
+
 
 

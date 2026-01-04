@@ -74,3 +74,4 @@ export async function grantFreeSlotAccess(
   return access !== null;
 }
 
+

@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { LearningSession, SceneStats, TimeSeriesDataPoint, UserStatsSummary } from "@/types/stats";
+import { LearningSession, LineMasteryPoint, SceneStats, TimeSeriesDataPoint, UserStatsSummary } from "@/types/stats";
 
 export async function trackSessionStart(
   userId: string,
@@ -221,5 +221,88 @@ export async function fetchSceneStats(userId: string, sceneId: string): Promise<
     recentSessions,
   };
 }
+
+export async function fetchLineMastery(
+  userId: string,
+  sceneId: string,
+  characterId: string,
+  halfLifeDays = 14
+): Promise<LineMasteryPoint[]> {
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("user_line_feedback")
+    .select(
+      `
+      score,
+      created_at,
+      lines!inner (
+        id,
+        order,
+        text,
+        scene_id,
+        character_id
+      )
+    `
+    )
+    .eq("user_id", userId)
+    .eq("lines.scene_id", sceneId)
+    .eq("lines.character_id", characterId)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) {
+    console.error("Error fetching line mastery:", error);
+    return [];
+  }
+
+  const now = Date.now();
+  const halfLifeSeconds = halfLifeDays * 24 * 60 * 60;
+  const lambda = Math.log(2) / halfLifeSeconds;
+
+  const agg = new Map<
+    string,
+    { order: number; text: string; attempts: number; sumW: number; sumWS: number }
+  >();
+
+  for (const row of data as any[]) {
+    const line = row.lines;
+    if (!line?.id || typeof line.order !== "number" || typeof row.score !== "number") continue;
+    const createdAt = typeof row.created_at === "string" ? new Date(row.created_at).getTime() : NaN;
+    const deltaSeconds = Number.isFinite(createdAt) ? (now - createdAt) / 1000 : 0;
+    const w = Math.exp(-lambda * Math.max(0, deltaSeconds));
+
+    const prev = agg.get(line.id);
+    if (!prev) {
+      agg.set(line.id, {
+        order: line.order,
+        text: line.text ?? "",
+        attempts: 1,
+        sumW: w,
+        sumWS: w * row.score,
+      });
+    } else {
+      agg.set(line.id, {
+        order: prev.order,
+        text: prev.text,
+        attempts: prev.attempts + 1,
+        sumW: prev.sumW + w,
+        sumWS: prev.sumWS + w * row.score,
+      });
+    }
+  }
+
+  const points: LineMasteryPoint[] = Array.from(agg.entries()).map(([lineId, v]) => ({
+    lineId,
+    order: v.order,
+    text: v.text,
+    attempts: v.attempts,
+    mastery: v.sumW > 0 ? v.sumWS / v.sumW : 0,
+  }));
+
+  points.sort((a, b) => a.order - b.order);
+  return points;
+}
+
+
 
 

@@ -41,4 +41,14 @@ export type UserStatsSummary = {
   lastActivityDate: string | null;
 };
 
+export type LineMasteryPoint = {
+  lineId: string;
+  order: number;
+  text: string;
+  mastery: number; // 0..3
+  attempts: number;
+};
+
+
+
 

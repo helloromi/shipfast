@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { SceneStats } from "@/types/stats";
+import { LineMasteryPoint, SceneStats } from "@/types/stats";
 import { ScoreEvolutionChart } from "./score-evolution-chart";
+import { LineMasteryChart } from "./line-mastery-chart";
 import { t } from "@/locales/fr";
 
 type SceneStatsDetailProps = {
   stats: SceneStats;
+  lineMastery: LineMasteryPoint[];
   sceneId: string;
   lastCharacterId: string | null;
   lastCharacterName: string | null;
@@ -13,6 +15,7 @@ type SceneStatsDetailProps = {
 
 export function SceneStatsDetail({
   stats,
+  lineMastery,
   sceneId,
   lastCharacterId,
   lastCharacterName,
@@ -101,6 +104,16 @@ export function SceneStatsDetail({
             </div>
           )}
 
+          {/* Maîtrise par réplique */}
+          {lineMastery.length > 0 && (
+            <div className="rounded-2xl border border-[#e7e1d9] bg-white/92 p-5">
+              <h3 className="mb-4 font-display text-lg font-semibold text-[#3b1f4a]">
+                {t.stats.detail.lineMastery}
+              </h3>
+              <LineMasteryChart data={lineMastery} />
+            </div>
+          )}
+
           {/* Sessions récentes */}
           {stats.recentSessions.length > 0 && (
             <div className="rounded-2xl border border-[#e7e1d9] bg-white/92 p-5">
@@ -150,5 +163,7 @@ export function SceneStatsDetail({
     </div>
   );
 }
+
+
 
 
