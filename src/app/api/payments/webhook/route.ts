@@ -134,8 +134,25 @@ export async function POST(request: NextRequest) {
 
       if (insertError) {
         console.error("[WEBHOOK] ERREUR lors de l'insertion:", insertError);
+        // Important: renvoyer le détail à Stripe pour diagnostiquer (visible dans Stripe Dashboard)
+        // Ne pas inclure de PII; seulement des IDs techniques / messages DB.
         return NextResponse.json(
-          { error: "Failed to grant access" },
+          {
+            error: "Failed to grant access",
+            details: {
+              message: insertError.message,
+              code: (insertError as any).code,
+              details: (insertError as any).details,
+              hint: (insertError as any).hint,
+            },
+            context: {
+              eventId: event.id,
+              sessionId: session.id,
+              userId,
+              workId: workId ?? null,
+              sceneId: sceneId ?? null,
+            },
+          },
           { status: 500 }
         );
       }
