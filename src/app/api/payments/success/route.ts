@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { redirect } from "next/navigation";
 import { getStripe } from "@/lib/stripe/client";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { getUserWorkAccess } from "@/lib/queries/access";
 
 export async function GET(request: NextRequest) {
@@ -49,7 +50,9 @@ export async function GET(request: NextRequest) {
         } else {
           console.log("[SUCCESS] ⚠️ Accès non trouvé - accord via route success (fallback)");
           // Accorder l'accès directement (idempotent - le webhook peut aussi le faire)
+          // Utiliser le client admin pour contourner RLS et garantir l'insertion
           // La contrainte de la table exige : (work_id IS NOT NULL AND scene_id IS NULL) OR (work_id IS NULL AND scene_id IS NOT NULL)
+          const adminSupabase = createSupabaseAdminClient();
           const accessData: any = {
             user_id: userId,
             access_type: "purchased",
@@ -64,7 +67,7 @@ export async function GET(request: NextRequest) {
             accessData.work_id = null;
           }
 
-          const { data: insertedAccess, error: insertError } = await supabase
+          const { data: insertedAccess, error: insertError } = await adminSupabase
             .from("user_work_access")
             .insert(accessData)
             .select()

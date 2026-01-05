@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import Stripe from "stripe";
 
 function getWebhookSecret(): string {
@@ -51,7 +51,8 @@ export async function POST(request: NextRequest) {
     console.log("[WEBHOOK] Metadata:", JSON.stringify(session.metadata, null, 2));
 
     try {
-      const supabase = await createSupabaseServerClient();
+      // Utiliser le client admin pour contourner RLS (le webhook n'a pas de session utilisateur)
+      const supabase = createSupabaseAdminClient();
       const userId = session.metadata?.user_id;
       
       // Les metadata Stripe peuvent contenir des chaînes vides "" ou être absentes
