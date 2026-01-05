@@ -25,12 +25,17 @@ export function CheckoutButton({
     setLoading(true);
 
     try {
+      // Ne construire l'objet qu'avec les valeurs définies et non vides
+      const body: { workId?: string; sceneId?: string } = {};
+      if (workId && workId.trim() !== "") body.workId = workId;
+      if (sceneId && sceneId.trim() !== "") body.sceneId = sceneId;
+
       const response = await fetch("/api/payments/create-checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ workId, sceneId }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
@@ -59,6 +64,7 @@ export function CheckoutButton({
     </button>
   );
 }
+
 
 
 
