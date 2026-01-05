@@ -43,7 +43,7 @@ create table if not exists public.user_line_feedback (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users (id) on delete cascade,
   line_id uuid references public.lines (id) on delete cascade,
-  score int not null check (score between 0 and 3),
+  score int not null check (score between 0 and 10),
   created_at timestamptz default now()
 );
 

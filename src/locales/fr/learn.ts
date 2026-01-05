@@ -50,6 +50,7 @@ export const learn = {
     suivant: "Suivant →",
     passer: "Passer",
     terminer: "Terminer",
+    continuer: "Continuer",
     recommencer: "Recommencer",
     retournerAccueil: "Retourner à l'accueil",
     activerZen: "Activer le mode Zen",

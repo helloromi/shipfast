@@ -91,6 +91,7 @@ export function LearnSession({
 
   const [showSetupModal, setShowSetupModal] = useState(true);
   const [limitCount, setLimitCount] = useState<number | null>(null); // null => toutes
+  const [startIndex, setStartIndex] = useState(0); // Index de départ dans userLinesAll
   const [inputMode, setInputMode] = useState<InputMode>("write");
   const [showStageDirections, setShowStageDirections] = useState(true);
 
@@ -207,16 +208,26 @@ export function LearnSession({
 
   const userLinesAll = useMemo(() => lines.filter((l) => l.isUserLine), [lines]);
   const userLines = useMemo(() => {
-    if (limitCount === null) return userLinesAll;
-    return userLinesAll.slice(0, limitCount);
-  }, [limitCount, userLinesAll]);
+    const availableLines = userLinesAll.slice(startIndex);
+    if (limitCount === null) return availableLines;
+    return availableLines.slice(0, limitCount);
+  }, [limitCount, userLinesAll, startIndex]);
 
   const displayLines = useMemo(() => {
-    if (limitCount === null) return lines;
+    if (limitCount === null) {
+      // Si on a un startIndex, on doit filtrer les lignes pour ne garder que celles après les répliques déjà travaillées
+      if (startIndex > 0) {
+        const startUserLine = userLinesAll[startIndex];
+        if (startUserLine) {
+          return lines.filter((l) => l.order >= startUserLine.order);
+        }
+      }
+      return lines;
+    }
     const lastUserLine = userLines[userLines.length - 1];
     if (!lastUserLine) return [];
     return lines.filter((l) => l.order <= lastUserLine.order);
-  }, [lines, limitCount, userLines]);
+  }, [lines, limitCount, userLines, startIndex, userLinesAll]);
 
   const visibleLines = useMemo(() => {
     if (showStageDirections) return displayLines;
@@ -420,7 +431,7 @@ export function LearnSession({
     }
   };
 
-  const resetLocalState = () => {
+  const resetLocalState = (resetStartIndex = false) => {
     setLineState(
       lines.reduce(
         (acc, line) => ({
@@ -451,6 +462,9 @@ export function LearnSession({
     }
     setSessionId(null);
     setSessionStartTime(null);
+    if (resetStartIndex) {
+      setStartIndex(0);
+    }
     setElapsedTime(0);
     if (timeInterval.current) {
       clearInterval(timeInterval.current);
@@ -903,25 +917,71 @@ export function LearnSession({
               })}
             </div>
 
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <button
-                onClick={() => {
-                  resetLocalState();
-                  setShowSummary(false);
-                  setShowSetupModal(true);
-                }}
-                className="w-full rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] sm:w-auto"
-              >
-                Recommencer
-              </button>
+            <div className="mt-6 flex flex-col gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                {(() => {
+                  const workedCount = userLines.length;
+                  const lastWorkedLine = userLines[userLines.length - 1];
+                  const lastWorkedIndex = lastWorkedLine 
+                    ? userLinesAll.findIndex((l) => l.id === lastWorkedLine.id)
+                    : -1;
+                  const remainingCount = lastWorkedIndex >= 0 
+                    ? userLinesAll.length - (lastWorkedIndex + 1)
+                    : 0;
+                  
+                  // Calculer le nombre de répliques pour continuer
+                  let continueCount = workedCount;
+                  // Si il reste moins de répliques que ce qu'on a travaillé, prendre toutes les restantes
+                  if (remainingCount < continueCount) {
+                    continueCount = remainingCount;
+                  }
+                  // Si il reste exactement 3 répliques et qu'on a travaillé moins de 3, prendre 3
+                  if (remainingCount === 3 && workedCount < 3) {
+                    continueCount = 3;
+                  }
+                  
+                  const canContinue = remainingCount > 0 && continueCount > 0;
+                  
+                  return (
+                    <>
+                      {canContinue && (
+                        <button
+                          onClick={() => {
+                            const nextStartIndex = lastWorkedIndex + 1;
+                            resetLocalState();
+                            setShowSummary(false);
+                            setStartIndex(nextStartIndex);
+                            setLimitCount(continueCount);
+                            setShowSetupModal(false);
+                            void startTrackingSession(continueCount);
+                          }}
+                          className="w-full rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-[#ff6b6b33] transition hover:-translate-y-[1px] sm:w-auto"
+                        >
+                          {t.learn.buttons.continuer} : {continueCount} {continueCount === 1 ? "réplique suivante" : "répliques suivantes"}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          resetLocalState(true);
+                          setShowSummary(false);
+                          setShowSetupModal(true);
+                        }}
+                        className="w-full rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] sm:w-auto"
+                      >
+                        {t.learn.buttons.recommencer}
+                      </button>
+                    </>
+                  );
+                })()}
+              </div>
               <button
                 onClick={() => {
                   setShowSummary(false);
                   router.push("/home");
                 }}
-                className="w-full rounded-full bg-[#ff6b6b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a] sm:w-auto"
+                className="w-full rounded-full bg-[#ff6b6b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a]"
               >
-                Retourner à l’accueil
+                {t.learn.buttons.retournerAccueil}
               </button>
             </div>
           </div>
