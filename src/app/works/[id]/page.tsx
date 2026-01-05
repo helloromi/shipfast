@@ -34,11 +34,13 @@ export default async function WorkDetailPage({ params }: Props) {
       user={user}
       workId={id}
       sceneId={firstSceneId}
+      purchaseScope="work"
     >
       <WorkDetailClient work={work} />
     </AccessGate>
   );
 }
+
 
 
 

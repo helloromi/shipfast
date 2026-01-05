@@ -65,7 +65,10 @@ export default async function LearnPage({ params, searchParams }: Props) {
     <AccessGate
       user={user}
       sceneId={sceneId}
-      // Ne pas passer workId ici - on veut acheter juste la scène, pas l'œuvre entière
+      // On passe workId pour que l'achat "œuvre" débloque aussi /learn,
+      // mais on force le bouton "Débloquer" à acheter uniquement la scène si nécessaire.
+      workId={scene.work_id || undefined}
+      purchaseScope="scene"
     >
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between gap-3">

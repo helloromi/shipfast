@@ -11,6 +11,14 @@ type AccessGateProps = {
   user: User | null;
   sceneId: string;
   workId?: string;
+  /**
+   * Contrôle ce que le bouton "Débloquer" achète.
+   * - "work": acheter l'œuvre entière (workId requis)
+   * - "scene": acheter uniquement la scène (sceneId)
+   *
+   * Note: la vérification d'accès, elle, peut utiliser workId + sceneId.
+   */
+  purchaseScope?: "work" | "scene";
   children: React.ReactNode;
   onAccessGranted?: () => void;
 };
@@ -19,6 +27,7 @@ export function AccessGate({
   user,
   sceneId,
   workId,
+  purchaseScope,
   children,
   onAccessGranted,
 }: AccessGateProps) {
@@ -26,6 +35,10 @@ export function AccessGate({
   const [accessCheck, setAccessCheck] = useState<AccessCheckResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [granting, setGranting] = useState(false);
+
+  // Par défaut: si on a un workId, on propose d'acheter l'œuvre, sinon la scène.
+  const effectivePurchaseScope: "work" | "scene" =
+    purchaseScope ?? (workId ? "work" : "scene");
 
   useEffect(() => {
     const check = async () => {
@@ -168,9 +181,9 @@ export function AccessGate({
                 "Vous devez débloquer cette œuvre pour y accéder."}
           </p>
           <CheckoutButton
-            // Si workId est défini, on achète l'œuvre entière, sinon on achète juste la scène
-            workId={workId}
-            sceneId={workId ? undefined : sceneId}
+            // Important: dissocier scope d'achat vs scope de check d'accès
+            workId={effectivePurchaseScope === "work" ? workId : undefined}
+            sceneId={effectivePurchaseScope === "scene" ? sceneId : undefined}
             className="w-full rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]"
           >
             {t.scenes.works.access.purchaseButton || "Débloquer cette œuvre"}
