@@ -53,15 +53,25 @@ export async function POST(request: NextRequest) {
     try {
       const supabase = await createSupabaseServerClient();
       const userId = session.metadata?.user_id;
-      // Les metadata Stripe peuvent contenir des chaînes vides "", il faut les filtrer
-      const workId = session.metadata?.work_id && session.metadata.work_id.trim() !== "" 
-        ? session.metadata.work_id 
-        : undefined;
-      const sceneId = session.metadata?.scene_id && session.metadata.scene_id.trim() !== "" 
-        ? session.metadata.scene_id 
-        : undefined;
+      
+      // Les metadata Stripe peuvent contenir des chaînes vides "" ou être absentes
+      // On récupère les valeurs brutes d'abord pour le debug
+      const rawWorkId = session.metadata?.work_id;
+      const rawSceneId = session.metadata?.scene_id;
+      
+      console.log("[WEBHOOK] Metadata brutes - work_id:", rawWorkId, "(type:", typeof rawWorkId, ")", "scene_id:", rawSceneId, "(type:", typeof rawSceneId, ")");
+      
+      // Fonction helper pour nettoyer les valeurs (gère undefined, null, chaînes vides)
+      const cleanValue = (value: string | undefined | null): string | undefined => {
+        if (value === undefined || value === null) return undefined;
+        const trimmed = typeof value === 'string' ? value.trim() : String(value).trim();
+        return trimmed !== "" ? trimmed : undefined;
+      };
+      
+      const workId = cleanValue(rawWorkId);
+      const sceneId = cleanValue(rawSceneId);
 
-      console.log("[WEBHOOK] Données extraites - userId:", userId, "workId:", workId, "sceneId:", sceneId);
+      console.log("[WEBHOOK] Données nettoyées - userId:", userId, "workId:", workId, "sceneId:", sceneId);
 
       if (!userId) {
         console.error("[WEBHOOK] ERREUR: Pas de user_id dans les metadata");
@@ -70,12 +80,15 @@ export async function POST(request: NextRequest) {
 
       // Vérifier qu'on a soit workId soit sceneId, mais pas les deux ni aucun
       if (!workId && !sceneId) {
-        console.error("[WEBHOOK] ERREUR: Ni work_id ni scene_id dans les metadata");
+        console.error("[WEBHOOK] ERREUR: Ni work_id ni scene_id valides dans les metadata");
+        console.error("[WEBHOOK] Raw values - work_id:", rawWorkId, "scene_id:", rawSceneId);
         return NextResponse.json({ error: "work_id or scene_id required" }, { status: 400 });
       }
 
       if (workId && sceneId) {
-        console.error("[WEBHOOK] ERREUR: work_id et scene_id sont tous les deux présents");
+        console.error("[WEBHOOK] ERREUR: work_id et scene_id sont tous les deux présents après nettoyage");
+        console.error("[WEBHOOK] work_id:", workId, "scene_id:", sceneId);
+        console.error("[WEBHOOK] Raw values - work_id:", rawWorkId, "scene_id:", rawSceneId);
         return NextResponse.json({ error: "Cannot have both work_id and scene_id" }, { status: 400 });
       }
 

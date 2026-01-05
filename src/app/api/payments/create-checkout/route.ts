@@ -25,6 +25,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // On ne peut pas avoir les deux en même temps
+    if (workId && sceneId) {
+      return NextResponse.json(
+        { error: "Cannot specify both workId and sceneId" },
+        { status: 400 }
+      );
+    }
+
     // Prix fixe par scène : 2€
     const PRICE_PER_SCENE_EUROS = 2;
     const priceInCents = PRICE_PER_SCENE_EUROS * 100;
@@ -100,8 +108,9 @@ export async function POST(request: NextRequest) {
       cancel_url: cancelUrl,
       metadata: {
         user_id: user.id,
-        work_id: workId || "",
-        scene_id: sceneId || "",
+        // Ne pas envoyer de chaîne vide, seulement la valeur si elle existe
+        ...(workId && { work_id: workId }),
+        ...(sceneId && { scene_id: sceneId }),
         scenes_count: scenesCount.toString(),
       },
     });

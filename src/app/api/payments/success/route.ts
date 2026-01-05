@@ -23,13 +23,16 @@ export async function GET(request: NextRequest) {
 
     if (session.payment_status === "paid") {
       const userId = session.metadata?.user_id;
-      // Les metadata Stripe peuvent contenir des chaînes vides "", il faut les filtrer
-      const workId = session.metadata?.work_id && session.metadata.work_id.trim() !== "" 
-        ? session.metadata.work_id 
-        : undefined;
-      const sceneId = session.metadata?.scene_id && session.metadata.scene_id.trim() !== "" 
-        ? session.metadata.scene_id 
-        : undefined;
+      
+      // Fonction helper pour nettoyer les valeurs (gère undefined, null, chaînes vides)
+      const cleanValue = (value: string | undefined | null): string | undefined => {
+        if (value === undefined || value === null) return undefined;
+        const trimmed = typeof value === 'string' ? value.trim() : String(value).trim();
+        return trimmed !== "" ? trimmed : undefined;
+      };
+      
+      const workId = cleanValue(session.metadata?.work_id);
+      const sceneId = cleanValue(session.metadata?.scene_id);
 
       console.log("[SUCCESS] Paiement confirmé - userId:", userId, "workId:", workId, "sceneId:", sceneId);
 
