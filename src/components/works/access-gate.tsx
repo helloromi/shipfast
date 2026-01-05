@@ -168,8 +168,9 @@ export function AccessGate({
                 "Vous devez débloquer cette œuvre pour y accéder."}
           </p>
           <CheckoutButton
+            // Si workId est défini, on achète l'œuvre entière, sinon on achète juste la scène
             workId={workId}
-            sceneId={sceneId}
+            sceneId={workId ? undefined : sceneId}
             className="w-full rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]"
           >
             {t.scenes.works.access.purchaseButton || "Débloquer cette œuvre"}
@@ -179,6 +180,7 @@ export function AccessGate({
     </div>
   );
 }
+
 
 
 

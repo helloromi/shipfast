@@ -65,7 +65,7 @@ export default async function LearnPage({ params, searchParams }: Props) {
     <AccessGate
       user={user}
       sceneId={sceneId}
-      workId={scene.work_id || undefined}
+      // Ne pas passer workId ici - on veut acheter juste la scène, pas l'œuvre entière
     >
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between gap-3">
