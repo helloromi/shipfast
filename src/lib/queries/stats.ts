@@ -1,6 +1,19 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { LearningSession, LineMasteryPoint, SceneStats, TimeSeriesDataPoint, UserStatsSummary } from "@/types/stats";
 
+/**
+ * Convertit un score de l'ancien format (0-3) vers le nouveau (0-10).
+ * Si le score est déjà en format 0-10, il est retourné tel quel.
+ */
+function normalizeScore(score: number): number {
+  if (score <= 3) {
+    // Ancien format : convertir 0-3 vers 0-10
+    return (score / 3) * 10;
+  }
+  // Déjà en format 0-10
+  return score;
+}
+
 export async function trackSessionStart(
   userId: string,
   sceneId: string,
@@ -94,7 +107,7 @@ export async function fetchUserStatsSummary(userId: string): Promise<UserStatsSu
     sessions.reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0) / 60
   );
   const uniqueScenes = new Set(sessions.map((s) => s.scene_id)).size;
-  const scores = sessions.filter((s) => s.average_score !== null).map((s) => s.average_score!);
+  const scores = sessions.filter((s) => s.average_score !== null).map((s) => normalizeScore(s.average_score!));
   const averageScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 
   // Calculer le streak
@@ -183,21 +196,32 @@ export async function fetchSceneStats(userId: string, sceneId: string): Promise<
     sessions.reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0) / 60
   );
   const totalLinesLearned = sessions.reduce((acc, s) => acc + (s.completed_lines ?? 0), 0);
-  const scores = sessions.filter((s) => s.average_score !== null).map((s) => s.average_score!);
+  const scores = sessions.filter((s) => s.average_score !== null).map((s) => normalizeScore(s.average_score!));
   const averageScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 
-  // Évolution des scores (par session, ordre chronologique)
-  const scoreEvolution: TimeSeriesDataPoint[] = sessions
-    .filter((s) => s.average_score !== null)
-    .map((s) => ({
-      date: new Date(s.started_at).toISOString().split("T")[0],
-      value: s.average_score!,
-      label: new Date(s.started_at).toLocaleDateString("fr-FR", {
-        day: "numeric",
-        month: "short",
-      }),
-    }))
-    .reverse(); // Ordre chronologique
+  // Évolution des scores (agrégée par jour pour éviter plusieurs points avec la même date)
+  const byDay = new Map<string, { sum: number; count: number }>();
+  for (const s of sessions) {
+    if (s.average_score === null || s.average_score === undefined) continue;
+    const normalized = normalizeScore(s.average_score);
+    const dayKey = new Date(s.started_at).toISOString().split("T")[0]; // YYYY-MM-DD
+    const prev = byDay.get(dayKey) ?? { sum: 0, count: 0 };
+    byDay.set(dayKey, { sum: prev.sum + normalized, count: prev.count + 1 });
+  }
+
+  const scoreEvolution: TimeSeriesDataPoint[] = Array.from(byDay.entries())
+    .map(([dayKey, v]) => {
+      const dateObj = new Date(dayKey);
+      return {
+        date: dayKey,
+        value: v.count ? v.sum / v.count : 0,
+        label: dateObj.toLocaleDateString("fr-FR", {
+          day: "numeric",
+          month: "short",
+        }),
+      };
+    })
+    .sort((a, b) => a.date.localeCompare(b.date)); // ordre chronologique
 
   // Sessions récentes (5 dernières)
   const recentSessions = sessions.slice(0, 5).map((s) => ({
@@ -207,7 +231,7 @@ export async function fetchSceneStats(userId: string, sceneId: string): Promise<
       year: "numeric",
     }),
     durationMinutes: Math.round((s.duration_seconds ?? 0) / 60),
-    score: s.average_score ?? 0,
+    score: s.average_score !== null ? normalizeScore(s.average_score) : 0,
     characterName: (s.characters as any)?.name ?? "—",
   }));
 
@@ -267,6 +291,7 @@ export async function fetchLineMastery(
   for (const row of data as any[]) {
     const line = row.lines;
     if (!line?.id || typeof line.order !== "number" || typeof row.score !== "number") continue;
+    const normalizedScore = normalizeScore(row.score);
     const createdAt = typeof row.created_at === "string" ? new Date(row.created_at).getTime() : NaN;
     const deltaSeconds = Number.isFinite(createdAt) ? (now - createdAt) / 1000 : 0;
     const w = Math.exp(-lambda * Math.max(0, deltaSeconds));
@@ -278,7 +303,7 @@ export async function fetchLineMastery(
         text: line.text ?? "",
         attempts: 1,
         sumW: w,
-        sumWS: w * row.score,
+        sumWS: w * normalizedScore,
       });
     } else {
       agg.set(line.id, {
@@ -286,7 +311,7 @@ export async function fetchLineMastery(
         text: prev.text,
         attempts: prev.attempts + 1,
         sumW: prev.sumW + w,
-        sumWS: prev.sumWS + w * row.score,
+        sumWS: prev.sumWS + w * normalizedScore,
       });
     }
   }

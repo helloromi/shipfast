@@ -10,10 +10,11 @@ export const home = {
   labels: {
     personnage: "Personnage :",
     maitrise: "Niveau d'apprentissage :",
-    sur: "/ 3",
+    sur: "/ 10",
   },
   buttons: {
     continuer: "Continuer",
     details: "Détails",
+    supprimer: "Supprimer cette scène",
   },
 };

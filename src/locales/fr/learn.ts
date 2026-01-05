@@ -77,6 +77,7 @@ export const learn = {
     feedbackEnregistreToast: "Retour enregistré !",
     sessionTerminee: "Session terminée",
     resumeFeedbacks: "Résumé de ta session :",
+    tempsPratique: "Temps de pratique",
     aucuneReplique: "Aucune réplique utilisateur à noter.",
     erreur: "Erreur:",
     attribueScores: "Attribue un score à chaque réplique avant d’enregistrer.",

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { fetchUserProgressScenes, getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { fetchUserStatsSummary } from "@/lib/queries/stats";
 import { StatsSummaryCard } from "@/components/stats/stats-summary-card";
+import { SceneCard } from "@/components/home/scene-card";
 import { t } from "@/locales/fr";
 
 export default async function HomePage() {
@@ -16,19 +17,6 @@ export default async function HomePage() {
     fetchUserProgressScenes(user.id),
     fetchUserStatsSummary(user.id),
   ]);
-
-  const progressForAverage = (average?: number) => {
-    if (average === undefined || average === null) {
-      return { label: t.common.progress.notStarted, dot: "bg-[#e11d48]" };
-    }
-    if (average >= 2.5) {
-      return { label: t.common.progress.mastered, dot: "bg-[#2cb67d]" };
-    }
-    if (average > 0) {
-      return { label: t.common.progress.inProgress, dot: "bg-[#f59e0b]" };
-    }
-    return { label: t.common.progress.notStarted, dot: "bg-[#e11d48]" };
-  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -56,52 +44,7 @@ export default async function HomePage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         {progresses.map((item) => (
-          <div
-            key={item.sceneId}
-            className="flex h-full flex-col gap-3 rounded-2xl border border-[#e7e1d9] bg-white/92 p-5 shadow-md shadow-[#3b1f4a14]"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="font-display text-xl font-semibold text-[#3b1f4a]">
-                {item.title}
-              </h2>
-              <div className="flex items-center gap-2">
-                <span className={`h-2.5 w-2.5 rounded-full ${progressForAverage(item.average).dot}`} aria-label={progressForAverage(item.average).label} />
-                <span className="rounded-full bg-[#d9f2e4] px-3 py-1 text-xs font-semibold text-[#1c6b4f]">
-                  {t.home.labels.maitrise} {item.average.toFixed(2)} {t.home.labels.sur}
-                </span>
-              </div>
-            </div>
-            <p className="text-sm text-[#524b5a]">
-              {item.author ? `${t.common.labels.par} ${item.author}` : t.common.labels.auteurInconnu}
-            </p>
-            {item.summary && (
-              <p className="text-sm text-[#1c1b1f] leading-relaxed line-clamp-3">
-                {item.summary}
-              </p>
-            )}
-            <div className="flex items-center justify-between gap-2 text-sm text-[#524b5a]">
-              <span>{t.home.labels.personnage} {item.lastCharacterName ?? "—"}</span>
-              {item.chapter && <span className="text-[11px] font-semibold uppercase tracking-wide text-[#7a7184]">{t.common.labels.chapitre} : {item.chapter}</span>}
-            </div>
-            <div className="mt-2 flex gap-2">
-              <Link
-                href={
-                  item.lastCharacterId
-                    ? `/learn/${item.sceneId}?character=${item.lastCharacterId}`
-                    : `/scenes/${item.sceneId}`
-                }
-                className="inline-flex flex-1 items-center justify-center rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-3 py-2 text-sm font-semibold text-white shadow-md shadow-[#ff6b6b33] hover:-translate-y-[1px]"
-              >
-                {t.home.buttons.continuer}
-              </Link>
-              <Link
-                href={`/scenes/${item.sceneId}`}
-                className="inline-flex items-center justify-center rounded-full border border-[#e7e1d9] bg-white px-3 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm hover:border-[#3b1f4a66]"
-              >
-                {t.home.buttons.details}
-              </Link>
-            </div>
-          </div>
+          <SceneCard key={item.sceneId} scene={item} />
         ))}
       </div>
     </div>

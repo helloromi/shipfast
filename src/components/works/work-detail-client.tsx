@@ -11,6 +11,8 @@ type SceneWithStats = Scene & {
   average?: number;
   charactersCount: number;
   linesCount: number;
+  lastCharacterId?: string | null;
+  lastCharacterName?: string | null;
 };
 
 type WorkDetailClientProps = {
@@ -90,7 +92,7 @@ export function WorkDetailClient({ work }: WorkDetailClientProps) {
     if (average === undefined || average === null) {
       return { label: t.common.progress.notStarted, dot: "bg-[#e11d48]" };
     }
-    if (average >= 2.5) {
+    if (average >= 7) {
       return { label: t.common.progress.mastered, dot: "bg-[#2cb67d]" };
     }
     if (average > 0) {
@@ -166,7 +168,7 @@ export function WorkDetailClient({ work }: WorkDetailClientProps) {
                           <span className={`h-2.5 w-2.5 rounded-full ${progress.dot}`} aria-label={progress.label} />
                           {scene.average !== undefined && (
                             <span className="rounded-full bg-[#d9f2e4] px-3 py-1 text-xs font-semibold text-[#1c6b4f]">
-                              {t.common.labels.maitrise}: {scene.average.toFixed(2)} / 3
+                              {t.common.labels.maitrise}: {scene.average.toFixed(2)} / 10
                             </span>
                           )}
                         </div>
@@ -195,19 +197,30 @@ export function WorkDetailClient({ work }: WorkDetailClientProps) {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => setRangeSelectorOpen(scene.id)}
-                      className="rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-xs font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33]"
-                    >
-                      {t.scenes.works.detail.scenes.selectionnerPlage}
-                    </button>
-                    {!isSelected && (
+                    {scene.average !== undefined && scene.average > 0 && scene.lastCharacterId ? (
                       <Link
-                        href={`/scenes/${scene.id}`}
-                        className="rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-xs font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33]"
+                        href={`/learn/${scene.id}?character=${scene.lastCharacterId}`}
+                        className="rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-4 py-2 text-xs font-semibold text-white shadow-md shadow-[#ff6b6b33] transition hover:-translate-y-[1px]"
                       >
-                        {t.scenes.works.detail.scenes.apercu}
+                        {t.scenes.works.detail.scenes.continuer}
                       </Link>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => setRangeSelectorOpen(scene.id)}
+                          className="rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-xs font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33]"
+                        >
+                          {t.scenes.works.detail.scenes.selectionnerPlage}
+                        </button>
+                        {!isSelected && (
+                          <Link
+                            href={`/scenes/${scene.id}`}
+                            className="rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-xs font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33]"
+                          >
+                            {t.scenes.works.detail.scenes.apercu}
+                          </Link>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

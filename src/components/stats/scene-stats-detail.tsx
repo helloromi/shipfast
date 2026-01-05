@@ -89,7 +89,7 @@ export function SceneStatsDetail({
                 {t.stats.detail.averageScore}
               </div>
               <div className="mt-1 text-2xl font-semibold text-[#3b1f4a]">
-                {stats.averageScore.toFixed(2)}/3
+                {stats.averageScore.toFixed(2)}/10
               </div>
             </div>
           </div>
@@ -133,7 +133,7 @@ export function SceneStatsDetail({
                       </div>
                     </div>
                     <div className="rounded-full bg-[#d9f2e4] px-3 py-1 text-xs font-semibold text-[#1c6b4f]">
-                      {session.score.toFixed(2)}/3
+                      {session.score.toFixed(2)}/10
                     </div>
                   </div>
                 ))}

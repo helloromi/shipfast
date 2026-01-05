@@ -42,9 +42,9 @@ type ScoreOption = {
 
 const scoreOptions: ScoreOption[] = [
   { value: 0, emoji: t.learn.scores.rate.emoji, label: t.learn.scores.rate.label, color: "bg-[#e11d48] text-white hover:bg-[#c4153c]" },
-  { value: 1, emoji: t.learn.scores.hesitant.emoji, label: t.learn.scores.hesitant.label, color: "bg-[#f59e0b] text-white hover:bg-[#d88405]" },
-  { value: 2, emoji: t.learn.scores.bon.emoji, label: t.learn.scores.bon.label, color: "bg-[#f4c95d] text-[#1c1b1f] hover:bg-[#e6b947]" },
-  { value: 3, emoji: t.learn.scores.parfait.emoji, label: t.learn.scores.parfait.label, color: "bg-[#2cb67d] text-white hover:bg-[#239b6a]" },
+  { value: 3, emoji: t.learn.scores.hesitant.emoji, label: t.learn.scores.hesitant.label, color: "bg-[#f59e0b] text-white hover:bg-[#d88405]" },
+  { value: 7, emoji: t.learn.scores.bon.emoji, label: t.learn.scores.bon.label, color: "bg-[#f4c95d] text-[#1c1b1f] hover:bg-[#e6b947]" },
+  { value: 10, emoji: t.learn.scores.parfait.emoji, label: t.learn.scores.parfait.label, color: "bg-[#2cb67d] text-white hover:bg-[#239b6a]" },
 ];
 
 function isLikelyStageDirection(line: Pick<LearnLine, "text" | "characterName">) {
@@ -126,6 +126,19 @@ export function LearnSession({
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
   const timeInterval = useRef<NodeJS.Timeout | null>(null);
   const lineRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  
+  const formatSessionTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    if (minutes === 0) {
+      return `${remainingSeconds}s`;
+    }
+    if (remainingSeconds === 0) {
+      return `${minutes}min`;
+    }
+    return `${minutes}min ${remainingSeconds}s`;
+  };
+
   // IMPORTANT: on ne veut pas "réutiliser" les brouillons d'une session à l'autre.
   // On lie donc la clé de persistance à la session (créée côté serveur).
   const storageKey = useMemo(() => {
@@ -855,6 +868,16 @@ export function LearnSession({
             <p className="mt-1 text-sm text-[#524b5a]">
               {t.learn.messages.resumeFeedbacks}
             </p>
+            {elapsedTime > 0 && (
+              <div className="mt-3 flex items-center gap-2 text-sm text-[#524b5a]">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>
+                  {t.learn.messages.tempsPratique}: {formatSessionTime(elapsedTime)}
+                </span>
+              </div>
+            )}
             <div className="mt-4 flex flex-col gap-2">
               {scoreOptions.map((score) => {
                 const count = summaryCounts[score.value] ?? 0;

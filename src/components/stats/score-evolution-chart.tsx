@@ -30,12 +30,12 @@ export function ScoreEvolutionChart({ data }: ScoreEvolutionChartProps) {
             axisLine={false}
           />
           <YAxis
-            domain={[0, 3]}
+            domain={[0, 10]}
             stroke="#7a7184"
             fontSize={12}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(value) => value.toFixed(1)}
+            tickFormatter={(value) => value.toFixed(0)}
           />
           <Tooltip
             contentStyle={{
@@ -65,6 +65,7 @@ export function ScoreEvolutionChart({ data }: ScoreEvolutionChartProps) {
     </div>
   );
 }
+
 
 
 

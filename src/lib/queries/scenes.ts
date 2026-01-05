@@ -1,6 +1,19 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { Character, Scene, SceneWithRelations } from "@/types/scenes";
 
+/**
+ * Convertit un score de l'ancien format (0-3) vers le nouveau (0-10).
+ * Si le score est déjà en format 0-10, il est retourné tel quel.
+ */
+function normalizeScore(score: number): number {
+  if (score <= 3) {
+    // Ancien format : convertir 0-3 vers 0-10
+    return (score / 3) * 10;
+  }
+  // Déjà en format 0-10
+  return score;
+}
+
 type SceneAverage = {
   sceneId: string;
   average: number;
@@ -159,8 +172,9 @@ export async function fetchUserSceneAverages(userId: string): Promise<SceneAvera
   for (const row of data ?? []) {
     const sceneId = row.lines?.scene_id;
     if (!sceneId) continue;
+    const normalized = normalizeScore(row.score);
     const entry = grouped.get(sceneId) ?? { sum: 0, count: 0 };
-    grouped.set(sceneId, { sum: entry.sum + row.score, count: entry.count + 1 });
+    grouped.set(sceneId, { sum: entry.sum + normalized, count: entry.count + 1 });
   }
 
   return Array.from(grouped.entries()).map(([sceneId, { sum, count }]) => ({
@@ -219,6 +233,7 @@ export async function fetchUserProgressScenes(userId: string): Promise<SceneProg
   for (const row of data) {
     const line = row.lines;
     if (!line?.scene_id || !line?.scenes) continue;
+    const normalized = normalizeScore(row.score);
     const sceneId = line.scene_id;
     const scene = line.scenes;
     const character = line.characters;
@@ -228,7 +243,7 @@ export async function fetchUserProgressScenes(userId: string): Promise<SceneProg
         scene,
         lastCharacterId: character?.id ?? null,
         lastCharacterName: character?.name ?? null,
-        sum: row.score,
+        sum: normalized,
         count: 1,
       });
     } else {
@@ -236,7 +251,7 @@ export async function fetchUserProgressScenes(userId: string): Promise<SceneProg
         scene: entry.scene,
         lastCharacterId: entry.lastCharacterId,
         lastCharacterName: entry.lastCharacterName,
-        sum: entry.sum + row.score,
+        sum: entry.sum + normalized,
         count: entry.count + 1,
       });
     }

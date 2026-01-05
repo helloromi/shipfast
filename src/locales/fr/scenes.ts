@@ -38,6 +38,7 @@ export const scenes = {
         selectedCount: "scène sélectionnée",
         selectedCountPlural: "scènes sélectionnées",
         commencerApprentissage: "Commencer l'apprentissage",
+        continuer: "Continuer",
         selectionnerPlage: "Sélectionner plage",
         personnages: "personnages",
         repliques: "répliques",

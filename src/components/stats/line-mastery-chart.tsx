@@ -57,12 +57,20 @@ export function LineMasteryChart({ data }: LineMasteryChartProps) {
             tickFormatter={(_, idx) => (chartData[idx] ? `${chartData[idx].label} ${chartData[idx].short}` : "")}
           />
           <YAxis
-            domain={[0, 3]}
+            domain={[0, 10]}
             stroke="#7a7184"
             fontSize={12}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(v) => Number(v).toFixed(1)}
+            ticks={[0, 3, 7, 10]}
+            tickFormatter={(v) => {
+              const num = Number(v);
+              if (num === 0) return t.learn.scores.rate.label;
+              if (num === 3) return t.learn.scores.hesitant.label;
+              if (num === 7) return t.learn.scores.bon.label;
+              if (num === 10) return t.learn.scores.parfait.label;
+              return "";
+            }}
           />
           <Tooltip
             contentStyle={{
@@ -76,7 +84,7 @@ export function LineMasteryChart({ data }: LineMasteryChartProps) {
             formatter={(value, name, props) => {
               if (name === "mastery" && typeof value === "number") {
                 const attempts = (props as any)?.payload?.attempts ?? 0;
-                return [`${value.toFixed(2)}/3 · ${attempts} ${t.stats.charts.attempts}`, t.stats.charts.mastery];
+                return [`${value.toFixed(2)}/10 · ${attempts} ${t.stats.charts.attempts}`, t.stats.charts.mastery];
               }
               return [String(value ?? ""), String(name ?? "")];
             }}

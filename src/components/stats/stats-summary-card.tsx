@@ -36,7 +36,7 @@ export function StatsSummaryCard({ stats }: StatsSummaryCardProps) {
         <span className="text-[#7a7184]">•</span>
         <div className="flex items-center gap-2">
           <span className="font-semibold text-[#3b1f4a]">
-            {stats.averageScore.toFixed(2)}/3
+            {stats.averageScore.toFixed(2)}/10
           </span>
           <span className="text-[#524b5a]">{t.stats.summary.averageScore}</span>
         </div>
@@ -54,6 +54,7 @@ export function StatsSummaryCard({ stats }: StatsSummaryCardProps) {
     </div>
   );
 }
+
 
 
 

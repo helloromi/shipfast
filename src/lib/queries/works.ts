@@ -1,6 +1,19 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { Scene, Work, WorkWithScenes } from "@/types/scenes";
 
+/**
+ * Convertit un score de l'ancien format (0-3) vers le nouveau (0-10).
+ * Si le score est déjà en format 0-10, il est retourné tel quel.
+ */
+function normalizeScore(score: number): number {
+  if (score <= 3) {
+    // Ancien format : convertir 0-3 vers 0-10
+    return (score / 3) * 10;
+  }
+  // Déjà en format 0-10
+  return score;
+}
+
 type WorkQueryResult = Work & {
   scenes: Scene[];
   scenes_count: number;
@@ -136,7 +149,7 @@ export async function fetchWorkWithScenes(workId: string): Promise<WorkWithScene
 export async function fetchWorkWithScenesAndStats(
   workId: string,
   userId?: string
-): Promise<(WorkWithScenes & { scenes: (Scene & { average?: number; charactersCount: number; linesCount: number })[] }) | null> {
+): Promise<(WorkWithScenes & { scenes: (Scene & { average?: number; charactersCount: number; linesCount: number; lastCharacterId?: string | null; lastCharacterName?: string | null })[] }) | null> {
   const supabase = await createSupabaseServerClient();
 
   // Récupérer l'œuvre avec ses scènes
@@ -183,9 +196,12 @@ export async function fetchWorkWithScenesAndStats(
         .select("*", { count: "exact", head: true })
         .eq("scene_id", scene.id);
 
-      // Calculer la moyenne si l'utilisateur est connecté
+      // Calculer la moyenne et récupérer le dernier personnage si l'utilisateur est connecté
       let average: number | undefined;
+      let lastCharacterId: string | null = null;
+      let lastCharacterName: string | null = null;
       if (userId) {
+        // Récupérer tous les feedbacks pour calculer la moyenne
         const { data: feedbackData } = await supabase
           .from("user_line_feedback")
           .select("score, lines!inner(scene_id)")
@@ -193,8 +209,26 @@ export async function fetchWorkWithScenesAndStats(
           .eq("lines.scene_id", scene.id);
 
         if (feedbackData && feedbackData.length > 0) {
-          const sum = feedbackData.reduce((acc, f) => acc + f.score, 0);
+          const sum = feedbackData.reduce((acc, f) => acc + normalizeScore(f.score), 0);
           average = Math.round((sum / feedbackData.length) * 100) / 100;
+        }
+
+        // Récupérer le dernier personnage utilisé (le plus récent feedback)
+        const { data: lastFeedbackData } = await supabase
+          .from("user_line_feedback")
+          .select("lines!inner(scene_id, character_id, characters(id, name))")
+          .eq("user_id", userId)
+          .eq("lines.scene_id", scene.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (lastFeedbackData && (lastFeedbackData as any).lines) {
+          const line = (lastFeedbackData as any).lines;
+          if (line.characters) {
+            lastCharacterId = line.characters.id ?? null;
+            lastCharacterName = line.characters.name ?? null;
+          }
         }
       }
 
@@ -208,6 +242,8 @@ export async function fetchWorkWithScenesAndStats(
         average,
         charactersCount: charactersCount ?? 0,
         linesCount: linesCount ?? 0,
+        lastCharacterId,
+        lastCharacterName,
       };
     })
   );
@@ -240,9 +276,10 @@ export async function fetchUserWorkAverages(userId: string): Promise<WorkAverage
     const workId = row.lines?.scenes?.work_id;
     if (!workId) continue;
 
+    const normalized = normalizeScore(row.score);
     const entry = grouped.get(workId) ?? { sum: 0, count: 0 };
     grouped.set(workId, {
-      sum: entry.sum + row.score,
+      sum: entry.sum + normalized,
       count: entry.count + 1,
     });
   }
@@ -252,6 +289,7 @@ export async function fetchUserWorkAverages(userId: string): Promise<WorkAverage
     average: count ? Math.round((sum / count) * 100) / 100 : 0,
   }));
 }
+
 
 
 

@@ -115,7 +115,7 @@ export default async function ScenesPage({ searchParams }: Props) {
                 </h2>
                 {average !== undefined && (
                   <span className="rounded-full bg-[#d9f2e4] px-3 py-1 text-xs font-semibold text-[#1c6b4f]">
-                    {t.common.labels.maitrise}: {average.toFixed(2)} / 3
+                    {t.common.labels.maitrise}: {average.toFixed(2)} / 10
                   </span>
                 )}
               </div>
