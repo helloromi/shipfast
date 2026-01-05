@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { redirect } from "next/navigation";
-import { stripe } from "@/lib/stripe/client";
+import { getStripe } from "@/lib/stripe/client";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export async function GET(request: NextRequest) {
@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const stripe = getStripe();
     // Vérifier que la session est bien complétée
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
@@ -33,5 +34,6 @@ export async function GET(request: NextRequest) {
     redirect("/scenes");
   }
 }
+
 
 
