@@ -625,10 +625,19 @@ export function LearnSession({
         )}
 
         <div
-          className={`rounded-xl border border-[#e7e1d9] px-3 py-3 text-sm text-[#1c1b1f] ${
+          className={`relative rounded-xl border border-[#e7e1d9] px-3 py-3 text-sm text-[#1c1b1f] ${
             isHidden ? "select-none" : ""
           }`}
         >
+          {isHidden && !hintUsed[currentFlashcard.id] && (
+            <button
+              type="button"
+              onClick={() => revealHintOnce(currentFlashcard.id)}
+              className="absolute right-3 top-3 rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-xs font-medium text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a33]"
+            >
+              {t.learn.buttons.indice}
+            </button>
+          )}
           {isHidden ? hinted : currentFlashcard.text}
         </div>
 
@@ -650,18 +659,11 @@ export function LearnSession({
         {state !== "scored" && (
           <div className="flex flex-col gap-2">
             {isHidden ? (
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => revealHintOnce(currentFlashcard.id)}
-                  className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm font-medium text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a33]"
-                >
-                  {t.learn.buttons.indice}
-                </button>
+              <div className="flex justify-center">
                 <button
                   type="button"
                   onClick={() => revealLine(currentFlashcard.id)}
-                  className="col-span-2 w-full rounded-xl bg-[#ff6b6b] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a]"
+                  className="w-fit min-w-44 rounded-full bg-[#ff6b6b] px-8 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a]"
                 >
                   {t.learn.buttons.reveler}
                 </button>
@@ -732,7 +734,14 @@ export function LearnSession({
 
       {mode === "flashcard" ? renderFlashcard() : renderListMode()}
 
-      {toast && <Toast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          duration={toast.variant === "success" ? 1600 : 4000}
+          onClose={() => setToast(null)}
+        />
+      )}
 
       {showSetupModal && (
         <div

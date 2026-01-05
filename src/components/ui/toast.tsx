@@ -19,7 +19,7 @@ export function Toast({ message, variant = "success", onClose, duration = 3500 }
   }, [duration, onClose]);
 
   const base =
-    "fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 z-50 flex w-[calc(100vw-2rem)] sm:w-auto sm:max-w-sm items-start gap-3 rounded-2xl border px-4 py-3 text-sm shadow-lg shadow-[#3b1f4a1a] backdrop-blur-md";
+    "fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-50 flex w-[calc(100vw-2rem)] sm:w-auto sm:max-w-sm items-start gap-3 rounded-2xl border px-4 py-3 text-sm shadow-lg shadow-[#3b1f4a1a] backdrop-blur-md";
   const styles =
     variant === "success"
       ? "border-emerald-200 bg-white/90 text-[#1c1b1f]"
