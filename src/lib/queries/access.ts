@@ -10,27 +10,56 @@ export async function getUserWorkAccess(
   sceneId?: string
 ): Promise<UserWorkAccess | null> {
   const supabase = await createSupabaseServerClient();
-  
-  let query = supabase
-    .from("user_work_access")
-    .select("*")
-    .eq("user_id", userId);
 
-  if (workId) {
-    query = query.eq("work_id", workId);
+  // Important:
+  // - Un accès peut être au niveau "œuvre" (work_id défini, scene_id NULL)
+  // - Ou au niveau "scène" (scene_id défini, work_id NULL)
+  // Quand on vérifie l'accès d'une scène *dans une œuvre*, on a souvent workId ET sceneId :
+  // il faut alors accepter l'un OU l'autre, pas les deux simultanément.
+
+  const fetchByWork = async (wid: string) => {
+    const { data, error } = await supabase
+      .from("user_work_access")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("work_id", wid)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<UserWorkAccess>();
+
+    if (error) {
+      console.error(error);
+      return null;
+    }
+    return data ?? null;
+  };
+
+  const fetchByScene = async (sid: string) => {
+    const { data, error } = await supabase
+      .from("user_work_access")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("scene_id", sid)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<UserWorkAccess>();
+
+    if (error) {
+      console.error(error);
+      return null;
+    }
+    return data ?? null;
+  };
+
+  // Si les deux sont fournis, on teste d'abord l'accès "œuvre" (qui débloque toutes les scènes),
+  // puis, si absent, l'accès "scène".
+  if (workId && sceneId) {
+    return (await fetchByWork(workId)) ?? (await fetchByScene(sceneId));
   }
-  if (sceneId) {
-    query = query.eq("scene_id", sceneId);
-  }
 
-  const { data, error } = await query.maybeSingle<UserWorkAccess>();
-
-  if (error) {
-    console.error(error);
-    return null;
-  }
-
-  return data ?? null;
+  if (workId) return await fetchByWork(workId);
+  if (sceneId) return await fetchByScene(sceneId);
+  return null;
 }
 
 export async function countFreeSlotLines(userId: string): Promise<number> {
@@ -189,6 +218,7 @@ export async function hasAccess(
 
   return false;
 }
+
 
 
 
