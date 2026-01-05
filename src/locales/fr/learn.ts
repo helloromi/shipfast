@@ -45,6 +45,7 @@ export const learn = {
   buttons: {
     reveler: "Révéler",
     indice: "Indice",
+    quitterSession: "Quitter",
     precedent: "← Précédent",
     suivant: "Suivant →",
     passer: "Passer",

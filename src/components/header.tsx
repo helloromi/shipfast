@@ -19,8 +19,11 @@ export function Header() {
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const isZenLearn = Boolean(pathname?.startsWith("/learn/")) && searchParams?.get("zen") === "1";
-  if (isZenLearn) return null;
+  // Mode Zen devient le mode par défaut sur /learn.
+  // `?zen=0` reste un échappatoire (debug) pour afficher la nav.
+  const isLearn = Boolean(pathname?.startsWith("/learn/"));
+  const zenDisabled = searchParams?.get("zen") === "0";
+  if (isLearn && !zenDisabled) return null;
 
   const handleLogout = async () => {
     setLoading(true);
