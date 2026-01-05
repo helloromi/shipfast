@@ -53,14 +53,30 @@ export async function POST(request: NextRequest) {
     try {
       const supabase = await createSupabaseServerClient();
       const userId = session.metadata?.user_id;
-      const workId = session.metadata?.work_id;
-      const sceneId = session.metadata?.scene_id;
+      // Les metadata Stripe peuvent contenir des chaînes vides "", il faut les filtrer
+      const workId = session.metadata?.work_id && session.metadata.work_id.trim() !== "" 
+        ? session.metadata.work_id 
+        : undefined;
+      const sceneId = session.metadata?.scene_id && session.metadata.scene_id.trim() !== "" 
+        ? session.metadata.scene_id 
+        : undefined;
 
       console.log("[WEBHOOK] Données extraites - userId:", userId, "workId:", workId, "sceneId:", sceneId);
 
       if (!userId) {
         console.error("[WEBHOOK] ERREUR: Pas de user_id dans les metadata");
         return NextResponse.json({ error: "No user_id" }, { status: 400 });
+      }
+
+      // Vérifier qu'on a soit workId soit sceneId, mais pas les deux ni aucun
+      if (!workId && !sceneId) {
+        console.error("[WEBHOOK] ERREUR: Ni work_id ni scene_id dans les metadata");
+        return NextResponse.json({ error: "work_id or scene_id required" }, { status: 400 });
+      }
+
+      if (workId && sceneId) {
+        console.error("[WEBHOOK] ERREUR: work_id et scene_id sont tous les deux présents");
+        return NextResponse.json({ error: "Cannot have both work_id and scene_id" }, { status: 400 });
       }
 
       // Vérifier si l'accès existe déjà (idempotence)
@@ -77,6 +93,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Créer l'entrée dans user_work_access
+      // La contrainte de la table exige : (work_id IS NOT NULL AND scene_id IS NULL) OR (work_id IS NULL AND scene_id IS NOT NULL)
       const accessData: any = {
         user_id: userId,
         access_type: "purchased",
@@ -85,9 +102,12 @@ export async function POST(request: NextRequest) {
 
       if (workId) {
         accessData.work_id = workId;
-      }
-      if (sceneId) {
+        // S'assurer que scene_id est bien null/undefined
+        accessData.scene_id = null;
+      } else if (sceneId) {
         accessData.scene_id = sceneId;
+        // S'assurer que work_id est bien null/undefined
+        accessData.work_id = null;
       }
 
       console.log("[WEBHOOK] Insertion de l'accès:", JSON.stringify(accessData, null, 2));

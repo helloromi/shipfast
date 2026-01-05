@@ -23,8 +23,13 @@ export async function GET(request: NextRequest) {
 
     if (session.payment_status === "paid") {
       const userId = session.metadata?.user_id;
-      const workId = session.metadata?.work_id;
-      const sceneId = session.metadata?.scene_id;
+      // Les metadata Stripe peuvent contenir des chaînes vides "", il faut les filtrer
+      const workId = session.metadata?.work_id && session.metadata.work_id.trim() !== "" 
+        ? session.metadata.work_id 
+        : undefined;
+      const sceneId = session.metadata?.scene_id && session.metadata.scene_id.trim() !== "" 
+        ? session.metadata.scene_id 
+        : undefined;
 
       console.log("[SUCCESS] Paiement confirmé - userId:", userId, "workId:", workId, "sceneId:", sceneId);
 
@@ -33,7 +38,7 @@ export async function GET(request: NextRequest) {
         const supabase = await createSupabaseServerClient();
         
         // Vérifier si l'accès existe déjà
-        const existingAccess = await getUserWorkAccess(userId, workId || undefined, sceneId || undefined);
+        const existingAccess = await getUserWorkAccess(userId, workId, sceneId);
         
         if (existingAccess) {
           console.log("[SUCCESS] ✅ Accès déjà existant (probablement accordé par le webhook)");
@@ -41,6 +46,7 @@ export async function GET(request: NextRequest) {
         } else {
           console.log("[SUCCESS] ⚠️ Accès non trouvé - accord via route success (fallback)");
           // Accorder l'accès directement (idempotent - le webhook peut aussi le faire)
+          // La contrainte de la table exige : (work_id IS NOT NULL AND scene_id IS NULL) OR (work_id IS NULL AND scene_id IS NOT NULL)
           const accessData: any = {
             user_id: userId,
             access_type: "purchased",
@@ -49,9 +55,10 @@ export async function GET(request: NextRequest) {
 
           if (workId) {
             accessData.work_id = workId;
-          }
-          if (sceneId) {
+            accessData.scene_id = null;
+          } else if (sceneId) {
             accessData.scene_id = sceneId;
+            accessData.work_id = null;
           }
 
           const { data: insertedAccess, error: insertError } = await supabase
