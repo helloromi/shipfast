@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
+import { Suspense } from "react";
 
 import { Header } from "@/components/header";
 import { SupabaseProvider } from "@/components/supabase-provider";
@@ -47,7 +48,9 @@ export default async function RootLayout({
       <body className={`${inter.variable} ${playfair.variable} antialiased`}>
         <SupabaseProvider initialSession={session}>
           <div className="min-h-screen bg-[radial-gradient(circle_at_20%_20%,#F4C95D22,transparent_25%),radial-gradient(circle_at_80%_10%,#FF6B6B22,transparent_22%),radial-gradient(circle_at_80%_80%,#3B1F4A18,transparent_28%),#F9F7F3] text-[#1C1B1F]">
-            <Header />
+            <Suspense fallback={null}>
+              <Header />
+            </Suspense>
             <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">{children}</main>
           </div>
         </SupabaseProvider>
