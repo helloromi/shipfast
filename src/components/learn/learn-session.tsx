@@ -543,14 +543,14 @@ export function LearnSession({
                   <button
                     type="button"
                     onClick={() => revealHintOnce(line.id)}
-                    className="w-fit rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a33]"
+                    className="w-fit rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-sm font-medium text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a33]"
                   >
                     {t.learn.buttons.indice}
                   </button>
                   <button
                     type="button"
                     onClick={() => revealLine(line.id)}
-                    className="w-fit rounded-full bg-[#ff6b6b] px-3 py-1 text-sm font-semibold text-white shadow-sm hover:-translate-y-[1px] hover:bg-[#e75a5a]"
+                    className="w-fit rounded-full bg-[#ff6b6b] px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a]"
                   >
                     {t.learn.buttons.reveler}
                   </button>
@@ -643,25 +643,25 @@ export function LearnSession({
           placeholder={t.learn.placeholders.ecrisReplique}
           rows={2}
           className={`w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a] ${
-            canWrite && !isZen ? "" : "hidden"
+            canWrite ? "" : "hidden"
           }`}
         />
 
         {state !== "scored" && (
           <div className="flex flex-col gap-2">
             {isHidden ? (
-              <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => revealHintOnce(currentFlashcard.id)}
-                  className="w-full rounded-full border border-[#e7e1d9] bg-white px-3 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a33]"
+                  className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm font-medium text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a33]"
                 >
                   {t.learn.buttons.indice}
                 </button>
                 <button
                   type="button"
                   onClick={() => revealLine(currentFlashcard.id)}
-                  className="w-full rounded-full bg-[#ff6b6b] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:-translate-y-[1px] hover:bg-[#e75a5a]"
+                  className="col-span-2 w-full rounded-xl bg-[#ff6b6b] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a]"
                 >
                   {t.learn.buttons.reveler}
                 </button>
