@@ -33,7 +33,7 @@ export function Header() {
 
   const navItems = session?.user
     ? [
-        { href: "/home", label: t.common.header.appName },
+        { href: "/home", label: t.common.nav.accueil },
         { href: "/bibliotheque", label: t.common.nav.bibliotheque },
       ]
     : [];
