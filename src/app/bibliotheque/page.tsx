@@ -30,39 +30,7 @@ export default async function BibliothequePage({ searchParams }: Props) {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Section Recherche et Import */}
-      <section id="recherche-import" className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">
-            {t.scenes.works.bibliotheque.sectionLabel}
-          </p>
-          <h1 className="font-display text-3xl font-semibold text-[#1c1b1f]">
-            {t.scenes.works.bibliotheque.title}
-          </h1>
-          <p className="text-sm text-[#524b5a] leading-relaxed">
-            {t.scenes.works.bibliotheque.description}
-          </p>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Colonne Recherche */}
-          <div className="flex flex-col gap-4">
-            <SearchBar />
-          </div>
-
-          {/* Colonne Import */}
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <p className="text-sm font-semibold text-[#3b1f4a]">
-                Vous ne trouvez pas votre œuvre ? Vous pouvez directement l'importer ici.
-              </p>
-            </div>
-            <ImportForm />
-          </div>
-        </div>
-      </section>
-
-      {/* Section Mes œuvres importées */}
+      {/* Section Mes scènes importées - En haut si remplie */}
       {(privateScenes.length > 0 || pendingImports.length > 0) && (
         <section id="mes-oeuvres" className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
@@ -70,7 +38,7 @@ export default async function BibliothequePage({ searchParams }: Props) {
               Mes œuvres
             </p>
             <h2 className="font-display text-3xl font-semibold text-[#1c1b1f]">
-              Mes œuvres importées
+              Mes scènes importées
             </h2>
             <p className="text-sm text-[#524b5a] leading-relaxed">
               Les scènes que vous avez importées et qui vous appartiennent
@@ -134,20 +102,39 @@ export default async function BibliothequePage({ searchParams }: Props) {
         </section>
       )}
 
-      {/* Section Bibliothèque publique */}
+      {/* Section Bibliothèque */}
       <section id="bibliotheque" className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">
-            Bibliothèque publique
+            {t.scenes.works.bibliotheque.sectionLabel}
           </p>
-          <h2 className="font-display text-3xl font-semibold text-[#1c1b1f]">
-            Toutes les œuvres
-          </h2>
+          <h1 className="font-display text-3xl font-semibold text-[#1c1b1f]">
+            {t.scenes.works.bibliotheque.title}
+          </h1>
           <p className="text-sm text-[#524b5a] leading-relaxed">
-            Découvrez toutes les œuvres disponibles dans la bibliothèque publique
+            {t.scenes.works.bibliotheque.description}
           </p>
         </div>
 
+        {/* Header : Recherche + Import côte à côte */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Colonne Recherche */}
+          <div className="flex flex-col gap-4">
+            <SearchBar />
+          </div>
+
+          {/* Colonne Import */}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-semibold text-[#3b1f4a]">
+                Vous ne trouvez pas votre œuvre ? Vous pouvez directement l'importer ici.
+              </p>
+            </div>
+            <ImportForm />
+          </div>
+        </div>
+
+        {/* Galerie d'œuvres */}
         <div className="grid gap-4 md:grid-cols-2">
           {works.map((work) => {
             const average = averageByWork.get(work.id);
