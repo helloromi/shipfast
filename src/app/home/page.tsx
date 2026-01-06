@@ -35,7 +35,7 @@ export default async function HomePage() {
       {progresses.length === 0 && (
         <div className="rounded-2xl border border-dashed border-[#e7e1d9] bg-white/85 p-4 text-sm text-[#524b5a]">
           {t.home.empty.message}{" "}
-          <Link href="/scenes" className="font-semibold text-[#3b1f4a] underline underline-offset-4">
+          <Link href="/bibliotheque" className="font-semibold text-[#3b1f4a] underline underline-offset-4">
             {t.home.empty.bibliotheque}
           </Link>{" "}
           {t.home.empty.pourDemarrer}

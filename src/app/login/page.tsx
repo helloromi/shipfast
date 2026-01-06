@@ -12,7 +12,7 @@ export default async function LoginPage() {
   } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
 
   if (user) {
-    redirect("/scenes");
+    redirect("/home");
   }
 
   return (
@@ -26,13 +26,14 @@ export default async function LoginPage() {
       </div>
       <MagicLinkForm />
       <div className="text-sm text-[#524b5a]">
-        <Link href="/scenes" className="font-semibold text-[#3b1f4a] underline underline-offset-4">
+        <Link href="/bibliotheque" className="font-semibold text-[#3b1f4a] underline underline-offset-4">
           {t.login.retour}
         </Link>
       </div>
     </div>
   );
 }
+
 
 
 

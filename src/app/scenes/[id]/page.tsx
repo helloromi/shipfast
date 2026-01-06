@@ -121,7 +121,7 @@ export default async function SceneDetailPage({ params }: Props) {
 
       <div>
         <Link
-          href="/scenes"
+          href="/bibliotheque"
           className="text-sm font-semibold text-[#3b1f4a] underline underline-offset-4"
         >
           ← {t.common.buttons.retourBibliotheque}

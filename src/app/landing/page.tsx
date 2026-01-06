@@ -43,7 +43,7 @@ export default async function LandingPage() {
                   {t.landing.cta.commencer}
                 </Link>
                 <Link
-                  href="/scenes"
+                  href="/bibliotheque"
                   className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-[#e7e1d9] bg-white px-5 py-3 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a33] hover:text-[#3b1f4a] active:scale-95"
                 >
                   {t.landing.cta.voirBibliotheque}

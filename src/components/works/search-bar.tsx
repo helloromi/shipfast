@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { t } from "@/locales/fr";
 
 export function SearchBar() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const [isPending, startTransition] = useTransition();
+
+  const currentPath = pathname || "/bibliotheque";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +22,7 @@ export function SearchBar() {
       } else {
         params.delete("q");
       }
-      router.push(`/scenes?${params.toString()}`);
+      router.push(`${currentPath}?${params.toString()}`);
     });
   };
 
@@ -28,7 +31,7 @@ export function SearchBar() {
     startTransition(() => {
       const params = new URLSearchParams(searchParams.toString());
       params.delete("q");
-      router.push(`/scenes?${params.toString()}`);
+      router.push(`${currentPath}?${params.toString()}`);
     });
   };
 
@@ -93,6 +96,7 @@ export function SearchBar() {
     </form>
   );
 }
+
 
 
 
