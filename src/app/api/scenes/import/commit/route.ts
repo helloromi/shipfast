@@ -7,6 +7,7 @@ export const runtime = "nodejs";
 type CommitBody = {
   draft: ParsedScene;
   keepOrders: number[]; // orders à conserver
+  jobId?: string; // Optionnel : ID du job à mettre à jour
 };
 
 function uniqStrings(values: string[]) {
@@ -27,6 +28,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as CommitBody;
     const draft = body?.draft;
     const keepOrders = Array.isArray(body?.keepOrders) ? body.keepOrders : [];
+    const jobId = body?.jobId;
 
     if (!draft || !Array.isArray(draft.lines) || draft.lines.length === 0) {
       return NextResponse.json({ error: "Draft invalide" }, { status: 400 });
@@ -134,6 +136,18 @@ export async function POST(request: NextRequest) {
     if (accessError) {
       // non bloquant
       console.warn("[ImportCommit] user_work_access insert failed:", accessError);
+    }
+
+    // 5) Mettre à jour le job si jobId est fourni
+    if (jobId) {
+      await supabase
+        .from("import_jobs")
+        .update({
+          status: "completed",
+          scene_id: sceneId,
+        })
+        .eq("id", jobId)
+        .eq("user_id", user.id);
     }
 
     return NextResponse.json({ success: true, sceneId });

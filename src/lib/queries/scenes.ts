@@ -284,6 +284,39 @@ export async function countPublicScenes(): Promise<number> {
   return count ?? 0;
 }
 
+export type PendingImport = {
+  jobId: string;
+  title: string;
+  author: string | null;
+  created_at: string;
+  draft_data: any;
+};
+
+export async function fetchPendingImports(userId: string): Promise<PendingImport[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("import_jobs")
+    .select("id, draft_data, created_at")
+    .eq("user_id", userId)
+    .eq("status", "preview_ready")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error(error);
+    return [];
+  }
+
+  return (data ?? [])
+    .filter((job) => job.draft_data && typeof job.draft_data === "object")
+    .map((job) => ({
+      jobId: job.id,
+      title: (job.draft_data as any)?.title || "Scène importée",
+      author: (job.draft_data as any)?.author || null,
+      created_at: job.created_at,
+      draft_data: job.draft_data,
+    }));
+}
+
 
 
 

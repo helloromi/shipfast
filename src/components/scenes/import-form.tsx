@@ -173,14 +173,12 @@ export function ImportForm() {
         uploads.push(uploadData.path);
       }
 
-      setProcessing({ stage: "downloading", progress: 0.22, detail: "" });
-
-      // Étape 2 : Envoyer la liste des fichiers à l'API pour traitement
+      // Étape 2 : Lancer l'import en arrière-plan
       const response = await fetch("/api/scenes/import", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Import-Stream": "1",
+          "X-Import-Background": "1",
         },
         body: JSON.stringify({
           filePaths: uploads,
@@ -188,50 +186,19 @@ export function ImportForm() {
         }),
       });
 
-      let finalSceneId: string | undefined;
-      let streamError: string | undefined;
-      let parsedDraft: ParsedScene | undefined;
+      const data = await response.json();
 
-      await consumeNdjsonStream(response, (evt) => {
-        if (evt.type === "progress") {
-          const stage: ProcessingStage = evt.stage;
-          const progress = typeof evt.progress === "number" ? evt.progress : undefined;
-          const detailParts: string[] = [];
-          if (evt.fileName) detailParts.push(evt.fileName);
-          if (evt.current && evt.total) detailParts.push(`${evt.current}/${evt.total}`);
-          if (evt.page && evt.totalPages) detailParts.push(`page ${evt.page}/${evt.totalPages}`);
-          const detail = detailParts.length ? detailParts.join(" • ") : evt.message || "";
-          setProcessing((prev) => {
-            const prevProgress = typeof prev.progress === "number" ? prev.progress : 0;
-            const nextProgress =
-              typeof progress === "number" ? Math.max(prevProgress, Math.max(0, Math.min(1, progress))) : prev.progress;
-            return { stage, progress: nextProgress, detail };
-          });
-        }
-
-        if (evt.type === "done") {
-          if (evt.mode === "create") finalSceneId = evt.sceneId;
-          if (evt.mode === "preview") parsedDraft = evt.draft;
-        }
-
-        if (evt.type === "error") {
-          streamError = evt.details || evt.error;
-        }
-      });
-
-      // Nettoyer les fichiers après traitement (même en cas d'erreur)
-      if (uploads.length) {
-        await supabase.storage.from("scene-imports").remove(uploads);
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || data.details || t.scenes.import.errors.generic);
       }
 
-      if (streamError) throw new Error(streamError);
-      if (!parsedDraft) throw new Error(t.scenes.import.errors.generic);
-
-      setDraft(parsedDraft);
-      setDraftTitle(parsedDraft.title || "");
-      setDraftAuthor(parsedDraft.author || "");
-      setSelectedOrders(new Set(parsedDraft.lines.map((l) => l.order)));
-      setProcessing({ stage: "review", progress: 1, detail: "" });
+      // Afficher un message de succès et réinitialiser
+      setToast({
+        message: "Import lancé en arrière-plan. Vous pouvez continuer à naviguer. Vous serez notifié quand le preview sera prêt.",
+        variant: "success",
+      });
+      setFiles([]);
+      setProcessing({ stage: "idle" });
     } catch (error: any) {
       console.error("Erreur lors de l'import:", error);
       setProcessing({

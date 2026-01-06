@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { fetchWorks, searchWorks, fetchUserWorkAverages } from "@/lib/queries/works";
-import { getSupabaseSessionUser, fetchUserPrivateScenes } from "@/lib/queries/scenes";
+import { getSupabaseSessionUser, fetchUserPrivateScenes, fetchPendingImports } from "@/lib/queries/scenes";
 import { SearchBar } from "@/components/works/search-bar";
 import { ImportForm } from "@/components/scenes/import-form";
 import { t } from "@/locales/fr";
@@ -19,10 +19,11 @@ export default async function BibliothequePage({ searchParams }: Props) {
     redirect("/login");
   }
 
-  const [works, averages, privateScenes] = await Promise.all([
+  const [works, averages, privateScenes, pendingImports] = await Promise.all([
     query ? searchWorks(query) : fetchWorks(),
     fetchUserWorkAverages(user.id),
     fetchUserPrivateScenes(user.id),
+    fetchPendingImports(user.id),
   ]);
 
   const averageByWork = new Map(averages.map((item) => [item.workId, item.average]));
@@ -64,7 +65,7 @@ export default async function BibliothequePage({ searchParams }: Props) {
       </section>
 
       {/* Section Mes œuvres importées */}
-      {privateScenes.length > 0 && (
+      {(privateScenes.length > 0 || pendingImports.length > 0) && (
         <section id="mes-oeuvres" className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">
@@ -79,6 +80,32 @@ export default async function BibliothequePage({ searchParams }: Props) {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
+            {/* Imports en attente de validation */}
+            {pendingImports.map((pending) => (
+              <Link
+                key={pending.jobId}
+                href={`/imports/${pending.jobId}/preview`}
+                className="group flex h-full flex-col gap-3 rounded-2xl border border-[#ff6b6b] bg-[#ff6b6b33] p-5 shadow-sm transition hover:-translate-y-[1px] hover:shadow-lg"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-display text-lg font-semibold text-[#3b1f4a]">
+                    {pending.title}
+                  </h3>
+                  <span className="rounded-full bg-[#ff6b6b] px-2 py-1 text-xs font-semibold text-white">
+                    À valider
+                  </span>
+                </div>
+                {pending.author && (
+                  <p className="text-sm text-[#524b5a]">
+                    {t.common.labels.par} {pending.author}
+                  </p>
+                )}
+                <p className="text-xs text-[#7a7184]">
+                  Cliquez pour voir le preview et sélectionner les répliques
+                </p>
+              </Link>
+            ))}
+            {/* Scènes privées validées */}
             {privateScenes.map((scene) => (
               <Link
                 key={scene.id}

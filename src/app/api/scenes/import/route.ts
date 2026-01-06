@@ -50,6 +50,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Aucun chemin de fichier fourni" }, { status: 400 });
     }
 
+    // Mode background: créer un job et traiter en arrière-plan
+    const isBackground = request.headers.get("x-import-background") === "1";
+
+    if (isBackground) {
+      // Créer un job dans import_jobs
+      const { data: job, error: jobError } = await supabase
+        .from("import_jobs")
+        .insert({
+          user_id: user.id,
+          status: "pending",
+          file_paths: filePaths,
+        })
+        .select()
+        .single();
+
+      if (jobError || !job) {
+        console.error("Erreur lors de la création du job:", jobError);
+        return NextResponse.json(
+          { error: "Erreur lors de la création du job d'import", details: jobError?.message },
+          { status: 500 }
+        );
+      }
+
+      // Lancer le traitement en arrière-plan (sans bloquer la réponse)
+      processImportJob(job.id, filePaths, supabase).catch((error) => {
+        console.error(`[Import Job ${job.id}] Erreur lors du traitement:`, error);
+      });
+
+      // Retourner immédiatement le job_id
+      return NextResponse.json({
+        success: true,
+        jobId: job.id,
+        message: "Import lancé en arrière-plan",
+      });
+    }
+
     const wantsStream = request.headers.get("x-import-stream") === "1";
 
     if (wantsStream) {
@@ -508,6 +544,128 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+// Fonction pour traiter un job d'import en arrière-plan
+async function processImportJob(
+  jobId: string,
+  filePaths: string[],
+  supabase: ReturnType<typeof createSupabaseServerClient>
+) {
+  try {
+    console.log(`[Import Job ${jobId}] Démarrage du traitement...`);
+
+    // Mettre à jour le job avec status 'processing'
+    await supabase
+      .from("import_jobs")
+      .update({ status: "processing" })
+      .eq("id", jobId);
+
+    // Télécharger et concaténer le texte de tous les fichiers
+    let aggregatedText = "";
+    for (const filePath of filePaths) {
+      console.log(`[Import Job ${jobId}] Téléchargement du fichier: ${filePath}...`);
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from("scene-imports")
+        .download(filePath);
+
+      if (downloadError || !fileData) {
+        console.error(`[Import Job ${jobId}] Erreur lors du téléchargement:`, downloadError);
+        await supabase
+          .from("import_jobs")
+          .update({
+            status: "error",
+            error_message: `Erreur lors du téléchargement: ${downloadError?.message || "inconnue"}`,
+          })
+          .eq("id", jobId);
+        return;
+      }
+
+      const fileName = filePath.split("/").pop() || "file";
+      const file = new File([fileData], fileName, { type: fileData.type });
+
+      console.log(`[Import Job ${jobId}] Extraction du texte depuis ${file.name}...`);
+      const extractionResult = await extractTextFromFile(file);
+
+      if (!extractionResult.success) {
+        console.error(`[Import Job ${jobId}] Erreur lors de l'extraction:`, extractionResult.error);
+        await supabase
+          .from("import_jobs")
+          .update({
+            status: "error",
+            error_message: `Erreur lors de l'extraction: ${extractionResult.error}`,
+          })
+          .eq("id", jobId);
+        return;
+      }
+
+      if (extractionResult.text?.trim()) {
+        aggregatedText += `${extractionResult.text.trim()}\n\n`;
+      }
+    }
+
+    if (!aggregatedText.trim()) {
+      await supabase
+        .from("import_jobs")
+        .update({
+          status: "error",
+          error_message: "Aucun texte n'a pu être extrait des fichiers",
+        })
+        .eq("id", jobId);
+      return;
+    }
+
+    // Parsing avec l'IA
+    console.log(`[Import Job ${jobId}] Parsing du texte avec l'IA...`);
+    const parseResult = await parseTextWithAI(aggregatedText);
+
+    if (!parseResult.success || !parseResult.data) {
+      console.error(`[Import Job ${jobId}] Erreur lors du parsing:`, parseResult.error);
+      await supabase
+        .from("import_jobs")
+        .update({
+          status: "error",
+          error_message: `Erreur lors du parsing: ${parseResult.error || "inconnue"}`,
+        })
+        .eq("id", jobId);
+      return;
+    }
+
+    const parsedScene = parseResult.data;
+
+    // Mettre à jour le job avec status 'preview_ready' et le draft_data
+    console.log(`[Import Job ${jobId}] Preview prêt, mise à jour du job...`);
+    const { error: updateError } = await supabase
+      .from("import_jobs")
+      .update({
+        status: "preview_ready",
+        draft_data: parsedScene as any,
+      })
+      .eq("id", jobId);
+
+    if (updateError) {
+      console.error(`[Import Job ${jobId}] Erreur lors de la mise à jour:`, updateError);
+      await supabase
+        .from("import_jobs")
+        .update({
+          status: "error",
+          error_message: `Erreur lors de la mise à jour: ${updateError.message}`,
+        })
+        .eq("id", jobId);
+      return;
+    }
+
+    console.log(`[Import Job ${jobId}] Traitement terminé avec succès`);
+  } catch (error: any) {
+    console.error(`[Import Job ${jobId}] Erreur lors du traitement:`, error);
+    await supabase
+      .from("import_jobs")
+      .update({
+        status: "error",
+        error_message: `Erreur interne: ${error.message || "inconnue"}`,
+      })
+      .eq("id", jobId);
   }
 }
 
