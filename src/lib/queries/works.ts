@@ -31,9 +31,12 @@ type WorkAverage = {
   average: number;
 };
 
-export async function fetchWorks(): Promise<(Work & { scenesCount: number })[]> {
+export async function fetchWorks(
+  authorFilter?: string,
+  sortBy: "title" | "scenes" | "mastery" = "title"
+): Promise<(Work & { scenesCount: number })[]> {
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("works")
     .select(
       `
@@ -43,8 +46,24 @@ export async function fetchWorks(): Promise<(Work & { scenesCount: number })[]> 
       summary,
       scenes (id)
       `
-    )
-    .order("title", { ascending: true });
+    );
+
+  if (authorFilter && authorFilter !== "all") {
+    query = query.eq("author", authorFilter);
+  }
+
+  // Tri
+  if (sortBy === "title") {
+    query = query.order("title", { ascending: true });
+  } else if (sortBy === "scenes") {
+    // Pour le tri par nombre de scènes, on récupère tout et on trie après
+    query = query.order("title", { ascending: true });
+  } else {
+    // Pour la maîtrise, on trie aussi après
+    query = query.order("title", { ascending: true });
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error(error);
@@ -53,24 +72,35 @@ export async function fetchWorks(): Promise<(Work & { scenesCount: number })[]> 
 
   if (!data) return [];
 
-  return data.map((work: any) => ({
+  let works = data.map((work: any) => ({
     id: work.id,
     title: work.title,
     author: work.author,
     summary: work.summary,
     scenesCount: Array.isArray(work.scenes) ? work.scenes.length : 0,
   }));
+
+  // Tri par nombre de scènes ou maîtrise (fait après car nécessite le calcul)
+  if (sortBy === "scenes") {
+    works = works.sort((a, b) => b.scenesCount - a.scenesCount);
+  }
+
+  return works;
 }
 
-export async function searchWorks(query: string): Promise<(Work & { scenesCount: number })[]> {
-  if (!query || query.trim().length === 0) {
-    return fetchWorks();
+export async function searchWorks(
+  searchQuery: string,
+  authorFilter?: string,
+  sortBy: "title" | "scenes" | "mastery" = "title"
+): Promise<(Work & { scenesCount: number })[]> {
+  if (!searchQuery || searchQuery.trim().length === 0) {
+    return fetchWorks(authorFilter, sortBy);
   }
 
   const supabase = await createSupabaseServerClient();
-  const searchTerm = `%${query.trim()}%`;
+  const searchTerm = `%${searchQuery.trim()}%`;
   
-  const { data, error } = await supabase
+  let query = supabase
     .from("works")
     .select(
       `
@@ -81,8 +111,19 @@ export async function searchWorks(query: string): Promise<(Work & { scenesCount:
       scenes (id)
       `
     )
-    .or(`title.ilike.${searchTerm},author.ilike.${searchTerm}`)
-    .order("title", { ascending: true });
+    .or(`title.ilike.${searchTerm},author.ilike.${searchTerm}`);
+
+  if (authorFilter && authorFilter !== "all") {
+    query = query.eq("author", authorFilter);
+  }
+
+  if (sortBy === "title") {
+    query = query.order("title", { ascending: true });
+  } else {
+    query = query.order("title", { ascending: true });
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error(error);
@@ -91,13 +132,19 @@ export async function searchWorks(query: string): Promise<(Work & { scenesCount:
 
   if (!data) return [];
 
-  return data.map((work: any) => ({
+  let works = data.map((work: any) => ({
     id: work.id,
     title: work.title,
     author: work.author,
     summary: work.summary,
     scenesCount: Array.isArray(work.scenes) ? work.scenes.length : 0,
   }));
+
+  if (sortBy === "scenes") {
+    works = works.sort((a, b) => b.scenesCount - a.scenesCount);
+  }
+
+  return works;
 }
 
 export async function fetchWorkWithScenes(workId: string): Promise<WorkWithScenes | null> {
@@ -288,6 +335,33 @@ export async function fetchUserWorkAverages(userId: string): Promise<WorkAverage
     workId,
     average: count ? Math.round((sum / count) * 100) / 100 : 0,
   }));
+}
+
+/**
+ * Récupère les IDs des œuvres qui ont des scènes actives (en cours de travail) pour un utilisateur
+ */
+export async function fetchWorksWithActiveScenes(userId: string): Promise<Set<string>> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("user_line_feedback")
+    .select("lines!inner(scene_id, scenes!inner(work_id))")
+    .eq("user_id", userId)
+    .returns<{ lines: { scene_id: string; scenes: { work_id: string | null } | null } | null }[]>();
+
+  if (error || !data) {
+    console.error(error);
+    return new Set();
+  }
+
+  const workIds = new Set<string>();
+  for (const row of data) {
+    const workId = row.lines?.scenes?.work_id;
+    if (workId) {
+      workIds.add(workId);
+    }
+  }
+
+  return workIds;
 }
 
 

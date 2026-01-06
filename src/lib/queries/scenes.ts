@@ -317,6 +317,33 @@ export async function fetchPendingImports(userId: string): Promise<PendingImport
     }));
 }
 
+/**
+ * Récupère les IDs des scènes actives (en cours de travail) pour un utilisateur
+ */
+export async function fetchActiveSceneIds(userId: string): Promise<Set<string>> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("user_line_feedback")
+    .select("lines!inner(scene_id)")
+    .eq("user_id", userId)
+    .returns<{ lines: { scene_id: string } | null }[]>();
+
+  if (error || !data) {
+    console.error(error);
+    return new Set();
+  }
+
+  const sceneIds = new Set<string>();
+  for (const row of data) {
+    const sceneId = row.lines?.scene_id;
+    if (sceneId) {
+      sceneIds.add(sceneId);
+    }
+  }
+
+  return sceneIds;
+}
+
 
 
 
