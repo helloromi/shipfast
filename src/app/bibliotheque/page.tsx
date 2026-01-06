@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { fetchWorks, searchWorks, fetchUserWorkAverages } from "@/lib/queries/works";
 import { getSupabaseSessionUser, fetchUserPrivateScenes, fetchPendingImports } from "@/lib/queries/scenes";
 import { SearchBar } from "@/components/works/search-bar";
-import { ImportForm } from "@/components/scenes/import-form";
 import { t } from "@/locales/fr";
 
 type Props = {
@@ -125,12 +124,37 @@ export default async function BibliothequePage({ searchParams }: Props) {
 
           {/* Colonne Import */}
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <p className="text-sm font-semibold text-[#3b1f4a]">
-                Vous ne trouvez pas votre œuvre ? Vous pouvez directement l'importer ici.
-              </p>
-            </div>
-            <ImportForm />
+            <p className="text-sm text-[#524b5a] leading-relaxed">
+              Vous ne trouvez pas votre œuvre ? Vous pouvez directement l'importer ici.
+            </p>
+            <Link
+              href="/scenes/import"
+              className="group flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[#e7e1d9] bg-white/90 p-8 transition hover:border-[#3b1f4a] hover:bg-[#3b1f4a08]"
+            >
+              <div className="rounded-full bg-[#f4c95d33] p-4">
+                <svg
+                  className="h-8 w-8 text-[#3b1f4a]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
+                </svg>
+              </div>
+              <div className="flex flex-col items-center gap-1 text-center">
+                <p className="text-sm font-semibold text-[#1c1b1f]">
+                  Importer une scène
+                </p>
+                <p className="text-xs text-[#7a7184]">
+                  Formats : JPG, PNG, WEBP, PDF
+                </p>
+              </div>
+            </Link>
           </div>
         </div>
 
