@@ -551,7 +551,7 @@ export async function POST(request: NextRequest) {
 async function processImportJob(
   jobId: string,
   filePaths: string[],
-  supabase: ReturnType<typeof createSupabaseServerClient>
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>
 ) {
   try {
     console.log(`[Import Job ${jobId}] Démarrage du traitement...`);

@@ -44,23 +44,21 @@ export default async function BibliothequePage({ searchParams }: Props) {
           </p>
         </div>
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <SearchBar />
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">
-              {t.scenes.import.sectionLabel}
-            </p>
-            <h2 className="font-display text-2xl font-semibold text-[#1c1b1f]">
-              {t.scenes.import.title}
-            </h2>
-            <p className="text-sm text-[#524b5a] leading-relaxed">
-              {t.scenes.import.description}
-            </p>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Colonne Recherche */}
+          <div className="flex flex-col gap-4">
+            <SearchBar />
           </div>
-          <ImportForm />
+
+          {/* Colonne Import */}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-semibold text-[#3b1f4a]">
+                Vous ne trouvez pas votre œuvre ? Vous pouvez directement l'importer ici.
+              </p>
+            </div>
+            <ImportForm />
+          </div>
         </div>
       </section>
 
