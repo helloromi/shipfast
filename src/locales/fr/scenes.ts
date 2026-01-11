@@ -32,4 +32,20 @@ export const scenes = {
       badge: "Privée",
     },
   },
+  import: {
+    errors: {
+      generic: "Une erreur est survenue lors de l'import.",
+    },
+    success: {
+      message: "Scène créée avec succès !",
+    },
+    review: {
+      fieldTitle: "Titre",
+      fieldAuthor: "Auteur",
+      keptCount: "répliques sélectionnées",
+      selectAll: "Tout sélectionner",
+      selectNone: "Tout désélectionner",
+      create: "Créer la scène",
+    },
+  },
 };
