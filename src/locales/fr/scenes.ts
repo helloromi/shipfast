@@ -19,4 +19,17 @@ export const scenes = {
       title: "Aperçu",
     },
   },
+  works: {
+    bibliotheque: {
+      sectionLabel: "Bibliothèque",
+      title: "Bibliothèque",
+      description: "Explorez les œuvres disponibles et commencez à travailler sur vos scènes préférées.",
+      empty: "Aucune œuvre pour le moment.",
+      scenesCount: "scène",
+      scenesCountPlural: "scènes",
+    },
+    privateScenes: {
+      badge: "Privée",
+    },
+  },
 };
