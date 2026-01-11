@@ -33,6 +33,9 @@ export const scenes = {
     },
   },
   import: {
+    sectionLabel: "Importer",
+    title: "Importer une scène",
+    description: "Importez votre scène depuis un fichier texte ou PDF. Le système détectera automatiquement les personnages et les répliques.",
     errors: {
       generic: "Une erreur est survenue lors de l'import.",
     },
