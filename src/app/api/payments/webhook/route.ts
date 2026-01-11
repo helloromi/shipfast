@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import { syncSubscriptionFromStripe, deleteSubscription } from "@/lib/queries/subscriptions";
 import Stripe from "stripe";
 
 function getWebhookSecret(): string {
@@ -163,6 +164,59 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
       console.error("[WEBHOOK] ERREUR lors du traitement:", error);
       console.error("[WEBHOOK] Stack:", error.stack);
+      return NextResponse.json(
+        { error: error.message || "Internal server error" },
+        { status: 500 }
+      );
+    }
+  }
+  // Gérer les événements d'abonnement
+  else if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated") {
+    const subscription = event.data.object as Stripe.Subscription;
+    console.log("[WEBHOOK] Traitement de", event.type);
+    console.log("[WEBHOOK] Subscription ID:", subscription.id);
+    console.log("[WEBHOOK] Customer ID:", subscription.customer);
+    console.log("[WEBHOOK] Status:", subscription.status);
+
+    try {
+      const supabase = createSupabaseAdminClient();
+      const customerId = typeof subscription.customer === "string" 
+        ? subscription.customer 
+        : subscription.customer.id;
+
+      // Récupérer l'user_id depuis la table user_stripe_customers
+      const { data: customerData } = await supabase
+        .from("user_stripe_customers")
+        .select("user_id")
+        .eq("stripe_customer_id", customerId)
+        .maybeSingle();
+
+      if (!customerData?.user_id) {
+        console.error("[WEBHOOK] ERREUR: Customer ID non trouvé dans la base:", customerId);
+        return NextResponse.json({ error: "Customer not found" }, { status: 400 });
+      }
+
+      await syncSubscriptionFromStripe(subscription, customerData.user_id, customerId);
+      console.log("[WEBHOOK] ✅ Abonnement synchronisé avec succès!");
+    } catch (error: any) {
+      console.error("[WEBHOOK] ERREUR lors de la synchronisation de l'abonnement:", error);
+      return NextResponse.json(
+        { error: error.message || "Internal server error" },
+        { status: 500 }
+      );
+    }
+  }
+  // Gérer la suppression d'abonnement
+  else if (event.type === "customer.subscription.deleted") {
+    const subscription = event.data.object as Stripe.Subscription;
+    console.log("[WEBHOOK] Traitement de customer.subscription.deleted");
+    console.log("[WEBHOOK] Subscription ID:", subscription.id);
+
+    try {
+      await deleteSubscription(subscription.id);
+      console.log("[WEBHOOK] ✅ Abonnement supprimé avec succès!");
+    } catch (error: any) {
+      console.error("[WEBHOOK] ERREUR lors de la suppression de l'abonnement:", error);
       return NextResponse.json(
         { error: error.message || "Internal server error" },
         { status: 500 }

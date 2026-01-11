@@ -6,6 +6,7 @@ import { login } from "./login";
 import { pricing } from "./pricing";
 import { scenes } from "./scenes";
 import { stats } from "./stats";
+import { account } from "./account";
 
 export const t = {
   common,
@@ -16,6 +17,7 @@ export const t = {
   learn,
   stats,
   pricing,
+  account,
 };
 
 export type Translations = typeof t;

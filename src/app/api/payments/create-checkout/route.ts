@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getStripe } from "@/lib/stripe/client";
 import { getSiteUrl } from "@/lib/url";
+import { getOrCreateStripeCustomer } from "@/lib/stripe/subscriptions";
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { workId, sceneId } = body;
+    const { workId, sceneId, mode = "subscription" } = body; // mode: "payment" ou "subscription"
 
     if (!workId && !sceneId) {
       return NextResponse.json(
@@ -88,7 +89,13 @@ export async function POST(request: NextRequest) {
     const successUrl = `${siteUrl}/api/payments/success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${siteUrl}/scenes`;
 
-    const session = await stripe.checkout.sessions.create({
+    // Pour les abonnements, créer ou récupérer le customer Stripe
+    let customerId: string | undefined;
+    if (mode === "subscription") {
+      customerId = await getOrCreateStripeCustomer(user.id, user.email);
+    }
+
+    const sessionConfig: any = {
       payment_method_types: ["card"],
       line_items: [
         {
@@ -99,11 +106,16 @@ export async function POST(request: NextRequest) {
               description: description || (sceneId ? "Débloquer l'accès à cette scène" : `Débloquer l'accès à cette œuvre (${scenesCount} scène${scenesCount > 1 ? "s" : ""})`),
             },
             unit_amount: totalPriceInCents,
+            ...(mode === "subscription" && {
+              recurring: {
+                interval: "month", // Abonnement mensuel
+              },
+            }),
           },
           quantity: 1,
         },
       ],
-      mode: "payment",
+      mode: mode as "payment" | "subscription",
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: {
@@ -113,7 +125,14 @@ export async function POST(request: NextRequest) {
         ...(sceneId && { scene_id: sceneId }),
         scenes_count: scenesCount.toString(),
       },
-    });
+    };
+
+    // Ajouter le customer pour les abonnements
+    if (mode === "subscription" && customerId) {
+      sessionConfig.customer = customerId;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
 
     return NextResponse.json({ sessionId: session.id, url: session.url });
   } catch (error: any) {
