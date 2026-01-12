@@ -123,6 +123,8 @@ export async function fetchSceneWithRelations(id: string): Promise<SceneWithRela
         author,
         summary,
         chapter,
+        is_private,
+        owner_user_id,
         works ( id, title ),
         characters ( id, name ),
         lines (

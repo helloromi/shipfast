@@ -53,6 +53,25 @@ export default async function SceneDetailPage({ params }: Props) {
             {t.common.labels.chapitre} : {scene.chapter}
           </p>
         )}
+        {user && (
+          <div className="mt-2">
+            {scene.is_private && scene.owner_user_id === user.id ? (
+              <Link
+                href={`/scenes/${scene.id}/edit`}
+                className="inline-flex items-center gap-2 rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:-translate-y-[1px] hover:border-[#3b1f4a66]"
+              >
+                Modifier le texte
+              </Link>
+            ) : !scene.is_private ? (
+              <Link
+                href={`/scenes/${scene.id}/edit`}
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-[#ff6b6b33] transition hover:-translate-y-[1px]"
+              >
+                Créer une copie modifiable
+              </Link>
+            ) : null}
+          </div>
+        )}
         {lastCharacterId && (
           <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#f4c95d33] px-3 py-1 text-xs font-semibold text-[#3b1f4a]">
             {t.common.labels.personnageEnCours} : {lastCharacterName ?? "—"}
