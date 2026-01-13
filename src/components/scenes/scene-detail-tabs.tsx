@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Tabs } from "@/components/ui/tabs";
 import { SceneStatsDetail } from "@/components/stats/scene-stats-detail";
+import { LineNoteEditor } from "@/components/scenes/line-note-editor";
 import { SceneWithRelations } from "@/types/scenes";
 import { SceneStats, LineMasteryPoint } from "@/types/stats";
+import { NotesByLineId } from "@/lib/queries/notes";
 import { t } from "@/locales/fr";
 
 type SceneDetailTabsProps = {
@@ -23,6 +25,7 @@ type SceneDetailTabsProps = {
     text: string;
     characters: { name: string } | null;
   }>;
+  notesByLineId: NotesByLineId;
 };
 
 export function SceneDetailTabs({
@@ -34,6 +37,7 @@ export function SceneDetailTabs({
   lastCharacterId,
   lastCharacterName,
   sortedLines,
+  notesByLineId,
 }: SceneDetailTabsProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -85,6 +89,13 @@ export function SceneDetailTabs({
                   {line.characters?.name ?? t.common.labels.personnage}
                 </div>
                 <p className="text-sm text-[#1c1b1f]">{line.text}</p>
+                {user && (
+                  <LineNoteEditor
+                    lineId={line.id}
+                    userId={user.id}
+                    initialNote={notesByLineId[line.id] ?? ""}
+                  />
+                )}
               </div>
             ))
           )}

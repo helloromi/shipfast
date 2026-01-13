@@ -23,6 +23,12 @@ export const scenes = {
     apercu: {
       title: "Aperçu",
     },
+    notes: {
+      notePerso: "Note perso",
+      ajoutee: "Ajoutée",
+      aucune: "Aucune",
+      placeholder: "Sous-texte, intention, déplacement, didascalie ajoutée…",
+    },
     reglages: {
       modifierTexte: "Modifier le texte",
       changerPersonnage: "Changer de personnage",

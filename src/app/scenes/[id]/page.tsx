@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { fetchSceneWithRelations, fetchUserProgressScenes, getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { fetchLineMastery, fetchSceneStats } from "@/lib/queries/stats";
+import { fetchUserLineNotes } from "@/lib/queries/notes";
 import { SceneDetailTabs } from "@/components/scenes/scene-detail-tabs";
 import { t } from "@/locales/fr";
 import { hasAccess } from "@/lib/queries/access";
@@ -46,8 +47,10 @@ export default async function SceneDetailPage({ params }: Props) {
   const lastCharacterId = userProgress?.lastCharacterId;
   const lastCharacterName = userProgress?.lastCharacterName;
 
-  const lineMastery =
-    user && lastCharacterId ? await fetchLineMastery(user.id, id, lastCharacterId) : [];
+  const [lineMastery, notesByLineId] = await Promise.all([
+    user && lastCharacterId ? fetchLineMastery(user.id, id, lastCharacterId) : Promise.resolve([]),
+    user ? fetchUserLineNotes(user.id, sortedLines.map((l) => l.id)) : Promise.resolve({}),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -88,6 +91,7 @@ export default async function SceneDetailPage({ params }: Props) {
           text: line.text,
           characters: line.characters,
         }))}
+        notesByLineId={notesByLineId}
       />
 
       <div>
