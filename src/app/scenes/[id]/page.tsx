@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { fetchSceneWithRelations, fetchUserProgressScenes, getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { fetchLineMastery, fetchSceneStats } from "@/lib/queries/stats";
 import { SceneStatsDetail } from "@/components/stats/scene-stats-detail";
 import { t } from "@/locales/fr";
+import { hasAccess } from "@/lib/queries/access";
+import { ensurePersonalSceneForCurrentUser } from "@/lib/utils/personal-scene";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -22,6 +24,18 @@ export default async function SceneDetailPage({ params }: Props) {
   }
 
   const user = await getSupabaseSessionUser();
+
+  // Si un user a accès à une scène publique, on travaille sur sa copie perso (éditable) + historique migré.
+  if (user && !scene.is_private) {
+    const access = await hasAccess(user.id, scene.work_id ?? undefined, scene.id);
+    if (access) {
+      const ensured = await ensurePersonalSceneForCurrentUser(scene.id);
+      if (ensured.ok && ensured.personalSceneId !== scene.id) {
+        redirect(`/scenes/${ensured.personalSceneId}`);
+      }
+    }
+  }
+
   const [userProgress, sceneStats] = await Promise.all([
     user ? fetchUserProgressScenes(user.id).then((p) => p.find((p) => p.sceneId === id)) : Promise.resolve(null),
     user ? fetchSceneStats(user.id, id) : Promise.resolve(null),
@@ -61,13 +75,6 @@ export default async function SceneDetailPage({ params }: Props) {
                 className="inline-flex items-center gap-2 rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:-translate-y-[1px] hover:border-[#3b1f4a66]"
               >
                 Modifier le texte
-              </Link>
-            ) : !scene.is_private ? (
-              <Link
-                href={`/scenes/${scene.id}/edit`}
-                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-[#ff6b6b33] transition hover:-translate-y-[1px]"
-              >
-                Créer une copie modifiable
               </Link>
             ) : null}
           </div>

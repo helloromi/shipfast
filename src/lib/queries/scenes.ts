@@ -64,7 +64,7 @@ export async function fetchScenes(): Promise<Scene[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("scenes")
-    .select("id, work_id, title, author, summary, chapter, is_private, owner_user_id")
+    .select("id, work_id, title, author, summary, chapter, is_private, owner_user_id, source_scene_id")
     .eq("is_private", false)
     .order("title", { ascending: true });
 
@@ -82,6 +82,7 @@ export async function fetchScenes(): Promise<Scene[]> {
     chapter: scene.chapter,
     is_private: scene.is_private ?? false,
     owner_user_id: scene.owner_user_id ?? null,
+    source_scene_id: (scene as any).source_scene_id ?? null,
   }));
 }
 
@@ -89,7 +90,7 @@ export async function fetchUserPrivateScenes(userId: string): Promise<Scene[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("scenes")
-    .select("id, work_id, title, author, summary, chapter, is_private, owner_user_id")
+    .select("id, work_id, title, author, summary, chapter, is_private, owner_user_id, source_scene_id")
     .eq("is_private", true)
     .eq("owner_user_id", userId)
     .order("title", { ascending: true });
@@ -108,6 +109,7 @@ export async function fetchUserPrivateScenes(userId: string): Promise<Scene[]> {
     chapter: scene.chapter,
     is_private: scene.is_private ?? true,
     owner_user_id: scene.owner_user_id ?? null,
+    source_scene_id: (scene as any).source_scene_id ?? null,
   }));
 }
 
@@ -125,6 +127,7 @@ export async function fetchSceneWithRelations(id: string): Promise<SceneWithRela
         chapter,
         is_private,
         owner_user_id,
+        source_scene_id,
         works ( id, title ),
         characters ( id, name ),
         lines (

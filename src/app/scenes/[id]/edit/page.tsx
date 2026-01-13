@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 
 import { fetchSceneWithRelations, getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { isAdmin } from "@/lib/utils/admin";
-import { ForkSceneButton } from "@/components/scenes/fork-scene-button";
 import { SceneEditor } from "@/components/scenes/scene-editor";
 
 type Props = {
@@ -22,6 +21,11 @@ export default async function SceneEditPage({ params }: Props) {
   const scene = await fetchSceneWithRelations(sceneId);
   if (!scene) notFound();
 
+  // Les scènes publiques passent par /scenes/[id] (qui auto-fork si accès).
+  if (!scene.is_private) {
+    redirect(`/scenes/${sceneId}`);
+  }
+
   const admin = await isAdmin(user.id);
   const canEdit = Boolean(scene.is_private && (scene.owner_user_id === user.id || admin));
 
@@ -38,20 +42,6 @@ export default async function SceneEditPage({ params }: Props) {
           Ici tu peux modifier les personnages et les répliques (ajout, suppression, réordonnancement).
         </p>
       </div>
-
-      {!scene.is_private && (
-        <div className="rounded-2xl border border-[#e7e1d9] bg-white/92 p-5 shadow-sm shadow-[#3b1f4a14]">
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-semibold text-[#1c1b1f]">
-              Cette scène est publique.
-            </p>
-            <p className="text-sm text-[#524b5a]">
-              Pour l’éditer, on va créer une copie privée modifiable dans ta bibliothèque.
-            </p>
-            <ForkSceneButton sceneId={sceneId} />
-          </div>
-        </div>
-      )}
 
       {scene.is_private && !canEdit && (
         <div className="rounded-2xl border border-[#f2c6c6] bg-[#fff5f5] p-5 text-sm text-[#7a1f1f]">

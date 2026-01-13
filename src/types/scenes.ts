@@ -18,6 +18,7 @@ export type Scene = {
   author: string | null;
   summary: string | null;
   chapter: string | null;
+  source_scene_id?: string | null;
   owner_user_id?: string | null;
   is_private?: boolean;
 };

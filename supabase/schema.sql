@@ -16,6 +16,7 @@ create table if not exists public.scenes (
   author text,
   summary text,
   chapter text,
+  source_scene_id uuid references public.scenes (id) on delete set null,
   created_at timestamptz default now()
 );
 
@@ -38,6 +39,9 @@ create table if not exists public.lines (
 create unique index if not exists lines_scene_order_idx on public.lines (scene_id, "order");
 create index if not exists lines_character_id_idx on public.lines (character_id);
 create index if not exists scenes_work_id_idx on public.scenes (work_id);
+create unique index if not exists scenes_owner_source_unique_idx
+  on public.scenes (owner_user_id, source_scene_id)
+  where is_private = true and source_scene_id is not null;
 
 create table if not exists public.user_line_feedback (
   id uuid primary key default uuid_generate_v4(),

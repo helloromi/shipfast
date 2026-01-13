@@ -4,6 +4,8 @@ import { LearnSession } from "@/components/learn/learn-session";
 import { fetchSceneWithRelations, getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { AccessGate } from "@/components/works/access-gate";
 import { t } from "@/locales/fr";
+import { hasAccess } from "@/lib/queries/access";
+import { ensurePersonalSceneForCurrentUser } from "@/lib/utils/personal-scene";
 
 type Props = {
   params: Promise<{ sceneId: string }>;
@@ -22,6 +24,38 @@ export default async function LearnPage({ params, searchParams }: Props) {
   const scene = await fetchSceneWithRelations(sceneId);
   if (!scene) {
     notFound();
+  }
+
+  // Si le deeplink pointe vers une scène publique et que l'utilisateur a accès,
+  // on redirige vers sa copie perso (et on remappe le personnage par nom).
+  if (!scene.is_private) {
+    const access = await hasAccess(user.id, scene.work_id ?? undefined, scene.id);
+    if (access) {
+      const ensured = await ensurePersonalSceneForCurrentUser(scene.id);
+      if (ensured.ok) {
+        const sourceCharacterName = characterId
+          ? scene.characters.find((c) => c.id === characterId)?.name ?? null
+          : null;
+        const personal = await fetchSceneWithRelations(ensured.personalSceneId);
+        if (!personal) {
+          redirect(`/scenes/${ensured.personalSceneId}`);
+        }
+        const mappedCharacterId =
+          sourceCharacterName
+            ? personal.characters.find((c) => c.name === sourceCharacterName)?.id ?? null
+            : null;
+
+        if (!mappedCharacterId) {
+          redirect(`/scenes/${ensured.personalSceneId}`);
+        }
+
+        const nextParams = new URLSearchParams();
+        nextParams.set("character", mappedCharacterId);
+        if (startLineParam) nextParams.set("startLine", startLineParam);
+        if (endLineParam) nextParams.set("endLine", endLineParam);
+        redirect(`/learn/${ensured.personalSceneId}?${nextParams.toString()}`);
+      }
+    }
   }
 
   if (!characterId) {
