@@ -26,7 +26,7 @@ export const common = {
   },
   buttons: {
     continuer: "Continuer",
-    details: "Détails",
+    details: "Gérer",
     retour: "Retour",
     retourBibliotheque: "Retour à la bibliothèque",
   },

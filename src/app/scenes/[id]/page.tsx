@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { fetchSceneWithRelations, fetchUserProgressScenes, getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { fetchLineMastery, fetchSceneStats } from "@/lib/queries/stats";
-import { SceneStatsDetail } from "@/components/stats/scene-stats-detail";
+import { SceneDetailTabs } from "@/components/scenes/scene-detail-tabs";
 import { t } from "@/locales/fr";
 import { hasAccess } from "@/lib/queries/access";
 import { ensurePersonalSceneForCurrentUser } from "@/lib/utils/personal-scene";
@@ -67,18 +67,6 @@ export default async function SceneDetailPage({ params }: Props) {
             {t.common.labels.chapitre} : {scene.chapter}
           </p>
         )}
-        {user && (
-          <div className="mt-2">
-            {scene.is_private && scene.owner_user_id === user.id ? (
-              <Link
-                href={`/scenes/${scene.id}/edit`}
-                className="inline-flex items-center gap-2 rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:-translate-y-[1px] hover:border-[#3b1f4a66]"
-              >
-                Modifier le texte
-              </Link>
-            ) : null}
-          </div>
-        )}
         {lastCharacterId && (
           <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#f4c95d33] px-3 py-1 text-xs font-semibold text-[#3b1f4a]">
             {t.common.labels.personnageEnCours} : {lastCharacterName ?? "—"}
@@ -86,66 +74,21 @@ export default async function SceneDetailPage({ params }: Props) {
         )}
       </div>
 
-      {user && sceneStats && (
-        <SceneStatsDetail
-          stats={sceneStats}
-          lineMastery={lineMastery}
-          sceneId={id}
-          lastCharacterId={lastCharacterId ?? null}
-          lastCharacterName={lastCharacterName ?? null}
-          hasCharacters={scene.characters.length > 0}
-        />
-      )}
-
-      <div className="flex flex-col gap-3">
-        <h2 className="font-display text-xl font-semibold text-[#3b1f4a]">{t.scenes.detail.personnages.title}</h2>
-        <div className="flex flex-wrap gap-3">
-          {lastCharacterId ? (
-            <>
-              <Link
-                href={`/learn/${scene.id}?character=${lastCharacterId}&characterName=${encodeURIComponent(
-                  lastCharacterName ?? ""
-                )}`}
-                className="inline-flex items-center gap-2 rounded-full bg-[#ff6b6b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a]"
-              >
-                {t.scenes.detail.personnages.continuerEn} {lastCharacterName ?? t.scenes.detail.personnages.monRole}
-              </Link>
-              <div className="w-full text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                {t.scenes.detail.personnages.ouChoisirAutre}
-              </div>
-            </>
-          ) : null}
-          {scene.characters.map((character) => (
-            <Link
-              key={character.id}
-              href={`/learn/${scene.id}?character=${character.id}`}
-              className="inline-flex items-center gap-2 rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:-translate-y-[1px] hover:border-[#3b1f4a66]"
-            >
-              {character.name}
-              <span className="text-xs font-medium text-[#7a7184]">
-                {lastCharacterId === character.id ? t.scenes.detail.personnages.dejaChoisi : t.scenes.detail.personnages.choisirCeRole}
-              </span>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <h2 className="font-display text-xl font-semibold text-[#3b1f4a]">{t.scenes.detail.apercu.title}</h2>
-        <div className="flex flex-col gap-2 rounded-2xl border border-[#e7e1d9] bg-white/92 p-5 shadow-sm shadow-[#3b1f4a14]">
-          {sortedLines.map((line) => (
-            <div
-              key={line.id}
-              className="flex flex-col gap-1 rounded-xl border border-transparent px-3 py-2 transition hover:border-[#e7e1d9]"
-            >
-              <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                {line.characters?.name ?? t.common.labels.personnage}
-              </div>
-              <p className="text-sm text-[#1c1b1f]">{line.text}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      <SceneDetailTabs
+        scene={scene}
+        sceneId={id}
+        user={user}
+        sceneStats={sceneStats}
+        lineMastery={lineMastery}
+        lastCharacterId={lastCharacterId ?? null}
+        lastCharacterName={lastCharacterName ?? null}
+        sortedLines={sortedLines.map((line) => ({
+          id: line.id,
+          order: line.order,
+          text: line.text,
+          characters: line.characters,
+        }))}
+      />
 
       <div>
         <Link

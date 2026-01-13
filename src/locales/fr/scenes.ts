@@ -7,6 +7,11 @@ export const scenes = {
   },
   detail: {
     sectionLabel: "Scène",
+    tabs: {
+      apercu: "Aperçu",
+      statistiques: "Statistiques",
+      reglages: "Réglages",
+    },
     personnages: {
       title: "Personnages",
       continuerEn: "Continuer en",
@@ -17,6 +22,14 @@ export const scenes = {
     },
     apercu: {
       title: "Aperçu",
+    },
+    reglages: {
+      modifierTexte: "Modifier le texte",
+      changerPersonnage: "Changer de personnage",
+      supprimerScene: "Supprimer la scène",
+      confirmerSuppression: "Êtes-vous sûr de vouloir supprimer cette scène ? Cette action supprimera toutes vos données d'apprentissage associées.",
+      confirmer: "Confirmer",
+      annuler: "Annuler",
     },
   },
   works: {
