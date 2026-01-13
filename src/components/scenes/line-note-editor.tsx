@@ -69,18 +69,31 @@ export function LineNoteEditor({ lineId, userId, initialNote }: LineNoteEditorPr
   const hasNote = note.trim().length > 0;
 
   return (
-    <div className="mt-2 rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] p-2">
+    <div className="mt-1.5">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-semibold text-[#3b1f4a] transition hover:bg-white/60"
+        className="flex items-center gap-1.5 text-xs text-[#7a7184] transition hover:text-[#3b1f4a]"
         aria-expanded={isOpen}
       >
-        <span>{t.scenes.detail.notes.notePerso}</span>
-        <span className="text-xs font-semibold text-[#7a7184]">
-          {hasNote ? t.scenes.detail.notes.ajoutee : t.scenes.detail.notes.aucune}
-          <span className="ml-2">{isOpen ? "▲" : "▼"}</span>
+        <svg
+          className="h-3.5 w-3.5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+          />
+        </svg>
+        <span className="text-[10px] font-medium">
+          {hasNote ? t.scenes.detail.notes.ajoutee : t.scenes.detail.notes.notePerso}
         </span>
+        {isOpen && <span className="text-[10px]">▼</span>}
       </button>
       {isOpen && (
         <div className="mt-2">
@@ -88,7 +101,7 @@ export function LineNoteEditor({ lineId, userId, initialNote }: LineNoteEditorPr
             value={note}
             onChange={(e) => handleNoteChange(e.target.value)}
             rows={3}
-            className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
+            className="w-full rounded-lg border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
             placeholder={t.scenes.detail.notes.placeholder}
           />
         </div>

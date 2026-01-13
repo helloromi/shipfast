@@ -86,16 +86,14 @@ export function SceneDetailTabs({
               return (
                 <div
                   key={line.id}
-                  className={`flex flex-col gap-1 rounded-xl border px-3 py-2 transition ${
-                    isUserCharacter
-                      ? "border-[#f4c95d] bg-[#f4c95d33]"
-                      : "border-transparent hover:border-[#e7e1d9]"
-                  }`}
+                  className="flex flex-col gap-1 rounded-xl border border-transparent px-3 py-2 transition hover:border-[#e7e1d9]"
                 >
                   <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
                     {line.characters?.name ?? t.common.labels.personnage}
                   </div>
-                  <p className="text-sm text-[#1c1b1f]">{line.text}</p>
+                  <p className={`text-sm ${isUserCharacter ? "font-semibold" : ""} text-[#1c1b1f]`}>
+                    {line.text}
+                  </p>
                   {user && (
                     <LineNoteEditor
                       lineId={line.id}
