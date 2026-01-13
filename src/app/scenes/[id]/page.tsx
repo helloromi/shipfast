@@ -89,6 +89,7 @@ export default async function SceneDetailPage({ params }: Props) {
           id: line.id,
           order: line.order,
           text: line.text,
+          character_id: line.character_id,
           characters: line.characters,
         }))}
         notesByLineId={notesByLineId}

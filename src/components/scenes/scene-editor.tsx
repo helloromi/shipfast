@@ -166,16 +166,6 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines }
 
   const deleteLine = (id: string) => {
     setLines((prev) => prev.filter((l) => l.id !== id));
-    setNotesByLineId((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-    setOpenNotes((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
   };
 
   const moveLine = (fromIdx: number, toIdx: number) => {

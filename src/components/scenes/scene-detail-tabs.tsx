@@ -23,7 +23,8 @@ type SceneDetailTabsProps = {
     id: string;
     order: number;
     text: string;
-    characters: { name: string } | null;
+    character_id: string;
+    characters: { name: string; id: string } | null;
   }>;
   notesByLineId: NotesByLineId;
 };
@@ -80,24 +81,31 @@ export function SceneDetailTabs({
           {sortedLines.length === 0 ? (
             <p className="text-sm text-[#524b5a]">Aucune réplique disponible.</p>
           ) : (
-            sortedLines.map((line) => (
-              <div
-                key={line.id}
-                className="flex flex-col gap-1 rounded-xl border border-transparent px-3 py-2 transition hover:border-[#e7e1d9]"
-              >
-                <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                  {line.characters?.name ?? t.common.labels.personnage}
+            sortedLines.map((line) => {
+              const isUserCharacter = lastCharacterId && line.character_id === lastCharacterId;
+              return (
+                <div
+                  key={line.id}
+                  className={`flex flex-col gap-1 rounded-xl border px-3 py-2 transition ${
+                    isUserCharacter
+                      ? "border-[#f4c95d] bg-[#f4c95d33]"
+                      : "border-transparent hover:border-[#e7e1d9]"
+                  }`}
+                >
+                  <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                    {line.characters?.name ?? t.common.labels.personnage}
+                  </div>
+                  <p className="text-sm text-[#1c1b1f]">{line.text}</p>
+                  {user && (
+                    <LineNoteEditor
+                      lineId={line.id}
+                      userId={user.id}
+                      initialNote={notesByLineId[line.id] ?? ""}
+                    />
+                  )}
                 </div>
-                <p className="text-sm text-[#1c1b1f]">{line.text}</p>
-                {user && (
-                  <LineNoteEditor
-                    lineId={line.id}
-                    userId={user.id}
-                    initialNote={notesByLineId[line.id] ?? ""}
-                  />
-                )}
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       ),
