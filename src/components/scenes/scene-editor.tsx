@@ -167,13 +167,23 @@ export function SceneEditor({ sceneId, initialCharacters, initialLines }: Props)
       <div className="flex flex-col gap-3 rounded-2xl border border-[#e7e1d9] bg-white/92 p-5 shadow-sm shadow-[#3b1f4a14]">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-display text-xl font-semibold text-[#3b1f4a]">Personnages</h2>
-          <button
-            type="button"
-            onClick={addCharacter}
-            className="rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a66]"
-          >
-            + Ajouter
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void save()}
+              disabled={saving || hasErrors}
+              className="rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-[#ff6b6b33] transition hover:-translate-y-[1px] disabled:opacity-50"
+            >
+              {saving ? "Enregistrement…" : "Enregistrer"}
+            </button>
+            <button
+              type="button"
+              onClick={addCharacter}
+              className="rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a66]"
+            >
+              + Ajouter
+            </button>
+          </div>
         </div>
 
         {characters.length === 0 ? (
