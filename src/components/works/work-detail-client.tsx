@@ -199,7 +199,9 @@ export function WorkDetailClient({ work }: WorkDetailClientProps) {
                   <div className="flex gap-2">
                     {scene.average !== undefined && scene.average > 0 && scene.lastCharacterId ? (
                       <Link
-                        href={`/learn/${scene.id}?character=${scene.lastCharacterId}`}
+                        href={`/learn/${scene.id}?character=${scene.lastCharacterId}&characterName=${encodeURIComponent(
+                          scene.lastCharacterName ?? ""
+                        )}`}
                         className="rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-4 py-2 text-xs font-semibold text-white shadow-md shadow-[#ff6b6b33] transition hover:-translate-y-[1px]"
                       >
                         {t.scenes.works.detail.scenes.continuer}

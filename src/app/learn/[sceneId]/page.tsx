@@ -9,12 +9,12 @@ import { ensurePersonalSceneForCurrentUser } from "@/lib/utils/personal-scene";
 
 type Props = {
   params: Promise<{ sceneId: string }>;
-  searchParams: Promise<{ character?: string; startLine?: string; endLine?: string }>;
+  searchParams: Promise<{ character?: string; characterName?: string; startLine?: string; endLine?: string }>;
 };
 
 export default async function LearnPage({ params, searchParams }: Props) {
   const { sceneId } = await params;
-  const { character: characterId, startLine: startLineParam, endLine: endLineParam } =
+  const { character: characterId, characterName: characterNameParam, startLine: startLineParam, endLine: endLineParam } =
     await searchParams;
   const user = await getSupabaseSessionUser();
   if (!user) {
@@ -33,24 +33,26 @@ export default async function LearnPage({ params, searchParams }: Props) {
     if (access) {
       const ensured = await ensurePersonalSceneForCurrentUser(scene.id);
       if (ensured.ok) {
-        const sourceCharacterName = characterId
-          ? scene.characters.find((c) => c.id === characterId)?.name ?? null
-          : null;
+        const normalizeName = (name: string) => name.trim().toLowerCase();
+
+        const sourceCharacterNameRaw =
+          (characterId ? scene.characters.find((c) => c.id === characterId)?.name : null) ??
+          (typeof characterNameParam === "string" && characterNameParam.trim().length > 0
+            ? characterNameParam
+            : null);
         const personal = await fetchSceneWithRelations(ensured.personalSceneId);
         if (!personal) {
           redirect(`/scenes/${ensured.personalSceneId}`);
         }
-        const mappedCharacterId =
-          sourceCharacterName
-            ? personal.characters.find((c) => c.name === sourceCharacterName)?.id ?? null
-            : null;
+        const mappedCharacterId = sourceCharacterNameRaw
+          ? personal.characters.find((c) => normalizeName(c.name) === normalizeName(sourceCharacterNameRaw))?.id ?? null
+          : null;
 
-        if (!mappedCharacterId) {
-          redirect(`/scenes/${ensured.personalSceneId}`);
-        }
+        const finalCharacterId = mappedCharacterId ?? personal.characters[0]?.id ?? null;
+        if (!finalCharacterId) redirect(`/scenes/${ensured.personalSceneId}`);
 
         const nextParams = new URLSearchParams();
-        nextParams.set("character", mappedCharacterId);
+        nextParams.set("character", finalCharacterId);
         if (startLineParam) nextParams.set("startLine", startLineParam);
         if (endLineParam) nextParams.set("endLine", endLineParam);
         redirect(`/learn/${ensured.personalSceneId}?${nextParams.toString()}`);

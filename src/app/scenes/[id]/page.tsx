@@ -103,7 +103,9 @@ export default async function SceneDetailPage({ params }: Props) {
           {lastCharacterId ? (
             <>
               <Link
-                href={`/learn/${scene.id}?character=${lastCharacterId}`}
+                href={`/learn/${scene.id}?character=${lastCharacterId}&characterName=${encodeURIComponent(
+                  lastCharacterName ?? ""
+                )}`}
                 className="inline-flex items-center gap-2 rounded-full bg-[#ff6b6b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a]"
               >
                 {t.scenes.detail.personnages.continuerEn} {lastCharacterName ?? t.scenes.detail.personnages.monRole}
