@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { fetchSceneWithRelations, getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { isAdmin } from "@/lib/utils/admin";
 import { SceneEditor } from "@/components/scenes/scene-editor";
+import { fetchUserLineNotes } from "@/lib/queries/notes";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -28,6 +29,11 @@ export default async function SceneEditPage({ params }: Props) {
 
   const admin = await isAdmin(user.id);
   const canEdit = Boolean(scene.is_private && (scene.owner_user_id === user.id || admin));
+  const sortedLines = [...scene.lines].sort((a, b) => a.order - b.order);
+  const initialNotesByLineId = await fetchUserLineNotes(
+    user.id,
+    sortedLines.map((l) => l.id)
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -52,8 +58,10 @@ export default async function SceneEditPage({ params }: Props) {
       {scene.is_private && canEdit && (
         <SceneEditor
           sceneId={sceneId}
+          userId={user.id}
           initialCharacters={scene.characters}
-          initialLines={[...scene.lines].sort((a, b) => a.order - b.order)}
+          initialLines={sortedLines}
+          initialNotesByLineId={initialNotesByLineId}
         />
       )}
 

@@ -1,9 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { redirect } from "next/navigation";
 import { getStripe } from "@/lib/stripe/client";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { getUserWorkAccess } from "@/lib/queries/access";
+
+type PurchasedAccessInsert =
+  | { user_id: string; access_type: "purchased"; purchase_id: string; work_id: string; scene_id: null }
+  | { user_id: string; access_type: "purchased"; purchase_id: string; work_id: null; scene_id: string };
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -39,8 +42,6 @@ export async function GET(request: NextRequest) {
 
       // Vérifier et accorder l'accès si nécessaire (fallback si le webhook n'a pas encore été traité)
       if (userId) {
-        const supabase = await createSupabaseServerClient();
-        
         // Vérifier si l'accès existe déjà
         const existingAccess = await getUserWorkAccess(userId, workId, sceneId);
         
@@ -53,18 +54,15 @@ export async function GET(request: NextRequest) {
           // Utiliser le client admin pour contourner RLS et garantir l'insertion
           // La contrainte de la table exige : (work_id IS NOT NULL AND scene_id IS NULL) OR (work_id IS NULL AND scene_id IS NOT NULL)
           const adminSupabase = createSupabaseAdminClient();
-          const accessData: any = {
-            user_id: userId,
-            access_type: "purchased",
-            purchase_id: sessionId,
-          };
+          const accessData: PurchasedAccessInsert | null = workId
+            ? { user_id: userId, access_type: "purchased", purchase_id: sessionId, work_id: workId, scene_id: null }
+            : sceneId
+              ? { user_id: userId, access_type: "purchased", purchase_id: sessionId, work_id: null, scene_id: sceneId }
+              : null;
 
-          if (workId) {
-            accessData.work_id = workId;
-            accessData.scene_id = null;
-          } else if (sceneId) {
-            accessData.scene_id = sceneId;
-            accessData.work_id = null;
+          if (!accessData) {
+            console.warn("[SUCCESS] ⚠️ Ni workId ni sceneId, impossible d'accorder l'accès");
+            redirect("/scenes");
           }
 
           const { data: insertedAccess, error: insertError } = await adminSupabase

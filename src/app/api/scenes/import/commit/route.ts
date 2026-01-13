@@ -10,6 +10,9 @@ type CommitBody = {
   jobId?: string; // Optionnel : ID du job à mettre à jour
 };
 
+type DbCharacter = { id: string; name: string };
+type DbLineInsert = { scene_id: string; character_id: string; text: string; order: number };
+
 function uniqStrings(values: string[]) {
   return Array.from(new Set(values.map((v) => v.trim()).filter(Boolean)));
 }
@@ -93,7 +96,8 @@ export async function POST(request: NextRequest) {
     const { data: sceneCharacters, error: sceneCharsError } = await supabase
       .from("characters")
       .select("id, name")
-      .eq("scene_id", sceneId);
+      .eq("scene_id", sceneId)
+      .returns<DbCharacter[]>();
     if (sceneCharsError) {
       return NextResponse.json(
         { error: "Erreur lors de la récupération des personnages", details: sceneCharsError.message },
@@ -101,24 +105,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const characterMap = new Map<string, string>((sceneCharacters || []).map((c: any) => [c.name, c.id]));
+    const characterMap = new Map<string, string>((sceneCharacters || []).map((c) => [c.name, c.id]));
 
     // 3) Créer les répliques (ré-ordonnées)
     const linesToInsert = keptLines
       .map((l, idx) => {
         const characterId = characterMap.get(l.characterName);
         if (!characterId) return null;
-        return {
+        const row: DbLineInsert = {
           scene_id: sceneId,
           character_id: characterId,
           text: l.text,
           order: idx + 1,
         };
+        return row;
       })
-      .filter(Boolean);
+      .filter((x): x is DbLineInsert => Boolean(x));
 
     if (linesToInsert.length > 0) {
-      const { error: linesError } = await supabase.from("lines").insert(linesToInsert as any[]);
+      const { error: linesError } = await supabase.from("lines").insert(linesToInsert);
       if (linesError) {
         return NextResponse.json(
           { error: "Erreur lors de la création des répliques", details: linesError.message },
@@ -151,9 +156,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, sceneId });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Erreur inconnue";
     return NextResponse.json(
-      { error: "Erreur interne du serveur", details: error?.message || "Erreur inconnue" },
+      { error: "Erreur interne du serveur", details: message },
       { status: 500 }
     );
   }

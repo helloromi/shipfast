@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export async function GET(request: NextRequest) {
   try {
+    void request;
     const supabase = await createSupabaseServerClient();
     const {
       data: { user },
@@ -33,12 +34,13 @@ export async function GET(request: NextRequest) {
       count: jobs?.length || 0,
       jobs: jobs || [],
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Erreur inconnue";
     console.error("Erreur lors de la récupération du statut:", error);
     return NextResponse.json(
       {
         error: "Erreur interne du serveur",
-        details: error.message || "Erreur inconnue",
+        details: message,
       },
       { status: 500 }
     );
@@ -56,20 +58,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { markAsSeen } = body;
+    const body = await request.json().catch(() => null);
+    const markAsSeen =
+      typeof body === "object" && body !== null && "markAsSeen" in body ? (body as { markAsSeen?: unknown }).markAsSeen : undefined;
 
     // Si markAsSeen est true, on peut marquer les imports comme vus
     // Pour l'instant, on ne fait rien car le badge disparaît automatiquement
     // quand l'utilisateur visite la bibliothèque
+    void markAsSeen;
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Erreur inconnue";
     console.error("Erreur lors de la mise à jour du statut:", error);
     return NextResponse.json(
       {
         error: "Erreur interne du serveur",
-        details: error.message || "Erreur inconnue",
+        details: message,
       },
       { status: 500 }
     );

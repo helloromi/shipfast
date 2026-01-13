@@ -66,3 +66,12 @@ export type UserLineFeedback = {
   score: number;
   created_at: string;
 };
+
+export type UserLineNote = {
+  id: string;
+  user_id: string;
+  line_id: string;
+  note: string;
+  created_at: string;
+  updated_at: string;
+};

@@ -7,7 +7,9 @@ import { getStripe } from "@/lib/stripe/client";
  */
 export async function GET(request: NextRequest) {
   try {
-    const stripe = getStripe();
+    // Toucher le client Stripe suffit à valider la configuration (la variable n'a pas besoin d'être utilisée).
+    void getStripe();
+    void request;
     
     // Vérifier que la clé Stripe est configurée
     const hasStripeKey = !!process.env.STRIPE_SECRET_KEY;
@@ -46,11 +48,12 @@ export async function GET(request: NextRequest) {
         ? "Configuration détectée. Vérifiez que le webhook est bien configuré dans Stripe Dashboard."
         : "Configuration incomplète. Vérifiez vos variables d'environnement.",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
       { 
         status: "error", 
-        error: error.message,
+        error: message,
         message: "Erreur lors de la vérification de la configuration"
       },
       { status: 500 }

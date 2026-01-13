@@ -20,6 +20,10 @@ export const learn = {
     didascalies: "Didascalies",
     affichees: "affichées",
     masquees: "masquées",
+    notesPerso: "Notes perso",
+    notePerso: "Note perso",
+    noteAjoutee: "Ajoutée",
+    aucuneNote: "Aucune",
   },
   scores: {
     rate: {

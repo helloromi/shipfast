@@ -22,6 +22,7 @@ type LearnSessionProps = {
   userCharacterName: string;
   lines: LearnLine[];
   userId: string;
+  initialNotesByLineId: Record<string, string>;
 };
 
 type LineState = "hidden" | "revealed" | "scored";
@@ -74,14 +75,8 @@ function renderCue(text: string, lastWords = 5) {
   );
 }
 
-export function LearnSession({
-  sceneTitle,
-  sceneId,
-  characterId,
-  userCharacterName,
-  lines,
-  userId,
-}: LearnSessionProps) {
+export function LearnSession(props: LearnSessionProps) {
+  const { sceneId, characterId, lines, userId, initialNotesByLineId } = props;
   const router = useRouter();
   const searchParams = useSearchParams();
   const { supabase } = useSupabase();
@@ -121,6 +116,7 @@ export function LearnSession({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [notesOpen, setNotesOpen] = useState<Record<string, boolean>>({});
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -505,7 +501,34 @@ export function LearnSession({
     </div>
   );
 
-  const legend = t.learn.scores.legend;
+  const getNote = (lineId: string) => (initialNotesByLineId?.[lineId] ?? "").trim();
+
+  const renderNoteAccordion = (lineId: string) => {
+    const note = getNote(lineId);
+    if (!note) return null;
+    const isOpen = Boolean(notesOpen[lineId]);
+    return (
+      <div className="mt-1 rounded-2xl border border-dashed border-[#e7e1d9] bg-[#f9f7f3] p-3">
+        <button
+          type="button"
+          onClick={() => setNotesOpen((prev) => ({ ...prev, [lineId]: !prev[lineId] }))}
+          className="flex w-full items-center justify-between gap-3 rounded-xl px-2 py-2 text-left text-sm font-semibold text-[#3b1f4a] transition hover:bg-white/60"
+          aria-expanded={isOpen}
+          aria-controls={`note-${lineId}`}
+        >
+          <span>{t.learn.labels.notesPerso}</span>
+          <span className="text-xs font-semibold text-[#7a7184]">
+            {t.learn.labels.noteAjoutee} <span className="ml-2">{isOpen ? "▲" : "▼"}</span>
+          </span>
+        </button>
+        {isOpen && (
+          <div id={`note-${lineId}`} className="mt-2 whitespace-pre-wrap text-sm text-[#1c1b1f]">
+            {note}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderListMode = () => (
     <div className="flex flex-col gap-2">
@@ -546,6 +569,8 @@ export function LearnSession({
                   ? renderCue(line.text, 5)
                   : line.text}
             </p>
+
+            {renderNoteAccordion(line.id)}
 
             {line.isUserLine && canWrite && !isZen && (
               <div className="flex flex-col gap-2">
@@ -628,7 +653,6 @@ export function LearnSession({
 
     const state = lineState[currentFlashcard.id];
     const isHidden = state === "hidden";
-    const isLast = currentIndex >= userLines.length - 1;
     const hinted = isHidden ? renderBlurHint(currentFlashcard.text, hintUsed[currentFlashcard.id] ? PREVIEW_WORDS : 0) : null;
 
     return (
@@ -667,6 +691,8 @@ export function LearnSession({
           )}
           {isHidden ? hinted : currentFlashcard.text}
         </div>
+
+        {renderNoteAccordion(currentFlashcard.id)}
 
         <textarea
           value={drafts[currentFlashcard.id] ?? ""}

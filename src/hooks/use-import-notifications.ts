@@ -10,7 +10,6 @@ export function useImportNotifications() {
   useEffect(() => {
     // Ne pas poller si on est déjà sur la page bibliothèque
     if (pathname === "/bibliotheque") {
-      setHasNotifications(false);
       return;
     }
 
@@ -40,6 +39,8 @@ export function useImportNotifications() {
     return () => clearInterval(interval);
   }, [pathname]);
 
+  // Sur la page bibliothèque, on masque toujours l'indicateur (sans forcer un setState dans l'effet).
+  if (pathname === "/bibliotheque") return false;
   return hasNotifications;
 }
 

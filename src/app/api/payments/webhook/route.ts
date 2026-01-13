@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import Stripe from "stripe";
+import type { PostgrestError } from "@supabase/supabase-js";
 
 function getWebhookSecret(): string {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -31,10 +32,11 @@ export async function POST(request: NextRequest) {
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     console.log("[WEBHOOK] Événement vérifié avec succès:", event.type, "ID:", event.id);
-  } catch (err: any) {
-    console.error("[WEBHOOK] ERREUR: Échec de vérification de signature:", err.message);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[WEBHOOK] ERREUR: Échec de vérification de signature:", message);
     return NextResponse.json(
-      { error: `Webhook Error: ${err.message}` },
+      { error: `Webhook Error: ${message}` },
       { status: 400 }
     );
   }
@@ -108,20 +110,15 @@ export async function POST(request: NextRequest) {
 
       // Créer l'entrée dans user_work_access
       // La contrainte de la table exige : (work_id IS NOT NULL AND scene_id IS NULL) OR (work_id IS NULL AND scene_id IS NOT NULL)
-      const accessData: any = {
-        user_id: userId,
-        access_type: "purchased",
-        purchase_id: session.id,
-      };
+      const accessData =
+        workId
+          ? { user_id: userId, access_type: "purchased" as const, purchase_id: session.id, work_id: workId, scene_id: null as null }
+          : sceneId
+            ? { user_id: userId, access_type: "purchased" as const, purchase_id: session.id, work_id: null as null, scene_id: sceneId }
+            : null;
 
-      if (workId) {
-        accessData.work_id = workId;
-        // S'assurer que scene_id est bien null/undefined
-        accessData.scene_id = null;
-      } else if (sceneId) {
-        accessData.scene_id = sceneId;
-        // S'assurer que work_id est bien null/undefined
-        accessData.work_id = null;
+      if (!accessData) {
+        return NextResponse.json({ error: "work_id or scene_id required" }, { status: 400 });
       }
 
       console.log("[WEBHOOK] Insertion de l'accès:", JSON.stringify(accessData, null, 2));
@@ -133,6 +130,7 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (insertError) {
+        const pgError = insertError as PostgrestError;
         console.error("[WEBHOOK] ERREUR lors de l'insertion:", insertError);
         // Important: renvoyer le détail à Stripe pour diagnostiquer (visible dans Stripe Dashboard)
         // Ne pas inclure de PII; seulement des IDs techniques / messages DB.
@@ -140,10 +138,10 @@ export async function POST(request: NextRequest) {
           {
             error: "Failed to grant access",
             details: {
-              message: insertError.message,
-              code: (insertError as any).code,
-              details: (insertError as any).details,
-              hint: (insertError as any).hint,
+              message: pgError.message,
+              code: pgError.code,
+              details: pgError.details,
+              hint: pgError.hint,
             },
             context: {
               eventId: event.id,
@@ -160,11 +158,12 @@ export async function POST(request: NextRequest) {
       console.log("[WEBHOOK] ✅ Accès accordé avec succès!");
       console.log("[WEBHOOK] Access ID:", insertedAccess?.id);
       console.log("[WEBHOOK] User:", userId, "Work:", workId || "N/A", "Scene:", sceneId || "N/A");
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Internal server error";
       console.error("[WEBHOOK] ERREUR lors du traitement:", error);
-      console.error("[WEBHOOK] Stack:", error.stack);
+      if (error instanceof Error) console.error("[WEBHOOK] Stack:", error.stack);
       return NextResponse.json(
-        { error: error.message || "Internal server error" },
+        { error: message },
         { status: 500 }
       );
     }

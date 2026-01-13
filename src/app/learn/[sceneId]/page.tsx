@@ -6,6 +6,7 @@ import { AccessGate } from "@/components/works/access-gate";
 import { t } from "@/locales/fr";
 import { hasAccess } from "@/lib/queries/access";
 import { ensurePersonalSceneForCurrentUser } from "@/lib/utils/personal-scene";
+import { fetchUserLineNotes } from "@/lib/queries/notes";
 
 type Props = {
   params: Promise<{ sceneId: string }>;
@@ -87,6 +88,11 @@ export default async function LearnPage({ params, searchParams }: Props) {
     isUserLine: line.character_id === character.id,
   }));
 
+  const initialNotesByLineId = await fetchUserLineNotes(
+    user.id,
+    allLines.map((l) => l.id)
+  );
+
   const rangeInfo =
     startLine !== null && endLine !== null && !isNaN(startLine) && !isNaN(endLine)
       ? `Répliques ${startLine}-${endLine} sur ${scene.lines.length}`
@@ -135,6 +141,7 @@ export default async function LearnPage({ params, searchParams }: Props) {
           userCharacterName={character.name}
           lines={lines}
           userId={user.id}
+          initialNotesByLineId={initialNotesByLineId}
         />
       </div>
     </AccessGate>

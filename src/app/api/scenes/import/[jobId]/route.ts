@@ -46,12 +46,13 @@ export async function GET(
         updated_at: job.updated_at,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Erreur inconnue";
     console.error("Erreur lors de la récupération du job:", error);
     return NextResponse.json(
       {
         error: "Erreur interne du serveur",
-        details: error.message || "Erreur inconnue",
+        details: message,
       },
       { status: 500 }
     );
@@ -73,13 +74,16 @@ export async function PATCH(
     }
 
     const { jobId } = await params;
-    const body = await request.json();
-    const { status, scene_id } = body;
+    const body = await request.json().catch(() => null);
+    const status =
+      typeof body === "object" && body !== null && "status" in body ? (body as { status?: unknown }).status : undefined;
+    const scene_id =
+      typeof body === "object" && body !== null && "scene_id" in body ? (body as { scene_id?: unknown }).scene_id : undefined;
 
     // Mettre à jour le job
-    const updateData: any = {};
-    if (status) updateData.status = status;
-    if (scene_id) updateData.scene_id = scene_id;
+    const updateData: { status?: string; scene_id?: string } = {};
+    if (typeof status === "string" && status.trim()) updateData.status = status.trim();
+    if (typeof scene_id === "string" && scene_id.trim()) updateData.scene_id = scene_id.trim();
 
     const { data: job, error } = await supabase
       .from("import_jobs")
@@ -105,12 +109,13 @@ export async function PATCH(
         scene_id: job.scene_id,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Erreur inconnue";
     console.error("Erreur lors de la mise à jour du job:", error);
     return NextResponse.json(
       {
         error: "Erreur interne du serveur",
-        details: error.message || "Erreur inconnue",
+        details: message,
       },
       { status: 500 }
     );

@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Toast } from "@/components/ui/toast";
+import type { NotesByLineId } from "@/lib/queries/notes";
+import { useSupabase } from "@/components/supabase-provider";
 
 type MinimalCharacter = {
   id: string;
@@ -33,8 +35,8 @@ type ToastState = {
 };
 
 function uid() {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  const c = typeof globalThis !== "undefined" ? (globalThis.crypto as Crypto | undefined) : undefined;
+  if (c?.randomUUID) return c.randomUUID();
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
@@ -47,12 +49,15 @@ function move<T>(arr: T[], from: number, to: number) {
 
 type Props = {
   sceneId: string;
+  userId: string;
   initialCharacters: MinimalCharacter[];
   initialLines: MinimalLine[];
+  initialNotesByLineId: NotesByLineId;
 };
 
-export function SceneEditor({ sceneId, initialCharacters, initialLines }: Props) {
+export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, initialNotesByLineId }: Props) {
   const router = useRouter();
+  const { supabase } = useSupabase();
 
   const [characters, setCharacters] = useState<EditorCharacter[]>(
     (initialCharacters ?? []).map((c) => ({ id: c.id, name: c.name ?? "" }))
@@ -60,6 +65,11 @@ export function SceneEditor({ sceneId, initialCharacters, initialLines }: Props)
   const [lines, setLines] = useState<EditorLine[]>(
     (initialLines ?? []).map((l) => ({ id: l.id, characterId: l.character_id, text: l.text ?? "" }))
   );
+
+  const [notesByLineId, setNotesByLineId] = useState<NotesByLineId>(() => initialNotesByLineId ?? {});
+  const [openNotes, setOpenNotes] = useState<Record<string, boolean>>({});
+  const noteSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
+  const persistedLineIdsRef = useRef<Set<string>>(new Set((initialLines ?? []).map((l) => l.id)));
 
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -116,13 +126,77 @@ export function SceneEditor({ sceneId, initialCharacters, initialLines }: Props)
         setToast({ message: data?.error || "Impossible d’enregistrer.", variant: "error" });
         return;
       }
+
+      // Les nouvelles lignes viennent d'être upsertées côté serveur : elles sont maintenant persistées
+      // et on peut enregistrer leurs notes (si l'utilisateur en a ajouté).
+      for (const l of lines) persistedLineIdsRef.current.add(l.id);
+
+      // Best-effort: synchroniser les notes présentes dans l'UI vers la DB (upsert/delete).
+      // On reste best-effort pour ne pas empêcher l'édition des répliques.
+      try {
+        for (const l of lines) {
+          const note = (notesByLineId[l.id] ?? "").trim();
+          if (note.length === 0) {
+            await supabase.from("user_line_notes").delete().eq("user_id", userId).eq("line_id", l.id);
+          } else {
+            await supabase
+              .from("user_line_notes")
+              .upsert({ user_id: userId, line_id: l.id, note }, { onConflict: "user_id,line_id" });
+          }
+        }
+      } catch (err) {
+        console.error("Error syncing notes after saving scene:", err);
+      }
+
       setToast({ message: "Enregistré.", variant: "success" });
       router.refresh();
-    } catch (e: any) {
-      setToast({ message: e?.message || "Erreur réseau.", variant: "error" });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Erreur réseau.";
+      setToast({ message, variant: "error" });
     } finally {
       setSaving(false);
     }
+  };
+
+  const schedulePersistNote = (lineId: string, noteRaw: string) => {
+    if (!persistedLineIdsRef.current.has(lineId)) {
+      // Ligne pas encore en DB (nouvelle réplique pas sauvegardée) -> on garde local, sync à l'enregistrement.
+      return;
+    }
+
+    if (noteSaveTimers.current[lineId]) {
+      clearTimeout(noteSaveTimers.current[lineId] as ReturnType<typeof setTimeout>);
+    }
+
+    noteSaveTimers.current[lineId] = setTimeout(async () => {
+      const note = (noteRaw ?? "").trim();
+      try {
+        if (note.length === 0) {
+          const { error } = await supabase
+            .from("user_line_notes")
+            .delete()
+            .eq("user_id", userId)
+            .eq("line_id", lineId);
+          if (error) {
+            setToast({ message: "Impossible de supprimer la note.", variant: "error" });
+          }
+        } else {
+          const { error } = await supabase
+            .from("user_line_notes")
+            .upsert({ user_id: userId, line_id: lineId, note }, { onConflict: "user_id,line_id" });
+          if (error) {
+            setToast({ message: "Impossible d’enregistrer la note.", variant: "error" });
+          }
+        }
+      } catch (err) {
+        console.error("Error saving note:", err);
+        setToast({ message: "Erreur lors de l’enregistrement de la note.", variant: "error" });
+      }
+    }, 450);
+  };
+
+  const toggleNotes = (lineId: string) => {
+    setOpenNotes((prev) => ({ ...prev, [lineId]: !prev[lineId] }));
   };
 
   const addCharacter = () => {
@@ -155,6 +229,16 @@ export function SceneEditor({ sceneId, initialCharacters, initialLines }: Props)
 
   const deleteLine = (id: string) => {
     setLines((prev) => prev.filter((l) => l.id !== id));
+    setNotesByLineId((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setOpenNotes((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
 
   const moveLine = (fromIdx: number, toIdx: number) => {
@@ -339,6 +423,42 @@ export function SceneEditor({ sceneId, initialCharacters, initialLines }: Props)
                       placeholder="Texte de la réplique"
                     />
                   </div>
+                </div>
+
+                <div className="mt-3 rounded-2xl border border-[#e7e1d9] bg-[#f9f7f3] p-3">
+                  <button
+                    type="button"
+                    onClick={() => toggleNotes(l.id)}
+                    className="flex w-full items-center justify-between gap-3 rounded-xl px-2 py-2 text-left text-sm font-semibold text-[#3b1f4a] transition hover:bg-white/60"
+                    aria-expanded={Boolean(openNotes[l.id])}
+                    aria-controls={`note-${l.id}`}
+                  >
+                    <span>Note perso</span>
+                    <span className="text-xs font-semibold text-[#7a7184]">
+                      {(notesByLineId[l.id] ?? "").trim().length > 0 ? "Ajoutée" : "Aucune"}
+                      <span className="ml-2">{openNotes[l.id] ? "▲" : "▼"}</span>
+                    </span>
+                  </button>
+                  {openNotes[l.id] && (
+                    <div id={`note-${l.id}`} className="mt-2">
+                      <textarea
+                        value={notesByLineId[l.id] ?? ""}
+                        onChange={(e) => {
+                          const nextVal = e.target.value;
+                          setNotesByLineId((prev) => ({ ...prev, [l.id]: nextVal }));
+                          schedulePersistNote(l.id, nextVal);
+                        }}
+                        rows={3}
+                        className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
+                        placeholder="Sous-texte, intention, déplacement, didascalie ajoutée…"
+                      />
+                      {!persistedLineIdsRef.current.has(l.id) && (
+                        <p className="mt-2 text-xs font-medium text-[#7a7184]">
+                          Enregistre d’abord la scène pour sauvegarder cette note.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

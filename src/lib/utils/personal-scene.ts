@@ -192,6 +192,55 @@ async function migrateHistory(args: {
     }
   }
 
+  // Move notes: upsert notes to the new line_id, then delete old rows (avoid unique conflicts).
+  try {
+    const sourceLineIds = (sourceLines ?? []).map((l) => l.id);
+    if (sourceLineIds.length > 0) {
+      const { data: notes, error: notesError } = await supabase
+        .from("user_line_notes")
+        .select("line_id, note")
+        .eq("user_id", userId)
+        .in("line_id", sourceLineIds)
+        .returns<{ line_id: string; note: string }[]>();
+
+      if (notesError) {
+        console.error("Error fetching notes for migration:", notesError);
+      } else if (notes && notes.length > 0) {
+        const orderByOldLineId = new Map<string, number>();
+        for (const l of sourceLines ?? []) orderByOldLineId.set(l.id, l.order);
+
+        for (const n of notes) {
+          const order = orderByOldLineId.get(n.line_id);
+          if (!order) continue;
+          const newLineId = newLineIdByOrder.get(order);
+          if (!newLineId) continue;
+
+          const note = (n.note ?? "").trim();
+          if (!note) continue;
+
+          const { error: upsertError } = await supabase
+            .from("user_line_notes")
+            .upsert({ user_id: userId, line_id: newLineId, note }, { onConflict: "user_id,line_id" });
+          if (upsertError) {
+            console.error("Error upserting note during migration:", upsertError);
+            continue;
+          }
+
+          const { error: deleteError } = await supabase
+            .from("user_line_notes")
+            .delete()
+            .eq("user_id", userId)
+            .eq("line_id", n.line_id);
+          if (deleteError) {
+            console.error("Error deleting old note during migration:", deleteError);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error migrating notes:", err);
+  }
+
   // Move sessions: update scene_id + character_id (map by character name).
   const [{ data: sourceCharacters }, { data: personalCharacters }] = await Promise.all([
     supabase
