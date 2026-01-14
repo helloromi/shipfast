@@ -29,6 +29,29 @@ export const scenes = {
       aucune: "Aucune",
       placeholder: "Sous-texte, intention, déplacement, didascalie ajoutée…",
     },
+    highlights: {
+      title: "Notes surlignées",
+      passage: "Passage",
+      overlapError: "Ce surlignage chevauche un autre passage. Choisis une plage distincte.",
+      savedToast: "Sauvegardé.",
+      deletedToast: "Surlignage supprimé.",
+      labels: {
+        free: "Libre",
+        subtext: "Sous-texte",
+        intonation: "Intonation",
+        play: "Jeu",
+      },
+      placeholders: {
+        free: "Note libre…",
+        subtext: "Ce que le personnage veut vraiment dire…",
+        intonation: "Rythme, accentuation, pauses…",
+        play: "Actions, intention physique, énergie…",
+      },
+      actions: {
+        delete: "Supprimer le surlignage",
+        close: "Fermer",
+      },
+    },
     reglages: {
       modifierTexte: "Modifier le texte",
       changerPersonnage: "Changer de personnage",

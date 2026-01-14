@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Tabs } from "@/components/ui/tabs";
 import { SceneStatsDetail } from "@/components/stats/scene-stats-detail";
-import { LineNoteEditor } from "@/components/scenes/line-note-editor";
+import { LineHighlightsEditor } from "@/components/scenes/line-highlights-editor";
 import { SceneWithRelations } from "@/types/scenes";
 import { SceneStats, LineMasteryPoint } from "@/types/stats";
-import { NotesByLineId } from "@/lib/queries/notes";
+import { HighlightsByLineId } from "@/lib/queries/notes";
 import { t } from "@/locales/fr";
 
 type SceneDetailTabsProps = {
@@ -26,7 +26,7 @@ type SceneDetailTabsProps = {
     character_id: string;
     characters: { name: string; id: string } | null;
   }>;
-  notesByLineId: NotesByLineId;
+  highlightsByLineId: HighlightsByLineId;
 };
 
 export function SceneDetailTabs({
@@ -38,7 +38,7 @@ export function SceneDetailTabs({
   lastCharacterId,
   lastCharacterName,
   sortedLines,
-  notesByLineId,
+  highlightsByLineId,
 }: SceneDetailTabsProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -83,6 +83,7 @@ export function SceneDetailTabs({
           ) : (
             sortedLines.map((line) => {
               const isUserCharacter = lastCharacterId && line.character_id === lastCharacterId;
+              const highlights = highlightsByLineId?.[line.id] ?? [];
               return (
                 <div
                   key={line.id}
@@ -91,15 +92,17 @@ export function SceneDetailTabs({
                   <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
                     {line.characters?.name ?? t.common.labels.personnage}
                   </div>
-                  <p className={`text-sm ${isUserCharacter ? "font-semibold" : ""} text-[#1c1b1f]`}>
-                    {line.text}
-                  </p>
-                  {user && (
-                    <LineNoteEditor
+                  {user ? (
+                    <LineHighlightsEditor
                       lineId={line.id}
                       userId={user.id}
-                      initialNote={notesByLineId[line.id] ?? ""}
+                      text={line.text}
+                      initialHighlights={highlights}
+                      isUserCharacter={Boolean(isUserCharacter)}
+                      className={`text-sm ${isUserCharacter ? "font-semibold" : ""} text-[#1c1b1f]`}
                     />
+                  ) : (
+                    <p className={`text-sm ${isUserCharacter ? "font-semibold" : ""} text-[#1c1b1f]`}>{line.text}</p>
                   )}
                 </div>
               );

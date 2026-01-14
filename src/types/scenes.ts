@@ -75,3 +75,18 @@ export type UserLineNote = {
   created_at: string;
   updated_at: string;
 };
+
+export type UserLineHighlight = {
+  id: string;
+  user_id: string;
+  line_id: string;
+  start_offset: number;
+  end_offset: number;
+  selected_text: string;
+  note_free: string | null;
+  note_subtext: string | null;
+  note_intonation: string | null;
+  note_play: string | null;
+  created_at: string;
+  updated_at: string;
+};

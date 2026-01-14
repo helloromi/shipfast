@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { fetchSceneWithRelations, fetchUserProgressScenes, getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { fetchLineMastery, fetchSceneStats } from "@/lib/queries/stats";
-import { fetchUserLineNotes } from "@/lib/queries/notes";
+import { fetchUserLineHighlights } from "@/lib/queries/notes";
 import { SceneDetailTabs } from "@/components/scenes/scene-detail-tabs";
 import { t } from "@/locales/fr";
 import { hasAccess } from "@/lib/queries/access";
@@ -47,9 +47,9 @@ export default async function SceneDetailPage({ params }: Props) {
   const lastCharacterId = userProgress?.lastCharacterId;
   const lastCharacterName = userProgress?.lastCharacterName;
 
-  const [lineMastery, notesByLineId] = await Promise.all([
+  const [lineMastery, highlightsByLineId] = await Promise.all([
     user && lastCharacterId ? fetchLineMastery(user.id, id, lastCharacterId) : Promise.resolve([]),
-    user ? fetchUserLineNotes(user.id, sortedLines.map((l) => l.id)) : Promise.resolve({}),
+    user ? fetchUserLineHighlights(user.id, sortedLines.map((l) => l.id)) : Promise.resolve({}),
   ]);
 
   return (
@@ -92,7 +92,7 @@ export default async function SceneDetailPage({ params }: Props) {
           character_id: line.character_id,
           characters: line.characters,
         }))}
-        notesByLineId={notesByLineId}
+        highlightsByLineId={highlightsByLineId}
       />
 
       <div>
