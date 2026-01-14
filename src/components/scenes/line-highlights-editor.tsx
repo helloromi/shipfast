@@ -24,8 +24,41 @@ type PopoverState =
   | {
       open: true;
       key: string; // `${startOffset}:${endOffset}`
-      align: "left" | "right";
+      top: number;
+      left: number;
     };
+
+type CategoryField = "noteFree" | "noteSubtext" | "noteIntonation" | "notePlay";
+
+const CATEGORY_CONFIG: Record<
+  CategoryField,
+  { label: string; accent: string; bg: string; placeholder: (typeof t)["scenes"]["detail"]["highlights"]["placeholders"][keyof (typeof t)["scenes"]["detail"]["highlights"]["placeholders"]] }
+> = {
+  noteFree: {
+    label: t.scenes.detail.highlights.labels.free,
+    accent: "#64748b",
+    bg: "rgba(100, 116, 139, 0.16)",
+    placeholder: t.scenes.detail.highlights.placeholders.free,
+  },
+  noteSubtext: {
+    label: t.scenes.detail.highlights.labels.subtext,
+    accent: "#16a34a",
+    bg: "rgba(22, 163, 74, 0.14)",
+    placeholder: t.scenes.detail.highlights.placeholders.subtext,
+  },
+  noteIntonation: {
+    label: t.scenes.detail.highlights.labels.intonation,
+    accent: "#2563eb",
+    bg: "rgba(37, 99, 235, 0.13)",
+    placeholder: t.scenes.detail.highlights.placeholders.intonation,
+  },
+  notePlay: {
+    label: t.scenes.detail.highlights.labels.play,
+    accent: "#7c3aed",
+    bg: "rgba(124, 58, 237, 0.13)",
+    placeholder: t.scenes.detail.highlights.placeholders.play,
+  },
+};
 
 function highlightKey(h: { startOffset: number; endOffset: number }) {
   return `${h.startOffset}:${h.endOffset}`;
@@ -36,6 +69,12 @@ function clampRange(start: number, end: number, max: number) {
   const e = Math.max(0, Math.min(end, max));
   if (e <= s) return { start: 0, end: 0 };
   return { start: s, end: e };
+}
+
+function compactOneLine(s: string, maxLen: number) {
+  const one = (s ?? "").replace(/\s+/g, " ").trim();
+  if (one.length <= maxLen) return one;
+  return `${one.slice(0, Math.max(0, maxLen - 1)).trimEnd()}…`;
 }
 
 function getSelectionOffsets(container: HTMLElement, range: Range) {
@@ -63,6 +102,7 @@ export function LineHighlightsEditor(props: Props) {
   const { lineId, userId, text, initialHighlights, className, isUserCharacter } = props;
   const { supabase } = useSupabase();
 
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLSpanElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -74,7 +114,7 @@ export function LineHighlightsEditor(props: Props) {
     [...(initialHighlights ?? [])].sort((a, b) => a.startOffset - b.startOffset || a.endOffset - b.endOffset)
   );
   const [popover, setPopover] = useState<PopoverState>({ open: false });
-  const [activeField, setActiveField] = useState<"noteFree" | "noteSubtext" | "noteIntonation" | "notePlay" | null>(null);
+  const [activeField, setActiveField] = useState<CategoryField | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
 
   useEffect(() => {
@@ -185,6 +225,64 @@ export function LineHighlightsEditor(props: Props) {
 
   const findHighlight = (key: string) => highlights.find((h) => highlightKey(h) === key) ?? null;
 
+  const getFilledFields = (h: HighlightDraft | null): CategoryField[] => {
+    if (!h) return [];
+    const out: CategoryField[] = [];
+    for (const f of ["noteFree", "noteSubtext", "noteIntonation", "notePlay"] as const) {
+      const v = ((h as any)[f] as string | null | undefined) ?? "";
+      if (v.trim().length > 0) out.push(f);
+    }
+    return out;
+  };
+
+  const getHoverTitle = (h: HighlightDraft | null) => {
+    if (!h) return "";
+    const fields = getFilledFields(h);
+    if (fields.length === 0) return "";
+    const lines = fields.map((f) => {
+      const cfg = CATEGORY_CONFIG[f];
+      const v = ((h as any)[f] as string | null | undefined) ?? "";
+      return `${cfg.label} : ${compactOneLine(v, 80)}`;
+    });
+    return lines.join("\n");
+  };
+
+  const getHighlightStyle = (h: HighlightDraft | null): React.CSSProperties => {
+    if (!h) return {};
+    const fields = getFilledFields(h);
+    if (fields.length === 0) {
+      return { backgroundColor: "rgba(244, 201, 93, 0.25)" };
+    }
+
+    const colors = fields.map((f) => CATEGORY_CONFIG[f].accent);
+    const bg = fields.length === 1 ? CATEGORY_CONFIG[fields[0]]!.bg : "rgba(244, 201, 93, 0.20)";
+
+    if (colors.length === 1) {
+      return {
+        backgroundColor: bg,
+        borderBottom: `2px solid ${colors[0]}`,
+      };
+    }
+
+    // Underline multicolore (réparti sur la largeur du surlignage).
+    const step = 100 / colors.length;
+    const stops = colors
+      .map((c, i) => {
+        const a = i * step;
+        const b = (i + 1) * step;
+        return `${c} ${a}%, ${c} ${b}%`;
+      })
+      .join(", ");
+
+    return {
+      backgroundColor: bg,
+      backgroundImage: `linear-gradient(to right, ${stops})`,
+      backgroundRepeat: "no-repeat",
+      backgroundPosition: "0 100%",
+      backgroundSize: "100% 2px",
+    };
+  };
+
   const persistHighlightNow = async (h: HighlightDraft) => {
     const noteFree = (h.noteFree ?? "").trim();
     const noteSubtext = (h.noteSubtext ?? "").trim();
@@ -285,13 +383,32 @@ export function LineHighlightsEditor(props: Props) {
     setActiveField(null);
   };
 
-  const openPopoverForKey = (key: string, opts?: { preferField?: typeof activeField }) => {
-    const approxWidth = 360;
-    const rect = containerRef.current?.getBoundingClientRect() ?? null;
-    const align: "left" | "right" =
-      rect && rect.left + approxWidth > window.innerWidth - 12 ? "right" : "left";
+  const openPopoverForKey = (key: string, anchorRect: DOMRect, opts?: { preferField?: typeof activeField }) => {
+    const root = rootRef.current;
+    const rootRect = root?.getBoundingClientRect();
 
-    setPopover({ open: true, key, align });
+    // Fallback: si on ne peut pas mesurer, on ouvre juste "sous le texte".
+    if (!rootRect) {
+      setPopover({ open: true, key, top: 8, left: 0 });
+      return;
+    }
+
+    const popoverWidth = 360;
+    const padding = 12;
+
+    // Position désirée en coordonnées viewport.
+    let leftViewport = anchorRect.left;
+    let topViewport = anchorRect.bottom + 8;
+
+    // Clamp viewport (pour éviter de sortir de l'écran).
+    leftViewport = Math.max(padding, Math.min(leftViewport, window.innerWidth - popoverWidth - padding));
+    topViewport = Math.max(padding, Math.min(topViewport, window.innerHeight - padding));
+
+    // Convertir en coordonnées relatives au root.
+    const left = leftViewport - rootRect.left;
+    const top = topViewport - rootRect.top;
+
+    setPopover({ open: true, key, top, left });
     const h = findHighlight(key);
     const preferred = opts?.preferField ?? null;
     if (preferred) {
@@ -343,7 +460,7 @@ export function LineHighlightsEditor(props: Props) {
     const rect = range.getBoundingClientRect();
 
     if (exact) {
-      openPopoverForKey(key);
+      openPopoverForKey(key, rect);
       sel.removeAllRanges();
       return;
     }
@@ -364,7 +481,7 @@ export function LineHighlightsEditor(props: Props) {
     };
 
     setHighlights((prev) => [...prev, draft].sort((a, b) => a.startOffset - b.startOffset || a.endOffset - b.endOffset));
-    openPopoverForKey(key, { preferField: "noteFree" });
+    openPopoverForKey(key, rect, { preferField: "noteFree" });
     sel.removeAllRanges();
   };
 
@@ -414,41 +531,10 @@ export function LineHighlightsEditor(props: Props) {
   };
 
   const current = popover.open ? findHighlight(popover.key) : null;
-
-  const categories: Array<{
-    field: NonNullable<typeof activeField>;
-    label: string;
-    placeholder: string;
-    getValue: (h: HighlightDraft) => string;
-  }> = [
-    {
-      field: "noteFree",
-      label: t.scenes.detail.highlights.labels.free,
-      placeholder: t.scenes.detail.highlights.placeholders.free,
-      getValue: (h) => h.noteFree ?? "",
-    },
-    {
-      field: "noteSubtext",
-      label: t.scenes.detail.highlights.labels.subtext,
-      placeholder: t.scenes.detail.highlights.placeholders.subtext,
-      getValue: (h) => h.noteSubtext ?? "",
-    },
-    {
-      field: "noteIntonation",
-      label: t.scenes.detail.highlights.labels.intonation,
-      placeholder: t.scenes.detail.highlights.placeholders.intonation,
-      getValue: (h) => h.noteIntonation ?? "",
-    },
-    {
-      field: "notePlay",
-      label: t.scenes.detail.highlights.labels.play,
-      placeholder: t.scenes.detail.highlights.placeholders.play,
-      getValue: (h) => h.notePlay ?? "",
-    },
-  ];
+  const categoryFields: CategoryField[] = ["noteFree", "noteSubtext", "noteIntonation", "notePlay"];
 
   return (
-    <div className="relative flex flex-col gap-1.5">
+    <div ref={rootRef} className="relative flex flex-col gap-1.5">
       <span
         ref={containerRef}
         onMouseUp={() => createOrOpenFromSelection()}
@@ -456,22 +542,28 @@ export function LineHighlightsEditor(props: Props) {
       >
         {segments.map((seg) => {
           if (seg.kind === "text") return <span key={seg.idx}>{seg.text}</span>;
+          const h = findHighlight(seg.key);
+          const title = getHoverTitle(h);
+          const style = getHighlightStyle(h);
           return (
             <span
               key={seg.idx}
               role="button"
               tabIndex={0}
               onClick={(e) => {
-                openPopoverForKey(seg.key);
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                openPopoverForKey(seg.key, rect);
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  openPopoverForKey(seg.key);
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  openPopoverForKey(seg.key, rect);
                 }
               }}
-              className="rounded-[6px] bg-[#f4c95d55] px-0.5 outline-none ring-offset-2 transition hover:bg-[#f4c95d77] focus-visible:ring-2 focus-visible:ring-[#ff6b6b]"
-              title="Cliquer pour éditer la note"
+              style={style}
+              className="rounded-[6px] px-0.5 outline-none ring-offset-2 transition hover:brightness-[0.98] focus-visible:ring-2 focus-visible:ring-[#ff6b6b]"
+              title={title || undefined}
             >
               {seg.text}
             </span>
@@ -482,9 +574,8 @@ export function LineHighlightsEditor(props: Props) {
       {popover.open && current && (
         <div
           ref={popoverRef}
-          className={`absolute top-full mt-2 z-60 w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl border border-[#e7e1d9] bg-white/95 p-4 shadow-lg shadow-[#3b1f4a22] backdrop-blur ${
-            popover.align === "right" ? "right-0" : "left-0"
-          }`}
+          style={{ top: popover.top, left: popover.left }}
+          className="absolute z-60 w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl border border-[#e7e1d9] bg-white/95 p-4 shadow-lg shadow-[#3b1f4a22] backdrop-blur"
           role="dialog"
           aria-label={t.scenes.detail.highlights.title}
         >
@@ -509,23 +600,30 @@ export function LineHighlightsEditor(props: Props) {
             <div className="text-[11px] font-semibold uppercase tracking-wide text-[#7a7184]">
               {t.scenes.detail.highlights.chooseCategory}
             </div>
-            <div className="grid grid-cols-1 gap-2">
-              {categories.map((c) => {
-                const filled = c.getValue(current).trim().length > 0;
-                const isActive = activeField === c.field;
+            <div className="grid grid-cols-2 gap-2">
+              {categoryFields.map((field) => {
+                const cfg = CATEGORY_CONFIG[field];
+                const value = ((current as any)?.[field] as string | null | undefined) ?? "";
+                const filled = value.trim().length > 0;
+                const isActive = activeField === field;
                 return (
                   <button
-                    key={c.field}
+                    key={field}
                     type="button"
-                    onClick={() => setActiveField((prev) => (prev === c.field ? null : c.field))}
-                    className={`grid grid-cols-[1fr_auto] items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm font-semibold transition ${
-                      isActive
-                        ? "border-[#3b1f4a66] bg-[#3b1f4a0a] text-[#3b1f4a]"
-                        : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
-                    }`}
+                    onClick={() => setActiveField((prev) => (prev === field ? null : field))}
+                    style={{
+                      borderColor: isActive ? `${cfg.accent}66` : undefined,
+                      background: isActive ? cfg.bg : undefined,
+                    }}
+                    className="flex items-center justify-between gap-2 rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-left transition hover:border-[#3b1f4a66]"
                   >
-                    <span className="min-w-0 whitespace-normal leading-tight">{c.label}</span>
-                    <span className="text-xs font-semibold text-[#7a7184]">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: cfg.accent }} />
+                      <span className="min-w-0 whitespace-normal text-sm font-semibold text-[#3b1f4a] leading-tight">
+                        {cfg.label}
+                      </span>
+                    </span>
+                    <span className="flex-none text-xs font-semibold text-[#7a7184]">
                       {filled ? t.scenes.detail.highlights.status.filled : t.scenes.detail.highlights.status.empty}
                     </span>
                   </button>
@@ -541,7 +639,7 @@ export function LineHighlightsEditor(props: Props) {
                 onChange={(e) => updateField(popover.key, activeField, e.target.value)}
                 style={{ outline: "none" }}
                 className="mt-1 w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner !outline-none focus:border-[#3b1f4a] focus:!outline-none focus-visible:!outline-none focus-visible:ring-2 focus-visible:ring-[#3b1f4a66] focus-visible:ring-offset-2"
-                placeholder={categories.find((c) => c.field === activeField)?.placeholder ?? ""}
+                placeholder={CATEGORY_CONFIG[activeField]?.placeholder ?? ""}
               />
             )}
           </div>

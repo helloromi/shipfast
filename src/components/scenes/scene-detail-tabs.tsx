@@ -78,6 +78,11 @@ export function SceneDetailTabs({
       label: t.scenes.detail.tabs.apercu,
       content: (
         <div className="flex flex-col gap-2 rounded-2xl border border-[#e7e1d9] bg-white/92 p-5 shadow-sm shadow-[#3b1f4a14]">
+          {user && (
+            <div className="rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] px-3 py-2 text-sm text-[#524b5a]">
+              {t.scenes.detail.highlights.help}
+            </div>
+          )}
           {sortedLines.length === 0 ? (
             <p className="text-sm text-[#524b5a]">Aucune réplique disponible.</p>
           ) : (

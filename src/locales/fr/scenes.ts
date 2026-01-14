@@ -37,6 +37,7 @@ export const scenes = {
       deletedToast: "Surlignage supprimé.",
       saveErrorToast: "Impossible d’enregistrer pour le moment.",
       chooseCategory: "Choisis une catégorie",
+      help: "Surligne un passage pour ajouter des notes. Survole un surlignage pour voir un résumé. Clique pour modifier.",
       labels: {
         free: "Libre",
         subtext: "Sous-texte",
