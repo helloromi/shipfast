@@ -66,6 +66,7 @@ export function LineHighlightsEditor(props: Props) {
 
   const containerRef = useRef<HTMLSpanElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSuccessToastAtRef = useRef<number>(0);
 
@@ -73,6 +74,7 @@ export function LineHighlightsEditor(props: Props) {
     [...(initialHighlights ?? [])].sort((a, b) => a.startOffset - b.startOffset || a.endOffset - b.endOffset)
   );
   const [popover, setPopover] = useState<PopoverState>({ open: false });
+  const [activeField, setActiveField] = useState<"noteFree" | "noteSubtext" | "noteIntonation" | "notePlay" | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
 
   useEffect(() => {
@@ -108,6 +110,14 @@ export function LineHighlightsEditor(props: Props) {
     };
   }, [popover.open]);
 
+  useEffect(() => {
+    if (!popover.open) return;
+    if (!activeField) return;
+    // Focus après render
+    const tmr = window.setTimeout(() => textareaRef.current?.focus(), 0);
+    return () => window.clearTimeout(tmr);
+  }, [activeField, popover.open]);
+
   const sortedHighlights = useMemo(() => {
     return [...highlights].sort((a, b) => a.startOffset - b.startOffset || a.endOffset - b.endOffset);
   }, [highlights]);
@@ -137,10 +147,24 @@ export function LineHighlightsEditor(props: Props) {
 
   const findHighlight = (key: string) => highlights.find((h) => highlightKey(h) === key) ?? null;
 
-  const openPopoverAt = (key: string, rect: DOMRect) => {
+  const openPopoverAt = (key: string, rect: DOMRect, opts?: { preferField?: typeof activeField }) => {
     const x = Math.min(Math.max(12, rect.left), window.innerWidth - 320);
     const y = Math.min(Math.max(12, rect.bottom + 8), window.innerHeight - 24);
     setPopover({ open: true, x, y, key });
+    const h = findHighlight(key);
+    const preferred = opts?.preferField ?? null;
+    if (preferred) {
+      setActiveField(preferred);
+      return;
+    }
+    // Par défaut: ouvrir la première catégorie déjà remplie, sinon rien.
+    const firstFilled =
+      (h?.noteFree ?? "").trim() ? "noteFree" :
+      (h?.noteSubtext ?? "").trim() ? "noteSubtext" :
+      (h?.noteIntonation ?? "").trim() ? "noteIntonation" :
+      (h?.notePlay ?? "").trim() ? "notePlay" :
+      null;
+    setActiveField(firstFilled);
   };
 
   const createOrOpenFromSelection = () => {
@@ -199,7 +223,7 @@ export function LineHighlightsEditor(props: Props) {
     };
 
     setHighlights((prev) => [...prev, draft].sort((a, b) => a.startOffset - b.startOffset || a.endOffset - b.endOffset));
-    openPopoverAt(key, rect);
+    openPopoverAt(key, rect, { preferField: "noteFree" });
     sel.removeAllRanges();
   };
 
@@ -307,6 +331,38 @@ export function LineHighlightsEditor(props: Props) {
 
   const current = popover.open ? findHighlight(popover.key) : null;
 
+  const categories: Array<{
+    field: NonNullable<typeof activeField>;
+    label: string;
+    placeholder: string;
+    getValue: (h: HighlightDraft) => string;
+  }> = [
+    {
+      field: "noteFree",
+      label: t.scenes.detail.highlights.labels.free,
+      placeholder: t.scenes.detail.highlights.placeholders.free,
+      getValue: (h) => h.noteFree ?? "",
+    },
+    {
+      field: "noteSubtext",
+      label: t.scenes.detail.highlights.labels.subtext,
+      placeholder: t.scenes.detail.highlights.placeholders.subtext,
+      getValue: (h) => h.noteSubtext ?? "",
+    },
+    {
+      field: "noteIntonation",
+      label: t.scenes.detail.highlights.labels.intonation,
+      placeholder: t.scenes.detail.highlights.placeholders.intonation,
+      getValue: (h) => h.noteIntonation ?? "",
+    },
+    {
+      field: "notePlay",
+      label: t.scenes.detail.highlights.labels.play,
+      placeholder: t.scenes.detail.highlights.placeholders.play,
+      getValue: (h) => h.notePlay ?? "",
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-1.5">
       <span
@@ -368,6 +424,7 @@ export function LineHighlightsEditor(props: Props) {
                   setHighlights((prev) => prev.filter((x) => highlightKey(x) !== k));
                 }
                 setPopover({ open: false });
+                setActiveField(null);
               }}
               className="inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold text-[#524b5a] hover:bg-black/5"
               aria-label={t.scenes.detail.highlights.actions.close}
@@ -378,57 +435,43 @@ export function LineHighlightsEditor(props: Props) {
           <div className="mt-1 line-clamp-2 text-sm text-[#1c1b1f]">{current.selectedText}</div>
 
           <div className="mt-3 grid gap-2">
-            <label className="grid gap-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-[#7a7184]">
-                {t.scenes.detail.highlights.labels.free}
-              </span>
-              <textarea
-                rows={2}
-                value={current.noteFree ?? ""}
-                onChange={(e) => updateField(popover.key, "noteFree", e.target.value)}
-                className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
-                placeholder={t.scenes.detail.highlights.placeholders.free}
-              />
-            </label>
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-[#7a7184]">
+              {t.scenes.detail.highlights.chooseCategory}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {categories.map((c) => {
+                const filled = c.getValue(current).trim().length > 0;
+                const isActive = activeField === c.field;
+                return (
+                  <button
+                    key={c.field}
+                    type="button"
+                    onClick={() => setActiveField((prev) => (prev === c.field ? null : c.field))}
+                    className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-sm font-semibold transition ${
+                      isActive
+                        ? "border-[#3b1f4a66] bg-[#3b1f4a0a] text-[#3b1f4a]"
+                        : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
+                    }`}
+                  >
+                    <span className="truncate">{c.label}</span>
+                    <span className="text-xs font-semibold text-[#7a7184]">
+                      {filled ? t.scenes.detail.highlights.status.filled : t.scenes.detail.highlights.status.empty}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
 
-            <label className="grid gap-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-[#7a7184]">
-                {t.scenes.detail.highlights.labels.subtext}
-              </span>
+            {activeField && (
               <textarea
-                rows={2}
-                value={current.noteSubtext ?? ""}
-                onChange={(e) => updateField(popover.key, "noteSubtext", e.target.value)}
-                className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
-                placeholder={t.scenes.detail.highlights.placeholders.subtext}
+                ref={textareaRef}
+                rows={4}
+                value={(current[activeField] as string | null) ?? ""}
+                onChange={(e) => updateField(popover.key, activeField, e.target.value)}
+                className="mt-1 w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
+                placeholder={categories.find((c) => c.field === activeField)?.placeholder ?? ""}
               />
-            </label>
-
-            <label className="grid gap-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-[#7a7184]">
-                {t.scenes.detail.highlights.labels.intonation}
-              </span>
-              <textarea
-                rows={2}
-                value={current.noteIntonation ?? ""}
-                onChange={(e) => updateField(popover.key, "noteIntonation", e.target.value)}
-                className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
-                placeholder={t.scenes.detail.highlights.placeholders.intonation}
-              />
-            </label>
-
-            <label className="grid gap-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-[#7a7184]">
-                {t.scenes.detail.highlights.labels.play}
-              </span>
-              <textarea
-                rows={2}
-                value={current.notePlay ?? ""}
-                onChange={(e) => updateField(popover.key, "notePlay", e.target.value)}
-                className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
-                placeholder={t.scenes.detail.highlights.placeholders.play}
-              />
-            </label>
+            )}
           </div>
 
           <div className="mt-3 flex items-center justify-between gap-2">

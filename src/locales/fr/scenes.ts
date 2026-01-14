@@ -35,11 +35,16 @@ export const scenes = {
       overlapError: "Ce surlignage chevauche un autre passage. Choisis une plage distincte.",
       savedToast: "Sauvegardé.",
       deletedToast: "Surlignage supprimé.",
+      chooseCategory: "Choisis une catégorie",
       labels: {
         free: "Libre",
         subtext: "Sous-texte",
         intonation: "Intonation",
         play: "Jeu",
+      },
+      status: {
+        filled: "Ajoutée",
+        empty: "Ajouter",
       },
       placeholders: {
         free: "Note libre…",

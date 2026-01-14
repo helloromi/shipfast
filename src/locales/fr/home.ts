@@ -14,7 +14,7 @@ export const home = {
   },
   buttons: {
     continuer: "Continuer",
-    details: "Détails",
+    details: "Gérer",
     supprimer: "Supprimer cette scène",
   },
 };
