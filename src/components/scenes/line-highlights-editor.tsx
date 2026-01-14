@@ -438,7 +438,7 @@ export function LineHighlightsEditor(props: Props) {
             <div className="text-[11px] font-semibold uppercase tracking-wide text-[#7a7184]">
               {t.scenes.detail.highlights.chooseCategory}
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2">
               {categories.map((c) => {
                 const filled = c.getValue(current).trim().length > 0;
                 const isActive = activeField === c.field;
@@ -447,13 +447,13 @@ export function LineHighlightsEditor(props: Props) {
                     key={c.field}
                     type="button"
                     onClick={() => setActiveField((prev) => (prev === c.field ? null : c.field))}
-                    className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-sm font-semibold transition ${
+                    className={`grid grid-cols-[1fr_auto] items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm font-semibold transition ${
                       isActive
                         ? "border-[#3b1f4a66] bg-[#3b1f4a0a] text-[#3b1f4a]"
                         : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
                     }`}
                   >
-                    <span className="truncate">{c.label}</span>
+                    <span className="min-w-0 whitespace-normal leading-tight">{c.label}</span>
                     <span className="text-xs font-semibold text-[#7a7184]">
                       {filled ? t.scenes.detail.highlights.status.filled : t.scenes.detail.highlights.status.empty}
                     </span>
@@ -468,7 +468,7 @@ export function LineHighlightsEditor(props: Props) {
                 rows={4}
                 value={(current[activeField] as string | null) ?? ""}
                 onChange={(e) => updateField(popover.key, activeField, e.target.value)}
-                className="mt-1 w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
+                className="mt-1 w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner outline-none focus:border-[#3b1f4a] focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1f4a66] focus-visible:ring-offset-2"
                 placeholder={categories.find((c) => c.field === activeField)?.placeholder ?? ""}
               />
             )}
