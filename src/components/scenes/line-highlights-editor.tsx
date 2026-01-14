@@ -23,9 +23,8 @@ type PopoverState =
   | { open: false }
   | {
       open: true;
-      x: number;
-      y: number;
       key: string; // `${startOffset}:${endOffset}`
+      align: "left" | "right";
     };
 
 function highlightKey(h: { startOffset: number; endOffset: number }) {
@@ -69,6 +68,7 @@ export function LineHighlightsEditor(props: Props) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSuccessToastAtRef = useRef<number>(0);
+  const popoverCheckRafRef = useRef<number | null>(null);
 
   const [highlights, setHighlights] = useState<HighlightDraft[]>(() =>
     [...(initialHighlights ?? [])].sort((a, b) => a.startOffset - b.startOffset || a.endOffset - b.endOffset)
@@ -93,14 +93,16 @@ export function LineHighlightsEditor(props: Props) {
   useEffect(() => {
     if (!popover.open) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPopover({ open: false });
+      if (e.key === "Escape") {
+        void flushCurrentAndClose();
+      }
     };
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Node | null;
       if (!target) return;
       if (popoverRef.current?.contains(target)) return;
       if (containerRef.current?.contains(target)) return;
-      setPopover({ open: false });
+      void flushCurrentAndClose();
     };
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("pointerdown", onPointerDown);
@@ -108,7 +110,8 @@ export function LineHighlightsEditor(props: Props) {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [popover.open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [popover.open, popoverRef, containerRef, highlights, activeField, popover]);
 
   useEffect(() => {
     if (!popover.open) return;
@@ -117,6 +120,41 @@ export function LineHighlightsEditor(props: Props) {
     const tmr = window.setTimeout(() => textareaRef.current?.focus(), 0);
     return () => window.clearTimeout(tmr);
   }, [activeField, popover.open]);
+
+  useEffect(() => {
+    if (!popover.open) return;
+    // Sur scroll/resize: si le popover sort de l'écran, on le ferme (avec flush).
+    const check = () => {
+      if (popoverCheckRafRef.current != null) return;
+      popoverCheckRafRef.current = window.requestAnimationFrame(() => {
+        popoverCheckRafRef.current = null;
+        const el = popoverRef.current;
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const isOut = r.bottom > vh || r.top < 0 || r.right > vw || r.left < 0;
+        if (isOut) {
+          void flushCurrentAndClose();
+        }
+      });
+    };
+
+    window.addEventListener("scroll", check, { passive: true, capture: true });
+    window.addEventListener("resize", check, { passive: true });
+    // Check initial (après mount)
+    window.setTimeout(check, 0);
+
+    return () => {
+      window.removeEventListener("scroll", check, true);
+      window.removeEventListener("resize", check);
+      if (popoverCheckRafRef.current != null) {
+        window.cancelAnimationFrame(popoverCheckRafRef.current);
+        popoverCheckRafRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [popover.open]);
 
   const sortedHighlights = useMemo(() => {
     return [...highlights].sort((a, b) => a.startOffset - b.startOffset || a.endOffset - b.endOffset);
@@ -147,10 +185,113 @@ export function LineHighlightsEditor(props: Props) {
 
   const findHighlight = (key: string) => highlights.find((h) => highlightKey(h) === key) ?? null;
 
-  const openPopoverAt = (key: string, rect: DOMRect, opts?: { preferField?: typeof activeField }) => {
-    const x = Math.min(Math.max(12, rect.left), window.innerWidth - 320);
-    const y = Math.min(Math.max(12, rect.bottom + 8), window.innerHeight - 24);
-    setPopover({ open: true, x, y, key });
+  const persistHighlightNow = async (h: HighlightDraft) => {
+    const noteFree = (h.noteFree ?? "").trim();
+    const noteSubtext = (h.noteSubtext ?? "").trim();
+    const noteIntonation = (h.noteIntonation ?? "").trim();
+    const notePlay = (h.notePlay ?? "").trim();
+
+    const isEmpty = !noteFree && !noteSubtext && !noteIntonation && !notePlay;
+    const key = highlightKey(h);
+
+    try {
+      if (isEmpty) {
+        if (h.isDraft) return { ok: true as const, deleted: false as const };
+        const { error } = await supabase
+          .from("user_line_highlights")
+          .delete()
+          .eq("user_id", userId)
+          .eq("line_id", lineId)
+          .eq("start_offset", h.startOffset)
+          .eq("end_offset", h.endOffset);
+        if (error) {
+          console.error("Error deleting highlight:", error);
+          setToast({ message: t.scenes.detail.highlights.saveErrorToast, variant: "error" });
+          return { ok: false as const, deleted: false as const };
+        }
+        return { ok: true as const, deleted: true as const };
+      }
+
+      const { error } = await supabase
+        .from("user_line_highlights")
+        .upsert(
+          {
+            user_id: userId,
+            line_id: lineId,
+            start_offset: h.startOffset,
+            end_offset: h.endOffset,
+            selected_text: h.selectedText ?? "",
+            note_free: noteFree || null,
+            note_subtext: noteSubtext || null,
+            note_intonation: noteIntonation || null,
+            note_play: notePlay || null,
+          },
+          { onConflict: "user_id,line_id,start_offset,end_offset" }
+        );
+
+      if (error) {
+        console.error("Error saving highlight:", error);
+        setToast({ message: t.scenes.detail.highlights.saveErrorToast, variant: "error" });
+        return { ok: false as const, deleted: false as const };
+      }
+
+      // Toast succès (throttlé) pour éviter le spam pendant la saisie.
+      const nowMs = Date.now();
+      const shouldToast = h.isDraft || nowMs - lastSuccessToastAtRef.current > 2500;
+      if (shouldToast) {
+        lastSuccessToastAtRef.current = nowMs;
+        setToast({ message: t.scenes.detail.highlights.savedToast, variant: "success" });
+      }
+
+      // Marquer comme non-draft après une première persistance.
+      setHighlights((prev) =>
+        prev.map((x) => (highlightKey(x) === key ? { ...x, isDraft: false } : x))
+      );
+
+      return { ok: true as const, deleted: false as const };
+    } catch (err) {
+      console.error("Error persisting highlight:", err);
+      setToast({ message: t.scenes.detail.highlights.saveErrorToast, variant: "error" });
+      return { ok: false as const, deleted: false as const };
+    }
+  };
+
+  const flushCurrentAndClose = async () => {
+    if (!popover.open) return;
+    const key = popover.key;
+    const h = findHighlight(key);
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+
+    if (h) {
+      // Sauvegarde immédiate pour éviter de perdre la note si l’utilisateur refresh/ferme trop vite.
+      await persistHighlightNow(h);
+    }
+
+    // Si draft vide, on le retire.
+    const hh = findHighlight(key);
+    const empty =
+      !(hh?.noteFree ?? "").trim() &&
+      !(hh?.noteSubtext ?? "").trim() &&
+      !(hh?.noteIntonation ?? "").trim() &&
+      !(hh?.notePlay ?? "").trim();
+    if (hh?.isDraft && empty) {
+      setHighlights((prev) => prev.filter((x) => highlightKey(x) !== key));
+    }
+
+    setPopover({ open: false });
+    setActiveField(null);
+  };
+
+  const openPopoverForKey = (key: string, opts?: { preferField?: typeof activeField }) => {
+    const approxWidth = 360;
+    const rect = containerRef.current?.getBoundingClientRect() ?? null;
+    const align: "left" | "right" =
+      rect && rect.left + approxWidth > window.innerWidth - 12 ? "right" : "left";
+
+    setPopover({ open: true, key, align });
     const h = findHighlight(key);
     const preferred = opts?.preferField ?? null;
     if (preferred) {
@@ -202,7 +343,7 @@ export function LineHighlightsEditor(props: Props) {
     const rect = range.getBoundingClientRect();
 
     if (exact) {
-      openPopoverAt(key, rect);
+      openPopoverForKey(key);
       sel.removeAllRanges();
       return;
     }
@@ -223,7 +364,7 @@ export function LineHighlightsEditor(props: Props) {
     };
 
     setHighlights((prev) => [...prev, draft].sort((a, b) => a.startOffset - b.startOffset || a.endOffset - b.endOffset));
-    openPopoverAt(key, rect, { preferField: "noteFree" });
+    openPopoverForKey(key, { preferField: "noteFree" });
     sel.removeAllRanges();
   };
 
@@ -231,69 +372,7 @@ export function LineHighlightsEditor(props: Props) {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
     saveTimerRef.current = setTimeout(async () => {
-      const noteFree = (h.noteFree ?? "").trim();
-      const noteSubtext = (h.noteSubtext ?? "").trim();
-      const noteIntonation = (h.noteIntonation ?? "").trim();
-      const notePlay = (h.notePlay ?? "").trim();
-
-      const isEmpty = !noteFree && !noteSubtext && !noteIntonation && !notePlay;
-      const key = highlightKey(h);
-
-      try {
-        if (isEmpty) {
-          if (h.isDraft) {
-            // Ne pas persister les drafts vides.
-            return;
-          }
-          const { error } = await supabase
-            .from("user_line_highlights")
-            .delete()
-            .eq("user_id", userId)
-            .eq("line_id", lineId)
-            .eq("start_offset", h.startOffset)
-            .eq("end_offset", h.endOffset);
-          if (error) {
-            console.error("Error deleting highlight:", error);
-          }
-          return;
-        }
-
-        const { error } = await supabase
-          .from("user_line_highlights")
-          .upsert(
-            {
-              user_id: userId,
-              line_id: lineId,
-              start_offset: h.startOffset,
-              end_offset: h.endOffset,
-              selected_text: h.selectedText ?? "",
-              note_free: noteFree || null,
-              note_subtext: noteSubtext || null,
-              note_intonation: noteIntonation || null,
-              note_play: notePlay || null,
-            },
-            { onConflict: "user_id,line_id,start_offset,end_offset" }
-          );
-        if (error) {
-          console.error("Error saving highlight:", error);
-          return;
-        }
-
-        // Toast succès (throttlé) pour éviter le spam pendant la saisie.
-        const nowMs = Date.now();
-        const shouldToast = h.isDraft || nowMs - lastSuccessToastAtRef.current > 2500;
-        if (shouldToast) {
-          lastSuccessToastAtRef.current = nowMs;
-          setToast({ message: t.scenes.detail.highlights.savedToast, variant: "success" });
-        }
-
-        // Marquer comme non-draft après une première persistance.
-        setHighlights((prev) =>
-          prev.map((x) => (highlightKey(x) === key ? { ...x, isDraft: false } : x))
-        );
-      } catch (err) {
-        console.error("Error persisting highlight:", err);
-      }
+      await persistHighlightNow(h);
     }, 450);
   };
 
@@ -322,10 +401,15 @@ export function LineHighlightsEditor(props: Props) {
         .eq("line_id", lineId)
         .eq("start_offset", h.startOffset)
         .eq("end_offset", h.endOffset);
-      if (error) console.error("Error deleting highlight:", error);
-      else setToast({ message: t.scenes.detail.highlights.deletedToast, variant: "success" });
+      if (error) {
+        console.error("Error deleting highlight:", error);
+        setToast({ message: t.scenes.detail.highlights.saveErrorToast, variant: "error" });
+      } else {
+        setToast({ message: t.scenes.detail.highlights.deletedToast, variant: "success" });
+      }
     } catch (err) {
       console.error("Error deleting highlight:", err);
+      setToast({ message: t.scenes.detail.highlights.saveErrorToast, variant: "error" });
     }
   };
 
@@ -364,7 +448,7 @@ export function LineHighlightsEditor(props: Props) {
   ];
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="relative flex flex-col gap-1.5">
       <span
         ref={containerRef}
         onMouseUp={() => createOrOpenFromSelection()}
@@ -378,14 +462,12 @@ export function LineHighlightsEditor(props: Props) {
               role="button"
               tabIndex={0}
               onClick={(e) => {
-                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                openPopoverAt(seg.key, rect);
+                openPopoverForKey(seg.key);
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                  openPopoverAt(seg.key, rect);
+                  openPopoverForKey(seg.key);
                 }
               }}
               className="rounded-[6px] bg-[#f4c95d55] px-0.5 outline-none ring-offset-2 transition hover:bg-[#f4c95d77] focus-visible:ring-2 focus-visible:ring-[#ff6b6b]"
@@ -400,8 +482,9 @@ export function LineHighlightsEditor(props: Props) {
       {popover.open && current && (
         <div
           ref={popoverRef}
-          style={{ position: "fixed", left: popover.x, top: popover.y, width: 320, zIndex: 60 }}
-          className="rounded-2xl border border-[#e7e1d9] bg-white/95 p-4 shadow-lg shadow-[#3b1f4a22] backdrop-blur"
+          className={`absolute top-full mt-2 z-60 w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl border border-[#e7e1d9] bg-white/95 p-4 shadow-lg shadow-[#3b1f4a22] backdrop-blur ${
+            popover.align === "right" ? "right-0" : "left-0"
+          }`}
           role="dialog"
           aria-label={t.scenes.detail.highlights.title}
         >
@@ -412,19 +495,7 @@ export function LineHighlightsEditor(props: Props) {
             <button
               type="button"
               onClick={() => {
-                // Si draft vide, on le retire.
-                const k = popover.key;
-                const h = findHighlight(k);
-                const empty =
-                  !(h?.noteFree ?? "").trim() &&
-                  !(h?.noteSubtext ?? "").trim() &&
-                  !(h?.noteIntonation ?? "").trim() &&
-                  !(h?.notePlay ?? "").trim();
-                if (h?.isDraft && empty) {
-                  setHighlights((prev) => prev.filter((x) => highlightKey(x) !== k));
-                }
-                setPopover({ open: false });
-                setActiveField(null);
+                void flushCurrentAndClose();
               }}
               className="inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold text-[#524b5a] hover:bg-black/5"
               aria-label={t.scenes.detail.highlights.actions.close}
@@ -468,7 +539,8 @@ export function LineHighlightsEditor(props: Props) {
                 rows={4}
                 value={(current[activeField] as string | null) ?? ""}
                 onChange={(e) => updateField(popover.key, activeField, e.target.value)}
-                className="mt-1 w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner outline-none focus:border-[#3b1f4a] focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b1f4a66] focus-visible:ring-offset-2"
+                style={{ outline: "none" }}
+                className="mt-1 w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner !outline-none focus:border-[#3b1f4a] focus:!outline-none focus-visible:!outline-none focus-visible:ring-2 focus-visible:ring-[#3b1f4a66] focus-visible:ring-offset-2"
                 placeholder={categories.find((c) => c.field === activeField)?.placeholder ?? ""}
               />
             )}

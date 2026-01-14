@@ -35,6 +35,7 @@ export const scenes = {
       overlapError: "Ce surlignage chevauche un autre passage. Choisis une plage distincte.",
       savedToast: "Sauvegardé.",
       deletedToast: "Surlignage supprimé.",
+      saveErrorToast: "Impossible d’enregistrer pour le moment.",
       chooseCategory: "Choisis une catégorie",
       labels: {
         free: "Libre",
