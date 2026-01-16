@@ -44,6 +44,12 @@ export function SceneDetailTabs({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
+  const canEdit = user && scene.is_private && scene.owner_user_id === user.id;
+  const deleteLabel = canEdit ? t.scenes.detail.reglages.supprimerScene : t.scenes.detail.reglages.reinitialiserProgression;
+  const confirmDeleteText = canEdit
+    ? t.scenes.detail.reglages.confirmerSuppression
+    : t.scenes.detail.reglages.confirmerReinitialisation;
+
   const handleDelete = async () => {
     if (!showConfirmDelete) {
       setShowConfirmDelete(true);
@@ -60,7 +66,9 @@ export function SceneDetailTabs({
         throw new Error("Failed to delete scene");
       }
 
-      router.push("/bibliotheque");
+      const body = (await response.json().catch(() => null)) as null | { action?: string };
+      const action = body?.action;
+      router.push(action === "deleted_scene" ? "/bibliotheque" : "/home");
       router.refresh();
     } catch (error) {
       console.error("Error deleting scene:", error);
@@ -69,8 +77,6 @@ export function SceneDetailTabs({
       alert("Erreur lors de la suppression. Veuillez réessayer.");
     }
   };
-
-  const canEdit = user && scene.is_private && scene.owner_user_id === user.id;
 
   const tabs = [
     {
@@ -200,12 +206,12 @@ export function SceneDetailTabs({
           {user && (
             <div className="flex flex-col gap-3">
               <h3 className="font-display text-lg font-semibold text-[#3b1f4a]">
-                {t.scenes.detail.reglages.supprimerScene}
+                {deleteLabel}
               </h3>
               {showConfirmDelete ? (
                 <div className="flex flex-col gap-3 rounded-2xl border border-[#f2c6c6] bg-[#fff5f5] p-4">
                   <p className="text-sm text-[#7a1f1f]">
-                    {t.scenes.detail.reglages.confirmerSuppression}
+                    {confirmDeleteText}
                   </p>
                   <div className="flex gap-2">
                     <button
@@ -241,7 +247,7 @@ export function SceneDetailTabs({
                       d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                     />
                   </svg>
-                  {t.scenes.detail.reglages.supprimerScene}
+                  {deleteLabel}
                 </button>
               )}
             </div>

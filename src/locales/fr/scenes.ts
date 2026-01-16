@@ -64,6 +64,9 @@ export const scenes = {
       changerPersonnage: "Changer de personnage",
       supprimerScene: "Supprimer la scène",
       confirmerSuppression: "Êtes-vous sûr de vouloir supprimer cette scène ? Cette action supprimera toutes vos données d'apprentissage associées.",
+      reinitialiserProgression: "Réinitialiser ma progression",
+      confirmerReinitialisation:
+        "Êtes-vous sûr de vouloir réinitialiser votre progression sur cette scène ? Cela supprimera vos notes, surlignages et statistiques associées.",
       confirmer: "Confirmer",
       annuler: "Annuler",
     },

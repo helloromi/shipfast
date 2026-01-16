@@ -15,6 +15,6 @@ export const home = {
   buttons: {
     continuer: "Continuer",
     details: "Gérer",
-    supprimer: "Supprimer cette scène",
+    supprimer: "Réinitialiser ma progression",
   },
 };

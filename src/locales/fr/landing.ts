@@ -2,7 +2,7 @@ export const landing = {
   badge: "Pour étudiants en théâtre",
   title: "Maîtrise tes textes 3x plus vite",
   description:
-    "Importe ta scène, révèle tes répliques au fur et à mesure, et reçois un feedback instantané. Simple, efficace, sans configuration.",
+    "Importe ta scène, révèle tes répliques au fur et à mesure, et reçois un feedback instantané. Simple, efficace.",
   cta: {
     commencer: "Commencer maintenant",
     commencerSubtext: "Inscription gratuite. Abonnement 5€/mois ensuite.",
