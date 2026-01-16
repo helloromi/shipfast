@@ -207,7 +207,7 @@ export function LearnSession(props: LearnSessionProps) {
 
   const userLinesAll = useMemo(() => lines.filter((l) => l.isUserLine), [lines]);
   const remainingUserLinesCount = useMemo(() => Math.max(0, userLinesAll.length - startIndex), [userLinesAll.length, startIndex]);
-  const limitPercentPresets = [10, 25, 50, 75] as const;
+  const limitPercentPresets = [25, 50, 75] as const;
   const computeLimitFromPercent = (pct: number) => {
     if (remainingUserLinesCount <= 0) return 0;
     return Math.max(1, Math.ceil((remainingUserLinesCount * pct) / 100));
@@ -844,35 +844,37 @@ export function LearnSession(props: LearnSessionProps) {
                 <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
                   {t.learn.setup.limitLabel}
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {limitPercentPresets.map((pct) => {
-                    const computed = computeLimitFromPercent(pct);
-                    const disabled = remainingUserLinesCount === 0 || computed === 0;
-                    const isSelected = limitChoice.type === "percent" && limitChoice.pct === pct;
-                    return (
-                      <button
-                        key={pct}
-                        type="button"
-                        disabled={disabled}
-                        onClick={() => {
-                          setLimitChoice({ type: "percent", pct });
-                          setLimitCount(computed);
-                        }}
-                        className={`rounded-full border px-4 py-2 text-sm font-semibold transition disabled:opacity-50 ${
-                          isSelected
-                            ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
-                            : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
-                        }`}
-                      >
-                        <span className="inline-flex items-baseline gap-2">
-                          <span>{pct}%</span>
-                          <span className={`text-xs font-medium ${isSelected ? "text-white/80" : "text-[#7a7184]"}`}>
-                            {formatLinesCount(computed)}
+                <div className="grid gap-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    {limitPercentPresets.map((pct) => {
+                      const computed = computeLimitFromPercent(pct);
+                      const disabled = remainingUserLinesCount === 0 || computed === 0;
+                      const isSelected = limitChoice.type === "percent" && limitChoice.pct === pct;
+                      return (
+                        <button
+                          key={pct}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => {
+                            setLimitChoice({ type: "percent", pct });
+                            setLimitCount(computed);
+                          }}
+                          className={`w-full rounded-full border px-4 py-2 text-sm font-semibold transition disabled:opacity-50 ${
+                            isSelected
+                              ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
+                              : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
+                          }`}
+                        >
+                          <span className="inline-flex items-baseline gap-2">
+                            <span>{pct}%</span>
+                            <span className={`text-xs font-medium ${isSelected ? "text-white/80" : "text-[#7a7184]"}`}>
+                              {formatLinesCount(computed)}
+                            </span>
                           </span>
-                        </span>
-                      </button>
-                    );
-                  })}
+                        </button>
+                      );
+                    })}
+                  </div>
                   <button
                     type="button"
                     disabled={remainingUserLinesCount === 0}
@@ -880,7 +882,7 @@ export function LearnSession(props: LearnSessionProps) {
                       setLimitChoice({ type: "all" });
                       setLimitCount(null);
                     }}
-                    className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                    className={`w-full rounded-full border px-4 py-2 text-sm font-semibold transition ${
                       limitChoice.type === "all"
                         ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
                         : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
@@ -912,21 +914,6 @@ export function LearnSession(props: LearnSessionProps) {
                     className="w-full"
                     aria-label={t.learn.setup.startAtLabel}
                   />
-                  <input
-                    type="number"
-                    min={1}
-                    max={Math.max(1, userLinesAll.length)}
-                    value={userLinesAll.length === 0 ? "" : startIndex + 1}
-                    disabled={userLinesAll.length === 0}
-                    onChange={(e) => {
-                      const raw = Number(e.target.value);
-                      if (!Number.isFinite(raw)) return;
-                      const clamped = Math.min(Math.max(1, raw), Math.max(1, userLinesAll.length));
-                      setStartIndex(clamped - 1);
-                    }}
-                    placeholder={t.learn.setup.startAtPlaceholder}
-                    className="w-24 rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
-                  />
                 </div>
 
                 {userLinesAll.length > 0 && (
@@ -934,7 +921,7 @@ export function LearnSession(props: LearnSessionProps) {
                     <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
                       {t.learn.setup.startAtPreviewLabel}
                     </div>
-                    <div className="mt-1 text-sm text-[#1c1b1f]">
+                    <div className="mt-1 min-h-[1.5rem] truncate whitespace-nowrap text-sm leading-6 text-[#1c1b1f]">
                       {(() => {
                         const line = userLinesAll[startIndex];
                         if (!line) return "—";
