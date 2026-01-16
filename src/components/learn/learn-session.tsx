@@ -41,6 +41,8 @@ type ScoreOption = {
   color: string;
 };
 
+type LimitChoice = { type: "percent"; pct: number } | { type: "all" } | { type: "custom" };
+
 const scoreOptions: ScoreOption[] = [
   { value: 0, emoji: t.learn.scores.rate.emoji, label: t.learn.scores.rate.label, color: "bg-[#e11d48] text-white hover:bg-[#c4153c]" },
   { value: 3, emoji: t.learn.scores.hesitant.emoji, label: t.learn.scores.hesitant.label, color: "bg-[#f59e0b] text-white hover:bg-[#d88405]" },
@@ -87,8 +89,9 @@ export function LearnSession(props: LearnSessionProps) {
   const [showSetupModal, setShowSetupModal] = useState(true);
   const [limitCount, setLimitCount] = useState<number | null>(null); // null => toutes
   const [startIndex, setStartIndex] = useState(0); // Index de départ dans userLinesAll
-  const [inputMode, setInputMode] = useState<InputMode>("write");
+  const [inputMode, setInputMode] = useState<InputMode>("revealOnly");
   const [showStageDirections, setShowStageDirections] = useState(true);
+  const [limitChoice, setLimitChoice] = useState<LimitChoice>({ type: "all" });
 
   const [lineState, setLineState] = useState<Record<string, LineState>>(() =>
     lines.reduce(
@@ -203,6 +206,13 @@ export function LearnSession(props: LearnSessionProps) {
   }, [drafts, storageKey]);
 
   const userLinesAll = useMemo(() => lines.filter((l) => l.isUserLine), [lines]);
+  const remainingUserLinesCount = useMemo(() => Math.max(0, userLinesAll.length - startIndex), [userLinesAll.length, startIndex]);
+  const limitPercentPresets = [10, 25, 50, 75] as const;
+  const computeLimitFromPercent = (pct: number) => {
+    if (remainingUserLinesCount <= 0) return 0;
+    return Math.max(1, Math.ceil((remainingUserLinesCount * pct) / 100));
+  };
+  const formatLinesCount = (count: number) => `${count} ${count === 1 ? "réplique" : "répliques"}`;
   const userLines = useMemo(() => {
     const availableLines = userLinesAll.slice(startIndex);
     if (limitCount === null) return availableLines;
@@ -254,6 +264,22 @@ export function LearnSession(props: LearnSessionProps) {
     // Sécurité : si on change la limite, on revient au début du paquet.
     setCurrentIndex(0);
   }, [limitCount]);
+
+  useEffect(() => {
+    // Sécurité : si on change le point de départ, on revient au début du paquet.
+    setCurrentIndex(0);
+  }, [startIndex]);
+
+  useEffect(() => {
+    // Si on est en mode pourcentage, recalculer la limite quand le point de départ change
+    // (car le % s'applique aux répliques restantes).
+    if (limitChoice.type === "percent") {
+      setLimitCount(computeLimitFromPercent(limitChoice.pct));
+    }
+    if (limitChoice.type === "all") {
+      setLimitCount(null);
+    }
+  }, [startIndex, limitChoice, remainingUserLinesCount]);
 
   const remainingCount = useMemo(
     () => userLines.filter((l) => scoreValue[l.id] === null || scoreValue[l.id] === undefined).length,
@@ -461,6 +487,8 @@ export function LearnSession(props: LearnSessionProps) {
     if (resetStartIndex) {
       setStartIndex(0);
     }
+    setLimitChoice({ type: "all" });
+    setLimitCount(null);
     setElapsedTime(0);
     if (timeInterval.current) {
       clearInterval(timeInterval.current);
@@ -817,25 +845,43 @@ export function LearnSession(props: LearnSessionProps) {
                   {t.learn.setup.limitLabel}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {[5, 10, 15].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setLimitCount(n)}
-                      className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                        limitCount === n
-                          ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
-                          : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ))}
+                  {limitPercentPresets.map((pct) => {
+                    const computed = computeLimitFromPercent(pct);
+                    const disabled = remainingUserLinesCount === 0 || computed === 0;
+                    const isSelected = limitChoice.type === "percent" && limitChoice.pct === pct;
+                    return (
+                      <button
+                        key={pct}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => {
+                          setLimitChoice({ type: "percent", pct });
+                          setLimitCount(computed);
+                        }}
+                        className={`rounded-full border px-4 py-2 text-sm font-semibold transition disabled:opacity-50 ${
+                          isSelected
+                            ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
+                            : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
+                        }`}
+                      >
+                        <span className="inline-flex items-baseline gap-2">
+                          <span>{pct}%</span>
+                          <span className={`text-xs font-medium ${isSelected ? "text-white/80" : "text-[#7a7184]"}`}>
+                            {formatLinesCount(computed)}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
                   <button
                     type="button"
-                    onClick={() => setLimitCount(null)}
+                    disabled={remainingUserLinesCount === 0}
+                    onClick={() => {
+                      setLimitChoice({ type: "all" });
+                      setLimitCount(null);
+                    }}
                     className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                      limitCount === null
+                      limitChoice.type === "all"
                         ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
                         : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
                     }`}
@@ -843,6 +889,62 @@ export function LearnSession(props: LearnSessionProps) {
                     {t.learn.labels.toutes}
                   </button>
                 </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                  {t.learn.setup.startAtLabel}
+                </div>
+                <div className="text-sm text-[#524b5a]">{t.learn.setup.startAtDesc}</div>
+
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={1}
+                    max={Math.max(1, userLinesAll.length)}
+                    value={Math.min(Math.max(1, startIndex + 1), Math.max(1, userLinesAll.length))}
+                    disabled={userLinesAll.length === 0}
+                    onChange={(e) => {
+                      const raw = Number(e.target.value);
+                      const clamped = Math.min(Math.max(1, raw), Math.max(1, userLinesAll.length));
+                      setStartIndex(clamped - 1);
+                    }}
+                    className="w-full"
+                    aria-label={t.learn.setup.startAtLabel}
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    max={Math.max(1, userLinesAll.length)}
+                    value={userLinesAll.length === 0 ? "" : startIndex + 1}
+                    disabled={userLinesAll.length === 0}
+                    onChange={(e) => {
+                      const raw = Number(e.target.value);
+                      if (!Number.isFinite(raw)) return;
+                      const clamped = Math.min(Math.max(1, raw), Math.max(1, userLinesAll.length));
+                      setStartIndex(clamped - 1);
+                    }}
+                    placeholder={t.learn.setup.startAtPlaceholder}
+                    className="w-24 rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
+                  />
+                </div>
+
+                {userLinesAll.length > 0 && (
+                  <div className="rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] px-3 py-2 text-sm text-[#1c1b1f]">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                      {t.learn.setup.startAtPreviewLabel}
+                    </div>
+                    <div className="mt-1 text-sm text-[#1c1b1f]">
+                      {(() => {
+                        const line = userLinesAll[startIndex];
+                        if (!line) return "—";
+                        const preview = (line.text || "").trim().slice(0, 160);
+                        const suffix = (line.text || "").trim().length > 160 ? "…" : "";
+                        return `#${line.order} — ${preview}${suffix}`;
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col gap-2">
