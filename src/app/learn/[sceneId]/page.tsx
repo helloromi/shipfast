@@ -2,7 +2,6 @@ import { notFound, redirect } from "next/navigation";
 
 import { LearnSession } from "@/components/learn/learn-session";
 import { fetchSceneWithRelations, getSupabaseSessionUser } from "@/lib/queries/scenes";
-import { AccessGate } from "@/components/works/access-gate";
 import { t } from "@/locales/fr";
 import { hasAccess } from "@/lib/queries/access";
 import { ensurePersonalSceneForCurrentUser } from "@/lib/utils/personal-scene";
@@ -106,44 +105,38 @@ export default async function LearnPage({ params, searchParams }: Props) {
   const breadcrumb = breadcrumbParts.join(" > ");
 
   return (
-    <AccessGate
-      user={user}
-      sceneId={sceneId}
-      workId={scene.work_id || undefined}
-    >
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">
-              {t.learn.sectionLabel}
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">
+            {t.learn.sectionLabel}
+          </p>
+          {breadcrumb && (
+            <p className="text-xs font-semibold text-[#7a7184]">
+              {breadcrumb}
             </p>
-            {breadcrumb && (
-              <p className="text-xs font-semibold text-[#7a7184]">
-                {breadcrumb}
-              </p>
-            )}
-            <h1 className="font-display text-2xl font-semibold text-[#1c1b1f]">{scene.title}</h1>
-            <p className="text-sm text-[#524b5a]">
-              {t.learn.labels.personnageChoisi} :{" "}
-              <span className="font-semibold text-[#1c1b1f]">{character.name}</span>
-            </p>
-            {rangeInfo && (
-              <p className="text-xs font-semibold text-[#7a7184]">{rangeInfo}</p>
-            )}
-          </div>
+          )}
+          <h1 className="font-display text-2xl font-semibold text-[#1c1b1f]">{scene.title}</h1>
+          <p className="text-sm text-[#524b5a]">
+            {t.learn.labels.personnageChoisi} :{" "}
+            <span className="font-semibold text-[#1c1b1f]">{character.name}</span>
+          </p>
+          {rangeInfo && (
+            <p className="text-xs font-semibold text-[#7a7184]">{rangeInfo}</p>
+          )}
         </div>
-
-        <LearnSession
-          sceneTitle={scene.title}
-          sceneId={sceneId}
-          characterId={characterId}
-          userCharacterName={character.name}
-          lines={lines}
-          userId={user.id}
-          initialNotesByLineId={initialNotesByLineId}
-        />
       </div>
-    </AccessGate>
+
+      <LearnSession
+        sceneTitle={scene.title}
+        sceneId={sceneId}
+        characterId={characterId}
+        userCharacterName={character.name}
+        lines={lines}
+        userId={user.id}
+        initialNotesByLineId={initialNotesByLineId}
+      />
+    </div>
   );
 }
 
