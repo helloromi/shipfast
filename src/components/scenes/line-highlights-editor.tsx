@@ -319,14 +319,22 @@ export function LineHighlightsEditor(props: Props) {
     const maxHeight = 220;
     const padding = 10;
 
+    // Hauteur estimée (pour éviter l'effet "saut" près du bas de l'écran).
+    // On préfère une estimation simple (nb de lignes) plutôt qu'une mesure DOM.
+    const lineCount = Math.max(1, (text ?? "").split("\n").length);
+    const estimatedHeight = Math.min(maxHeight, 16 + lineCount * 22);
+
     // Position désirée: en dessous du surlignage (pour ne pas masquer le texte).
     let leftViewport = r.left + r.width / 2 - width / 2;
-    let topViewport = r.bottom + 10;
+    const belowTop = r.bottom + 10;
+    const aboveTop = r.top - 10 - estimatedHeight;
+    const canPlaceBelow = belowTop + estimatedHeight <= window.innerHeight - padding;
+    let topViewport = canPlaceBelow ? belowTop : aboveTop;
 
     leftViewport = Math.max(padding, Math.min(leftViewport, window.innerWidth - width - padding));
     topViewport = Math.max(
       padding,
-      Math.min(topViewport, window.innerHeight - maxHeight - padding)
+      Math.min(topViewport, window.innerHeight - estimatedHeight - padding)
     );
 
     setHoverTip({
