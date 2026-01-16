@@ -138,6 +138,13 @@ export function Header() {
                     ))}
                     <div className="border-t border-[#e7e1d9] my-1" />
                     <div className="px-3 py-2 text-xs text-[#524b5a]">{t.common.header.connecte}</div>
+                    <Link
+                      href="/compte"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex w-full items-center justify-between rounded-full px-3 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:bg-[#f4c95d33]"
+                    >
+                      <span>{t.common.header.monCompte}</span>
+                    </Link>
                     <button
                       onClick={handleLogout}
                       disabled={loading}
@@ -160,6 +167,14 @@ export function Header() {
                 {menuOpen && (
                   <div className="absolute right-0 top-12 z-[70] w-56 rounded-2xl border border-[#e7e1d9] bg-white/95 shadow-lg">
                     <div className="px-4 py-3 text-xs text-[#524b5a]">{t.common.header.connecte}</div>
+                    <div className="border-t border-[#e7e1d9]" />
+                    <Link
+                      href="/compte"
+                      onClick={() => setMenuOpen(false)}
+                      className="block px-4 py-3 text-sm font-semibold text-[#3b1f4a] transition hover:bg-[#f4c95d33]"
+                    >
+                      {t.common.header.monCompte}
+                    </Link>
                     <div className="border-t border-[#e7e1d9]" />
                     <button
                       onClick={handleLogout}
