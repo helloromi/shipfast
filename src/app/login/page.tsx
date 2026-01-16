@@ -5,7 +5,11 @@ import { MagicLinkForm } from "@/components/auth/magic-link-form";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { t } from "@/locales/fr";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -14,6 +18,9 @@ export default async function LoginPage() {
   if (user) {
     redirect("/home");
   }
+
+  const errorParam = searchParams?.error;
+  const errorMessage = Array.isArray(errorParam) ? errorParam[0] : errorParam;
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6">
@@ -24,12 +31,12 @@ export default async function LoginPage() {
           {t.login.description}
         </p>
       </div>
+      {errorMessage ? (
+        <div className="rounded-2xl border border-[#f2c2c2] bg-[#fff1f2] p-4 text-sm text-[#9f1239]">
+          {errorMessage}
+        </div>
+      ) : null}
       <MagicLinkForm />
-      <div className="text-sm text-[#524b5a]">
-        <Link href="/bibliotheque" className="font-semibold text-[#3b1f4a] underline underline-offset-4">
-          {t.login.retour}
-        </Link>
-      </div>
     </div>
   );
 }

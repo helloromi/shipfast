@@ -24,7 +24,7 @@ export function MagicLinkForm() {
     setStatus("loading");
     setError(null);
 
-    const redirectUrl = `${getSiteUrl()}/onboarding`;
+    const redirectUrl = `${getSiteUrl()}/auth/callback?next=/onboarding`;
     // Log pour déboguer en production
     if (process.env.NODE_ENV === "production") {
       console.log("[MagicLink] emailRedirectTo:", redirectUrl);
