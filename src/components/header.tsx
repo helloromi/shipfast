@@ -117,7 +117,7 @@ export function Header() {
                 </svg>
               </button>
               {mobileMenuOpen && (
-                <div className="absolute right-0 top-12 z-[70] w-56 rounded-2xl border border-[#e7e1d9] bg-white/95 shadow-lg sm:hidden">
+                <div className="absolute right-0 top-12 z-[90] w-56 rounded-2xl border border-[#e7e1d9] bg-white/95 shadow-lg sm:hidden">
                   <nav className="flex flex-col gap-1 p-2">
                     {navItems.map((item) => (
                       <Link
@@ -165,7 +165,7 @@ export function Header() {
                   {session.user.email ?? t.common.header.monCompte}
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-12 z-[70] w-56 rounded-2xl border border-[#e7e1d9] bg-white/95 shadow-lg">
+                  <div className="absolute right-0 top-12 z-[90] w-56 rounded-2xl border border-[#e7e1d9] bg-white/95 shadow-lg">
                     <div className="px-4 py-3 text-xs text-[#524b5a]">{t.common.header.connecte}</div>
                     <div className="border-t border-[#e7e1d9]" />
                     <Link

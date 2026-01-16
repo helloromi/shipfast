@@ -4,7 +4,7 @@ export const login = {
   description: "Connexion simple via email.",
   form: {
     label: "Email",
-    placeholder: "toi@exemple.com",
+    placeholder: "jeunedemoiselle@cherchepiecemortelle.com",
     button: {
       envoyer: "Recevoir le lien",
       envoi: "Envoi...",
