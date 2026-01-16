@@ -16,6 +16,11 @@ function toTimestamptzFromUnixSeconds(value: number | null | undefined): string 
   return new Date(value * 1000).toISOString();
 }
 
+type SubscriptionPeriodFields = {
+  current_period_end?: number | null;
+  cancel_at_period_end?: boolean;
+};
+
 async function resolveUserIdFromCustomerId(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   customerId: string
@@ -112,7 +117,9 @@ export async function POST(request: NextRequest) {
         }
 
         // 2) Fetch subscription snapshot from Stripe and upsert
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const subscriptionResponse = await stripe.subscriptions.retrieve(subscriptionId);
+        const subscription = subscriptionResponse as unknown as Stripe.Subscription;
+        const subscriptionPeriod = subscription as unknown as SubscriptionPeriodFields;
         const { error: subWriteError } = await supabase
           .from("billing_subscriptions")
           .upsert(
@@ -120,8 +127,8 @@ export async function POST(request: NextRequest) {
               stripe_subscription_id: subscription.id,
               user_id: userId,
               status: subscription.status,
-              current_period_end: toTimestamptzFromUnixSeconds(subscription.current_period_end),
-              cancel_at_period_end: subscription.cancel_at_period_end,
+              current_period_end: toTimestamptzFromUnixSeconds(subscriptionPeriod.current_period_end),
+              cancel_at_period_end: Boolean(subscriptionPeriod.cancel_at_period_end),
               updated_at: new Date().toISOString(),
             },
             { onConflict: "stripe_subscription_id" }
@@ -167,8 +174,8 @@ export async function POST(request: NextRequest) {
             stripe_subscription_id: subscription.id,
             user_id: userId,
             status: subscription.status,
-            current_period_end: toTimestamptzFromUnixSeconds(subscription.current_period_end),
-            cancel_at_period_end: subscription.cancel_at_period_end,
+            current_period_end: toTimestamptzFromUnixSeconds((subscription as unknown as SubscriptionPeriodFields).current_period_end),
+            cancel_at_period_end: Boolean((subscription as unknown as SubscriptionPeriodFields).cancel_at_period_end),
             updated_at: new Date().toISOString(),
           },
           { onConflict: "stripe_subscription_id" }

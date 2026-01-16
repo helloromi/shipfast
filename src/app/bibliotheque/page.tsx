@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { fetchWorks, searchWorks, fetchUserWorkAverages, fetchWorksWithActiveScenes } from "@/lib/queries/works";
 import {
   getSupabaseSessionUser,
@@ -22,6 +23,9 @@ export default async function BibliothequePage({ searchParams }: Props) {
   const sortBy = (params.sort as "title" | "scenes" | "mastery") || "title";
 
   const user = await getSupabaseSessionUser();
+  if (!user) {
+    redirect("/login");
+  }
   await requireSubscriptionOrRedirect(user);
 
   const [works, averages, privateScenes, pendingImports, activeWorkIds, activeSceneIds] = await Promise.all([

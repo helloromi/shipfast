@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { fetchUserProgressScenes, getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { fetchUserStatsSummary } from "@/lib/queries/stats";
@@ -9,6 +10,9 @@ import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription"
 
 export default async function HomePage() {
   const user = await getSupabaseSessionUser();
+  if (!user) {
+    redirect("/login");
+  }
   await requireSubscriptionOrRedirect(user);
 
   const [progresses, statsSummary] = await Promise.all([

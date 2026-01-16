@@ -2,6 +2,12 @@ import { NextRequest } from "next/server";
 import { redirect } from "next/navigation";
 import { getStripe } from "@/lib/stripe/client";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import Stripe from "stripe";
+
+type SubscriptionPeriodFields = {
+  current_period_end?: number | null;
+  cancel_at_period_end?: boolean;
+};
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -38,7 +44,11 @@ export async function GET(request: NextRequest) {
       }
 
       try {
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        // stripe-node typage: retrieve() peut retourner Stripe.Response<Stripe.Subscription>
+        // On normalise ici sur Stripe.Subscription pour accéder aux champs métier.
+        const subscriptionResponse = await stripe.subscriptions.retrieve(subscriptionId);
+        const subscription = subscriptionResponse as unknown as Stripe.Subscription;
+        const subscriptionPeriod = subscription as unknown as SubscriptionPeriodFields;
         const { error: subWriteError } = await adminSupabase
           .from("billing_subscriptions")
           .upsert(
@@ -46,10 +56,10 @@ export async function GET(request: NextRequest) {
               stripe_subscription_id: subscription.id,
               user_id: userId,
               status: subscription.status,
-              current_period_end: subscription.current_period_end
-                ? new Date(subscription.current_period_end * 1000).toISOString()
+              current_period_end: subscriptionPeriod.current_period_end
+                ? new Date(subscriptionPeriod.current_period_end * 1000).toISOString()
                 : null,
-              cancel_at_period_end: subscription.cancel_at_period_end,
+              cancel_at_period_end: Boolean(subscriptionPeriod.cancel_at_period_end),
               updated_at: new Date().toISOString(),
             },
             { onConflict: "stripe_subscription_id" }
