@@ -86,8 +86,11 @@ export async function fetchUserStatsSummary(userId: string): Promise<UserStatsSu
   // Récupérer toutes les sessions
   const { data: sessions, error: sessionsError } = await supabase
     .from("user_learning_sessions")
-    .select("duration_seconds, average_score, started_at, scene_id")
+    .select("duration_seconds, average_score, started_at, scene_id, ended_at, completed_lines")
     .eq("user_id", userId)
+    // Ne compter que les sessions terminées et où au moins 1 réplique a été notée.
+    .not("ended_at", "is", null)
+    .gt("completed_lines", 0)
     .order("started_at", { ascending: false });
 
   if (sessionsError || !sessions) {
@@ -172,6 +175,9 @@ export async function fetchSceneStats(userId: string, sceneId: string): Promise<
     )
     .eq("user_id", userId)
     .eq("scene_id", sceneId)
+    // Ne compter que les sessions terminées et où au moins 1 réplique a été notée.
+    .not("ended_at", "is", null)
+    .gt("completed_lines", 0)
     .order("started_at", { ascending: false });
 
   if (sessionsError || !sessions) {
