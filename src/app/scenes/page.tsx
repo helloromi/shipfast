@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { fetchWorks, searchWorks, fetchUserWorkAverages } from "@/lib/queries/works";
 import { getSupabaseSessionUser, fetchUserPrivateScenes } from "@/lib/queries/scenes";
 import { SearchBar } from "@/components/works/search-bar";
 import { t } from "@/locales/fr";
+import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
 
 type Props = {
   searchParams: Promise<{ q?: string }>;
@@ -13,6 +15,12 @@ export default async function ScenesPage({ searchParams }: Props) {
   const query = params.q || "";
   
   const user = await getSupabaseSessionUser();
+  if (user) {
+    await requireSubscriptionOrRedirect(user);
+  }
+  if (!user) {
+    redirect("/landing");
+  }
   const [works, averages, privateScenes] = await Promise.all([
     query ? searchWorks(query) : fetchWorks(),
     user ? fetchUserWorkAverages(user.id) : Promise.resolve([]),

@@ -1,14 +1,12 @@
-import { redirect } from "next/navigation";
 import { getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { ImportForm } from "@/components/scenes/import-form";
 import { t } from "@/locales/fr";
+import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
 
 export default async function ImportScenePage() {
   const user = await getSupabaseSessionUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+  await requireSubscriptionOrRedirect(user);
 
   return (
     <div className="flex flex-col gap-6">

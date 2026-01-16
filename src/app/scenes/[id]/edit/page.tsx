@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { fetchSceneWithRelations, getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { isAdmin } from "@/lib/utils/admin";
 import { SceneEditor } from "@/components/scenes/scene-editor";
+import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -17,6 +18,7 @@ export default async function SceneEditPage({ params }: Props) {
   if (!user) {
     redirect("/login");
   }
+  await requireSubscriptionOrRedirect(user);
 
   const scene = await fetchSceneWithRelations(sceneId);
   if (!scene) notFound();

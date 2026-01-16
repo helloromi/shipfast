@@ -1,9 +1,9 @@
 export const pricing = {
   title: "Tarifs transparents",
-  subtitle: "Tu paies uniquement pour les scènes que tu veux apprendre",
+  subtitle: "Un abonnement unique pour débloquer toute l'app",
   model: {
-    perScene: "2€ par scène",
-    description: "Prix fixe pour chaque scène, peu importe le nombre de répliques",
+    monthly: "5€ / mois",
+    description: "Accès complet à l’apprentissage, l’import, la bibliothèque et tes statistiques",
   },
   credibility: {
     secure: "Paiement sécurisé",

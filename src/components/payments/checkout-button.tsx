@@ -1,41 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 type CheckoutButtonProps = {
-  workId?: string;
-  sceneId?: string;
   className?: string;
   children: React.ReactNode;
 };
 
 export function CheckoutButton({
-  workId,
-  sceneId,
   className,
   children,
 }: CheckoutButtonProps) {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleCheckout = async () => {
-    if (!workId && !sceneId) return;
-
     setLoading(true);
 
     try {
-      // Ne construire l'objet qu'avec les valeurs définies et non vides
-      const body: { workId?: string; sceneId?: string } = {};
-      if (workId && workId.trim() !== "") body.workId = workId;
-      if (sceneId && sceneId.trim() !== "") body.sceneId = sceneId;
-
       const response = await fetch("/api/payments/create-checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({}),
       });
 
       const data = await response.json();
@@ -47,9 +34,10 @@ export function CheckoutButton({
       if (data.url) {
         window.location.href = data.url;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Checkout error:", error);
-      alert(`Erreur: ${error.message}`);
+      const message = error instanceof Error ? error.message : "Erreur inconnue";
+      alert(`Erreur: ${message}`);
       setLoading(false);
     }
   };

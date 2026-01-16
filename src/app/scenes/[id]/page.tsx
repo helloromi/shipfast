@@ -8,6 +8,7 @@ import { SceneDetailTabs } from "@/components/scenes/scene-detail-tabs";
 import { t } from "@/locales/fr";
 import { hasAccess } from "@/lib/queries/access";
 import { ensurePersonalSceneForCurrentUser } from "@/lib/utils/personal-scene";
+import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -25,6 +26,9 @@ export default async function SceneDetailPage({ params }: Props) {
   }
 
   const user = await getSupabaseSessionUser();
+  if (user) {
+    await requireSubscriptionOrRedirect(user);
+  }
 
   // Si un user a accès à une scène publique, on travaille sur sa copie perso (éditable) + historique migré.
   if (user && !scene.is_private) {

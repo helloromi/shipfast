@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       step1: "Allez dans votre dashboard Stripe → Developers → Webhooks",
       step2: "Cliquez sur 'Add endpoint'",
       step3: `Entrez l'URL: ${webhookUrl}`,
-      step4: "Sélectionnez l'événement: checkout.session.completed",
+      step4: "Sélectionnez les événements: checkout.session.completed, customer.subscription.updated, customer.subscription.deleted",
       step5: "Copiez le 'Signing secret' et ajoutez-le à STRIPE_WEBHOOK_SECRET",
     };
     

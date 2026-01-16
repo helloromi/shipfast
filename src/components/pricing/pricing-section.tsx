@@ -15,7 +15,7 @@ export function PricingSection() {
         <div className="mt-8">
           <div className="mx-auto max-w-md rounded-2xl border border-[#e7e1d9] bg-white/90 p-8 shadow-sm">
             <div className="text-center">
-              <div className="text-4xl font-bold text-[#3b1f4a]">{t.pricing.model.perScene}</div>
+              <div className="text-4xl font-bold text-[#3b1f4a]">{t.pricing.model.monthly}</div>
               <p className="mt-3 text-sm text-[#524b5a]">{t.pricing.model.description}</p>
             </div>
           </div>

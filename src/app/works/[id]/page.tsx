@@ -3,6 +3,7 @@ import { fetchWorkWithScenesAndStats } from "@/lib/queries/works";
 import { getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { WorkDetailClient } from "@/components/works/work-detail-client";
 import { AccessGate } from "@/components/works/access-gate";
+import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -15,6 +16,9 @@ export default async function WorkDetailPage({ params }: Props) {
   }
 
   const user = await getSupabaseSessionUser();
+  if (user) {
+    await requireSubscriptionOrRedirect(user);
+  }
   const work = await fetchWorkWithScenesAndStats(id, user?.id);
 
   if (!work) {
@@ -34,7 +38,6 @@ export default async function WorkDetailPage({ params }: Props) {
       user={user}
       workId={id}
       sceneId={firstSceneId}
-      purchaseScope="work"
     >
       <WorkDetailClient work={work} />
     </AccessGate>

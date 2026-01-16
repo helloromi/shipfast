@@ -7,6 +7,7 @@ import { t } from "@/locales/fr";
 import { hasAccess } from "@/lib/queries/access";
 import { ensurePersonalSceneForCurrentUser } from "@/lib/utils/personal-scene";
 import { fetchUserLineNotes } from "@/lib/queries/notes";
+import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
 
 type Props = {
   params: Promise<{ sceneId: string }>;
@@ -21,6 +22,7 @@ export default async function LearnPage({ params, searchParams }: Props) {
   if (!user) {
     redirect("/login");
   }
+  await requireSubscriptionOrRedirect(user);
 
   const scene = await fetchSceneWithRelations(sceneId);
   if (!scene) {
@@ -107,10 +109,7 @@ export default async function LearnPage({ params, searchParams }: Props) {
     <AccessGate
       user={user}
       sceneId={sceneId}
-      // On passe workId pour que l'achat "œuvre" débloque aussi /learn,
-      // mais on force le bouton "Débloquer" à acheter uniquement la scène si nécessaire.
       workId={scene.work_id || undefined}
-      purchaseScope="scene"
     >
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between gap-3">

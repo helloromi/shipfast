@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { fetchWorks, searchWorks, fetchUserWorkAverages, fetchWorksWithActiveScenes } from "@/lib/queries/works";
 import {
   getSupabaseSessionUser,
@@ -10,6 +9,7 @@ import {
 import { SearchBar } from "@/components/works/search-bar";
 import { FiltersSort } from "@/components/works/filters-sort";
 import { t } from "@/locales/fr";
+import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
 
 type Props = {
   searchParams: Promise<{ q?: string; author?: string; sort?: string }>;
@@ -22,9 +22,7 @@ export default async function BibliothequePage({ searchParams }: Props) {
   const sortBy = (params.sort as "title" | "scenes" | "mastery") || "title";
 
   const user = await getSupabaseSessionUser();
-  if (!user) {
-    redirect("/login");
-  }
+  await requireSubscriptionOrRedirect(user);
 
   const [works, averages, privateScenes, pendingImports, activeWorkIds, activeSceneIds] = await Promise.all([
     query ? searchWorks(query, authorFilter, sortBy) : fetchWorks(authorFilter, sortBy),
@@ -105,7 +103,7 @@ export default async function BibliothequePage({ searchParams }: Props) {
             <h2 className="font-display text-3xl font-semibold text-[#1c1b1f]">Mes scènes importées</h2>
             <p className="text-sm text-[#524b5a] leading-relaxed">
               Les scènes que vous avez importées et qui vous appartiennent. Vous pouvez les travailler depuis votre
-              page d'accueil.
+              page d’accueil.
             </p>
           </div>
 
@@ -184,7 +182,7 @@ export default async function BibliothequePage({ searchParams }: Props) {
           </p>
           <p className="text-xs text-[#7a7184] italic">
             Sélectionnez une œuvre pour voir ses scènes et commencer à travailler. Vos scènes actives apparaissent sur
-            votre page d'accueil.
+            votre page d’accueil.
           </p>
         </div>
 

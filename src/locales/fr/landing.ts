@@ -5,7 +5,7 @@ export const landing = {
     "Importe ta scène, révèle tes répliques au fur et à mesure, et reçois un feedback instantané. Simple, efficace, sans configuration.",
   cta: {
     commencer: "Commencer maintenant",
-    commencerSubtext: "Gratuit, sans carte bancaire",
+    commencerSubtext: "Inscription gratuite. Abonnement 5€/mois ensuite.",
     voirBibliotheque: "Voir la bibliothèque",
   },
   trustSignals: {
@@ -78,7 +78,7 @@ export const landing = {
       },
       q2: {
         question: "Combien ça coûte ?",
-        answer: "L'inscription est gratuite. Tu paies 2€ par scène complète, peu importe le nombre de répliques.",
+        answer: "L'inscription est gratuite. Pour tout débloquer: 5€/mois (annulable à tout moment).",
       },
       q3: {
         question: "Puis-je utiliser mes propres textes ?",

@@ -1,8 +1,42 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { UserWorkAccess, AccessType } from "@/types/scenes";
+import { UserWorkAccess } from "@/types/scenes";
 import { isAdmin } from "@/lib/utils/admin";
 
 const FREE_SLOT_LIMIT = 20;
+
+type BillingSubscriptionRow = {
+  status: string;
+  current_period_end: string | null;
+};
+
+export async function hasActiveSubscription(userId: string): Promise<boolean> {
+  if (!userId) return false;
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("billing_subscriptions")
+    .select("status,current_period_end")
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error(error);
+    return false;
+  }
+
+  const rows = (data ?? []) as BillingSubscriptionRow[];
+  const nowMs = Date.now();
+
+  return rows.some((s) => {
+    const isActiveStatus = s.status === "active" || s.status === "trialing";
+    if (!isActiveStatus) return false;
+
+    // If Stripe doesn't provide a period end (rare), treat active/trialing as active.
+    if (!s.current_period_end) return true;
+
+    const endMs = new Date(s.current_period_end).getTime();
+    return Number.isFinite(endMs) ? endMs > nowMs : true;
+  });
+}
 
 export async function getUserWorkAccess(
   userId: string,
@@ -198,25 +232,10 @@ export async function hasAccess(
   const admin = await isAdmin(userId);
   if (admin) return true;
 
-  // Vérifier si l'utilisateur a déjà un accès (gratuit, acheté, ou privé)
-  const access = await getUserWorkAccess(userId, workId, sceneId);
-  if (access) return true;
-
-  // Pour les scènes, vérifier si c'est une scène privée appartenant à l'utilisateur
-  if (sceneId) {
-    const supabase = await createSupabaseServerClient();
-    const { data } = await supabase
-      .from("scenes")
-      .select("is_private, owner_user_id")
-      .eq("id", sceneId)
-      .single();
-
-    if (data?.is_private && data.owner_user_id === userId) {
-      return true;
-    }
-  }
-
-  return false;
+  // Nouveau modèle: accès global via abonnement
+  void workId;
+  void sceneId;
+  return await hasActiveSubscription(userId);
 }
 
 

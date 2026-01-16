@@ -2,100 +2,72 @@ import { NextRequest } from "next/server";
 import { redirect } from "next/navigation";
 import { getStripe } from "@/lib/stripe/client";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
-import { getUserWorkAccess } from "@/lib/queries/access";
-
-type PurchasedAccessInsert =
-  | { user_id: string; access_type: "purchased"; purchase_id: string; work_id: string; scene_id: null }
-  | { user_id: string; access_type: "purchased"; purchase_id: string; work_id: null; scene_id: string };
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const sessionId = searchParams.get("session_id");
 
   if (!sessionId) {
-    redirect("/scenes");
+    redirect("/subscribe");
   }
 
   try {
     console.log("[SUCCESS] Route success appelée avec session_id:", sessionId);
     const stripe = getStripe();
-    // Vérifier que la session est bien complétée
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     
-    console.log("[SUCCESS] Session récupérée - Payment status:", session.payment_status);
+    console.log("[SUCCESS] Session récupérée - status:", session.status, "mode:", session.mode);
     console.log("[SUCCESS] Metadata:", JSON.stringify(session.metadata, null, 2));
 
-    if (session.payment_status === "paid") {
-      const userId = session.metadata?.user_id;
-      
-      // Fonction helper pour nettoyer les valeurs (gère undefined, null, chaînes vides)
-      const cleanValue = (value: string | undefined | null): string | undefined => {
-        if (value === undefined || value === null) return undefined;
-        const trimmed = typeof value === 'string' ? value.trim() : String(value).trim();
-        return trimmed !== "" ? trimmed : undefined;
-      };
-      
-      const workId = cleanValue(session.metadata?.work_id);
-      const sceneId = cleanValue(session.metadata?.scene_id);
+    const userId = session.metadata?.user_id ?? null;
+    const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
+    const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null;
 
-      console.log("[SUCCESS] Paiement confirmé - userId:", userId, "workId:", workId, "sceneId:", sceneId);
+    // Fallback: attempt to upsert billing snapshot directly (in case webhook is delayed)
+    if (userId && customerId && subscriptionId) {
+      const adminSupabase = createSupabaseAdminClient();
 
-      // Vérifier et accorder l'accès si nécessaire (fallback si le webhook n'a pas encore été traité)
-      if (userId) {
-        // Vérifier si l'accès existe déjà
-        const existingAccess = await getUserWorkAccess(userId, workId, sceneId);
-        
-        if (existingAccess) {
-          console.log("[SUCCESS] ✅ Accès déjà existant (probablement accordé par le webhook)");
-          console.log("[SUCCESS] Access ID:", existingAccess.id, "Type:", existingAccess.access_type);
-        } else {
-          console.log("[SUCCESS] ⚠️ Accès non trouvé - accord via route success (fallback)");
-          // Accorder l'accès directement (idempotent - le webhook peut aussi le faire)
-          // Utiliser le client admin pour contourner RLS et garantir l'insertion
-          // La contrainte de la table exige : (work_id IS NOT NULL AND scene_id IS NULL) OR (work_id IS NULL AND scene_id IS NOT NULL)
-          const adminSupabase = createSupabaseAdminClient();
-          const accessData: PurchasedAccessInsert | null = workId
-            ? { user_id: userId, access_type: "purchased", purchase_id: sessionId, work_id: workId, scene_id: null }
-            : sceneId
-              ? { user_id: userId, access_type: "purchased", purchase_id: sessionId, work_id: null, scene_id: sceneId }
-              : null;
-
-          if (!accessData) {
-            console.warn("[SUCCESS] ⚠️ Ni workId ni sceneId, impossible d'accorder l'accès");
-            redirect("/scenes");
-          }
-
-          const { data: insertedAccess, error: insertError } = await adminSupabase
-            .from("user_work_access")
-            .insert(accessData)
-            .select()
-            .single();
-
-          if (insertError) {
-            // Si l'insertion échoue (peut-être que le webhook l'a déjà fait entre temps),
-            // on continue quand même - l'accès devrait exister
-            console.warn("[SUCCESS] ⚠️ Erreur insertion (peut-être déjà créé par webhook):", insertError);
-          } else {
-            console.log("[SUCCESS] ✅ Accès accordé via route success");
-            console.log("[SUCCESS] Access ID:", insertedAccess?.id);
-          }
-        }
-      } else {
-        console.warn("[SUCCESS] ⚠️ Pas de userId dans les metadata");
+      const { error: customerWriteError } = await adminSupabase
+        .from("billing_customers")
+        .upsert(
+          { user_id: userId, stripe_customer_id: customerId },
+          { onConflict: "user_id" }
+        );
+      if (customerWriteError) {
+        console.warn("[SUCCESS] ⚠️ Erreur upsert billing_customers:", customerWriteError);
       }
 
-      // Rediriger vers l'œuvre ou la scène
-      const redirectUrl = workId ? `/works/${workId}` : sceneId ? `/scenes/${sceneId}` : "/scenes";
-      console.log("[SUCCESS] Redirection vers:", redirectUrl);
-      redirect(redirectUrl);
+      try {
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const { error: subWriteError } = await adminSupabase
+          .from("billing_subscriptions")
+          .upsert(
+            {
+              stripe_subscription_id: subscription.id,
+              user_id: userId,
+              status: subscription.status,
+              current_period_end: subscription.current_period_end
+                ? new Date(subscription.current_period_end * 1000).toISOString()
+                : null,
+              cancel_at_period_end: subscription.cancel_at_period_end,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "stripe_subscription_id" }
+          );
+        if (subWriteError) {
+          console.warn("[SUCCESS] ⚠️ Erreur upsert billing_subscriptions:", subWriteError);
+        }
+      } catch (e) {
+        console.warn("[SUCCESS] ⚠️ Erreur récupération subscription Stripe:", e);
+      }
     } else {
-      console.warn("[SUCCESS] ⚠️ Payment status n'est pas 'paid':", session.payment_status);
+      console.warn("[SUCCESS] ⚠️ Metadata/customer/subscription incomplets, fallback billing ignoré");
     }
 
-    redirect("/scenes");
+    redirect("/home");
   } catch (error) {
     console.error("[SUCCESS] ❌ Erreur lors de la récupération de la session:", error);
-    redirect("/scenes");
+    redirect("/subscribe");
   }
 }
 

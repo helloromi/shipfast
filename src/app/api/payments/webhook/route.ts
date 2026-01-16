@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import Stripe from "stripe";
-import type { PostgrestError } from "@supabase/supabase-js";
 
 function getWebhookSecret(): string {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -10,6 +9,28 @@ function getWebhookSecret(): string {
     throw new Error("STRIPE_WEBHOOK_SECRET is not set");
   }
   return secret;
+}
+
+function toTimestamptzFromUnixSeconds(value: number | null | undefined): string | null {
+  if (!value || Number.isNaN(value)) return null;
+  return new Date(value * 1000).toISOString();
+}
+
+async function resolveUserIdFromCustomerId(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  customerId: string
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("billing_customers")
+    .select("user_id")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle<{ user_id: string }>();
+
+  if (error) {
+    console.error("[WEBHOOK] Error resolving user_id from billing_customers:", error);
+    return null;
+  }
+  return data?.user_id ?? null;
 }
 
 export async function POST(request: NextRequest) {
@@ -44,132 +65,131 @@ export async function POST(request: NextRequest) {
   // Logger tous les événements reçus (pour debug)
   console.log(`[WEBHOOK] Événement reçu: ${event.type} (ID: ${event.id})`);
 
-  // Gérer l'événement checkout.session.completed
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    console.log("[WEBHOOK] Traitement de checkout.session.completed");
-    console.log("[WEBHOOK] Session ID:", session.id);
-    console.log("[WEBHOOK] Payment status:", session.payment_status);
-    console.log("[WEBHOOK] Metadata:", JSON.stringify(session.metadata, null, 2));
-
+  // Subscription-centric billing sync
+  if (
+    event.type === "checkout.session.completed" ||
+    event.type === "customer.subscription.updated" ||
+    event.type === "customer.subscription.deleted"
+  ) {
     try {
-      // Utiliser le client admin pour contourner RLS (le webhook n'a pas de session utilisateur)
       const supabase = createSupabaseAdminClient();
-      const userId = session.metadata?.user_id;
-      
-      // Les metadata Stripe peuvent contenir des chaînes vides "" ou être absentes
-      // On récupère les valeurs brutes d'abord pour le debug
-      const rawWorkId = session.metadata?.work_id;
-      const rawSceneId = session.metadata?.scene_id;
-      
-      console.log("[WEBHOOK] Metadata brutes - work_id:", rawWorkId, "(type:", typeof rawWorkId, ")", "scene_id:", rawSceneId, "(type:", typeof rawSceneId, ")");
-      
-      // Fonction helper pour nettoyer les valeurs (gère undefined, null, chaînes vides)
-      const cleanValue = (value: string | undefined | null): string | undefined => {
-        if (value === undefined || value === null) return undefined;
-        const trimmed = typeof value === 'string' ? value.trim() : String(value).trim();
-        return trimmed !== "" ? trimmed : undefined;
-      };
-      
-      const workId = cleanValue(rawWorkId);
-      const sceneId = cleanValue(rawSceneId);
 
-      console.log("[WEBHOOK] Données nettoyées - userId:", userId, "workId:", workId, "sceneId:", sceneId);
+      if (event.type === "checkout.session.completed") {
+        const session = event.data.object as Stripe.Checkout.Session;
+        console.log("[WEBHOOK] Traitement de checkout.session.completed");
+        console.log("[WEBHOOK] Session ID:", session.id);
+        console.log("[WEBHOOK] Mode:", session.mode);
+        console.log("[WEBHOOK] Metadata:", JSON.stringify(session.metadata, null, 2));
+
+        const userId = session.metadata?.user_id ?? null;
+        const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
+        const subscriptionId =
+          typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null;
+
+        if (!userId) {
+          console.error("[WEBHOOK] ERREUR: Pas de user_id dans les metadata");
+          return NextResponse.json({ error: "No user_id" }, { status: 400 });
+        }
+        if (!customerId) {
+          console.error("[WEBHOOK] ERREUR: Pas de customer dans la session");
+          return NextResponse.json({ error: "No customer" }, { status: 400 });
+        }
+        if (!subscriptionId) {
+          console.error("[WEBHOOK] ERREUR: Pas de subscription dans la session");
+          return NextResponse.json({ error: "No subscription" }, { status: 400 });
+        }
+
+        // 1) Upsert customer mapping
+        const { error: customerWriteError } = await supabase
+          .from("billing_customers")
+          .upsert(
+            { user_id: userId, stripe_customer_id: customerId },
+            { onConflict: "user_id" }
+          );
+        if (customerWriteError) {
+          console.error("[WEBHOOK] ERREUR upsert billing_customers:", customerWriteError);
+          return NextResponse.json({ error: "Failed to upsert billing_customers" }, { status: 500 });
+        }
+
+        // 2) Fetch subscription snapshot from Stripe and upsert
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const { error: subWriteError } = await supabase
+          .from("billing_subscriptions")
+          .upsert(
+            {
+              stripe_subscription_id: subscription.id,
+              user_id: userId,
+              status: subscription.status,
+              current_period_end: toTimestamptzFromUnixSeconds(subscription.current_period_end),
+              cancel_at_period_end: subscription.cancel_at_period_end,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "stripe_subscription_id" }
+          );
+
+        if (subWriteError) {
+          console.error("[WEBHOOK] ERREUR upsert billing_subscriptions:", subWriteError);
+          return NextResponse.json({ error: "Failed to upsert billing_subscriptions" }, { status: 500 });
+        }
+
+        console.log("[WEBHOOK] ✅ Billing snapshot upsert OK (checkout)");
+        return NextResponse.json({ received: true });
+      }
+
+      // subscription.updated / subscription.deleted
+      const subscription = event.data.object as Stripe.Subscription;
+      const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
+      const userId =
+        (subscription.metadata && typeof subscription.metadata.user_id === "string" && subscription.metadata.user_id) ||
+        (await resolveUserIdFromCustomerId(supabase, customerId));
 
       if (!userId) {
-        console.error("[WEBHOOK] ERREUR: Pas de user_id dans les metadata");
-        return NextResponse.json({ error: "No user_id" }, { status: 400 });
+        console.error("[WEBHOOK] ERREUR: impossible de résoudre user_id pour subscription", subscription.id);
+        return NextResponse.json({ error: "No user_id for subscription" }, { status: 400 });
       }
 
-      // Vérifier qu'on a soit workId soit sceneId, mais pas les deux ni aucun
-      if (!workId && !sceneId) {
-        console.error("[WEBHOOK] ERREUR: Ni work_id ni scene_id valides dans les metadata");
-        console.error("[WEBHOOK] Raw values - work_id:", rawWorkId, "scene_id:", rawSceneId);
-        return NextResponse.json({ error: "work_id or scene_id required" }, { status: 400 });
-      }
-
-      if (workId && sceneId) {
-        console.error("[WEBHOOK] ERREUR: work_id et scene_id sont tous les deux présents après nettoyage");
-        console.error("[WEBHOOK] work_id:", workId, "scene_id:", sceneId);
-        console.error("[WEBHOOK] Raw values - work_id:", rawWorkId, "scene_id:", rawSceneId);
-        return NextResponse.json({ error: "Cannot have both work_id and scene_id" }, { status: 400 });
-      }
-
-      // Vérifier si l'accès existe déjà (idempotence)
-      const { data: existingAccess } = await supabase
-        .from("user_work_access")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("purchase_id", session.id)
-        .maybeSingle();
-
-      if (existingAccess) {
-        console.log("[WEBHOOK] Accès déjà existant pour cette session, ignoré (idempotence)");
-        return NextResponse.json({ received: true, message: "Access already granted" });
-      }
-
-      // Créer l'entrée dans user_work_access
-      // La contrainte de la table exige : (work_id IS NOT NULL AND scene_id IS NULL) OR (work_id IS NULL AND scene_id IS NOT NULL)
-      const accessData =
-        workId
-          ? { user_id: userId, access_type: "purchased" as const, purchase_id: session.id, work_id: workId, scene_id: null as null }
-          : sceneId
-            ? { user_id: userId, access_type: "purchased" as const, purchase_id: session.id, work_id: null as null, scene_id: sceneId }
-            : null;
-
-      if (!accessData) {
-        return NextResponse.json({ error: "work_id or scene_id required" }, { status: 400 });
-      }
-
-      console.log("[WEBHOOK] Insertion de l'accès:", JSON.stringify(accessData, null, 2));
-
-      const { data: insertedAccess, error: insertError } = await supabase
-        .from("user_work_access")
-        .insert(accessData)
-        .select()
-        .single();
-
-      if (insertError) {
-        const pgError = insertError as PostgrestError;
-        console.error("[WEBHOOK] ERREUR lors de l'insertion:", insertError);
-        // Important: renvoyer le détail à Stripe pour diagnostiquer (visible dans Stripe Dashboard)
-        // Ne pas inclure de PII; seulement des IDs techniques / messages DB.
-        return NextResponse.json(
-          {
-            error: "Failed to grant access",
-            details: {
-              message: pgError.message,
-              code: pgError.code,
-              details: pgError.details,
-              hint: pgError.hint,
-            },
-            context: {
-              eventId: event.id,
-              sessionId: session.id,
-              userId,
-              workId: workId ?? null,
-              sceneId: sceneId ?? null,
-            },
-          },
-          { status: 500 }
+      // Ensure customer mapping exists as well
+      const { error: customerWriteError } = await supabase
+        .from("billing_customers")
+        .upsert(
+          { user_id: userId, stripe_customer_id: customerId },
+          { onConflict: "user_id" }
         );
+      if (customerWriteError) {
+        console.error("[WEBHOOK] ERREUR upsert billing_customers:", customerWriteError);
+        return NextResponse.json({ error: "Failed to upsert billing_customers" }, { status: 500 });
       }
 
-      console.log("[WEBHOOK] ✅ Accès accordé avec succès!");
-      console.log("[WEBHOOK] Access ID:", insertedAccess?.id);
-      console.log("[WEBHOOK] User:", userId, "Work:", workId || "N/A", "Scene:", sceneId || "N/A");
+      const { error: subWriteError } = await supabase
+        .from("billing_subscriptions")
+        .upsert(
+          {
+            stripe_subscription_id: subscription.id,
+            user_id: userId,
+            status: subscription.status,
+            current_period_end: toTimestamptzFromUnixSeconds(subscription.current_period_end),
+            cancel_at_period_end: subscription.cancel_at_period_end,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "stripe_subscription_id" }
+        );
+
+      if (subWriteError) {
+        console.error("[WEBHOOK] ERREUR upsert billing_subscriptions:", subWriteError);
+        return NextResponse.json({ error: "Failed to upsert billing_subscriptions" }, { status: 500 });
+      }
+
+      console.log("[WEBHOOK] ✅ Billing snapshot upsert OK (subscription event)", event.type);
+      return NextResponse.json({ received: true });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Internal server error";
-      console.error("[WEBHOOK] ERREUR lors du traitement:", error);
+      console.error("[WEBHOOK] ERREUR lors du traitement billing:", error);
       if (error instanceof Error) console.error("[WEBHOOK] Stack:", error.stack);
-      return NextResponse.json(
-        { error: message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: message }, { status: 500 });
     }
-  } else {
-    console.log(`[WEBHOOK] Événement non géré: ${event.type} (ignoré)`);
   }
+
+  console.log(`[WEBHOOK] Événement non géré: ${event.type} (ignoré)`);
 
   return NextResponse.json({ received: true });
 }
