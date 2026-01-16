@@ -828,7 +828,7 @@ export function LearnSession(props: LearnSessionProps) {
 
       {showSetupModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4"
           role="dialog"
           aria-modal="true"
           aria-label={t.learn.setup.title}
@@ -1006,7 +1006,7 @@ export function LearnSession(props: LearnSessionProps) {
       )}
 
       {showSummary && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-lg rounded-2xl border border-[#e7e1d9] bg-white p-6 shadow-2xl">
             <h3 className="font-display text-lg font-semibold text-[#1c1b1f]">{t.learn.messages.sessionTerminee}</h3>
             <p className="mt-1 text-sm text-[#524b5a]">

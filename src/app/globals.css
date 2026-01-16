@@ -36,6 +36,18 @@ body {
   min-height: 100vh;
 }
 
+/* iOS Safari auto-zoome au focus si font-size < 16px sur les champs.
+   On force 16px uniquement sur iOS et uniquement en mobile. */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 640px) {
+    input,
+    textarea,
+    select {
+      font-size: 16px;
+    }
+  }
+}
+
 h1,
 h2,
 h3,

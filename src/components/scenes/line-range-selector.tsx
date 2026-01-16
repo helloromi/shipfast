@@ -67,7 +67,7 @@ export function LineRangeSelector({
   const maxOrder = lines.length > 0 ? Math.max(...lines.map((l) => l.order)) : 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4">
       <div className="w-full max-w-2xl rounded-2xl border border-[#e7e1d9] bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
