@@ -28,18 +28,12 @@ type PopoverState =
       left: number;
     };
 
-type CategoryField = "noteFree" | "noteSubtext" | "noteIntonation" | "notePlay";
+type CategoryField = "noteSubtext" | "noteIntonation" | "notePlay";
 
 const CATEGORY_CONFIG: Record<
   CategoryField,
   { label: string; accent: string; bg: string; placeholder: (typeof t)["scenes"]["detail"]["highlights"]["placeholders"][keyof (typeof t)["scenes"]["detail"]["highlights"]["placeholders"]] }
 > = {
-  noteFree: {
-    label: t.scenes.detail.highlights.labels.free,
-    accent: "#64748b",
-    bg: "rgba(100, 116, 139, 0.16)",
-    placeholder: t.scenes.detail.highlights.placeholders.free,
-  },
   noteSubtext: {
     label: t.scenes.detail.highlights.labels.subtext,
     accent: "#16a34a",
@@ -109,6 +103,7 @@ export function LineHighlightsEditor(props: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSuccessToastAtRef = useRef<number>(0);
   const popoverCheckRafRef = useRef<number | null>(null);
+  const hoverCheckRafRef = useRef<number | null>(null);
 
   const [highlights, setHighlights] = useState<HighlightDraft[]>(() =>
     [...(initialHighlights ?? [])].sort((a, b) => a.startOffset - b.startOffset || a.endOffset - b.endOffset)
@@ -116,6 +111,10 @@ export function LineHighlightsEditor(props: Props) {
   const [popover, setPopover] = useState<PopoverState>({ open: false });
   const [activeField, setActiveField] = useState<CategoryField | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
+  const [hoverTip, setHoverTip] = useState<
+    | { open: false }
+    | { open: true; text: string; top: number; left: number }
+  >({ open: false });
 
   useEffect(() => {
     setHighlights(
@@ -127,6 +126,10 @@ export function LineHighlightsEditor(props: Props) {
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      if (hoverCheckRafRef.current != null) {
+        window.cancelAnimationFrame(hoverCheckRafRef.current);
+        hoverCheckRafRef.current = null;
+      }
     };
   }, []);
 
@@ -196,6 +199,18 @@ export function LineHighlightsEditor(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [popover.open]);
 
+  useEffect(() => {
+    if (!hoverTip.open) return;
+    const hide = () => hideHoverTip();
+    window.addEventListener("scroll", hide, { passive: true, capture: true });
+    window.addEventListener("resize", hide, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", hide, true);
+      window.removeEventListener("resize", hide);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hoverTip.open]);
+
   const sortedHighlights = useMemo(() => {
     return [...highlights].sort((a, b) => a.startOffset - b.startOffset || a.endOffset - b.endOffset);
   }, [highlights]);
@@ -228,7 +243,7 @@ export function LineHighlightsEditor(props: Props) {
   const getFilledFields = (h: HighlightDraft | null): CategoryField[] => {
     if (!h) return [];
     const out: CategoryField[] = [];
-    for (const f of ["noteFree", "noteSubtext", "noteIntonation", "notePlay"] as const) {
+    for (const f of ["noteSubtext", "noteIntonation", "notePlay"] as const) {
       const v = ((h as any)[f] as string | null | undefined) ?? "";
       if (v.trim().length > 0) out.push(f);
     }
@@ -245,6 +260,18 @@ export function LineHighlightsEditor(props: Props) {
       return `${cfg.label} : ${compactOneLine(v, 80)}`;
     });
     return lines.join("\n");
+  };
+
+  const getPrimaryHoverSummary = (h: HighlightDraft | null) => {
+    if (!h) return "";
+    const priority: CategoryField[] = ["notePlay", "noteIntonation", "noteSubtext"];
+    for (const f of priority) {
+      const v = ((h as any)[f] as string | null | undefined) ?? "";
+      if (!v.trim()) continue;
+      const cfg = CATEGORY_CONFIG[f];
+      return `${cfg.label} : ${compactOneLine(v, 80)}`;
+    }
+    return "";
   };
 
   const getHighlightStyle = (h: HighlightDraft | null): React.CSSProperties => {
@@ -283,13 +310,37 @@ export function LineHighlightsEditor(props: Props) {
     };
   };
 
+  const showHoverTip = (target: HTMLElement, text: string) => {
+    const root = rootRef.current;
+    if (!root) return;
+    const rootRect = root.getBoundingClientRect();
+    const r = target.getBoundingClientRect();
+    const width = 320;
+    const padding = 10;
+
+    // Position désirée: au-dessus du surlignage.
+    let leftViewport = r.left + r.width / 2 - width / 2;
+    let topViewport = r.top - 10;
+
+    leftViewport = Math.max(padding, Math.min(leftViewport, window.innerWidth - width - padding));
+    topViewport = Math.max(padding, topViewport);
+
+    setHoverTip({
+      open: true,
+      text,
+      left: leftViewport - rootRect.left,
+      top: topViewport - rootRect.top,
+    });
+  };
+
+  const hideHoverTip = () => setHoverTip({ open: false });
+
   const persistHighlightNow = async (h: HighlightDraft) => {
-    const noteFree = (h.noteFree ?? "").trim();
     const noteSubtext = (h.noteSubtext ?? "").trim();
     const noteIntonation = (h.noteIntonation ?? "").trim();
     const notePlay = (h.notePlay ?? "").trim();
 
-    const isEmpty = !noteFree && !noteSubtext && !noteIntonation && !notePlay;
+    const isEmpty = !noteSubtext && !noteIntonation && !notePlay;
     const key = highlightKey(h);
 
     try {
@@ -319,7 +370,8 @@ export function LineHighlightsEditor(props: Props) {
             start_offset: h.startOffset,
             end_offset: h.endOffset,
             selected_text: h.selectedText ?? "",
-            note_free: noteFree || null,
+            // Catégorie "Libre" retirée de l'UI: on force à null pour éviter de conserver d'anciennes valeurs.
+            note_free: null,
             note_subtext: noteSubtext || null,
             note_intonation: noteIntonation || null,
             note_play: notePlay || null,
@@ -371,7 +423,6 @@ export function LineHighlightsEditor(props: Props) {
     // Si draft vide, on le retire.
     const hh = findHighlight(key);
     const empty =
-      !(hh?.noteFree ?? "").trim() &&
       !(hh?.noteSubtext ?? "").trim() &&
       !(hh?.noteIntonation ?? "").trim() &&
       !(hh?.notePlay ?? "").trim();
@@ -417,7 +468,6 @@ export function LineHighlightsEditor(props: Props) {
     }
     // Par défaut: ouvrir la première catégorie déjà remplie, sinon rien.
     const firstFilled =
-      (h?.noteFree ?? "").trim() ? "noteFree" :
       (h?.noteSubtext ?? "").trim() ? "noteSubtext" :
       (h?.noteIntonation ?? "").trim() ? "noteIntonation" :
       (h?.notePlay ?? "").trim() ? "notePlay" :
@@ -481,7 +531,7 @@ export function LineHighlightsEditor(props: Props) {
     };
 
     setHighlights((prev) => [...prev, draft].sort((a, b) => a.startOffset - b.startOffset || a.endOffset - b.endOffset));
-    openPopoverForKey(key, rect, { preferField: "noteFree" });
+    openPopoverForKey(key, rect, { preferField: "noteSubtext" });
     sel.removeAllRanges();
   };
 
@@ -531,7 +581,7 @@ export function LineHighlightsEditor(props: Props) {
   };
 
   const current = popover.open ? findHighlight(popover.key) : null;
-  const categoryFields: CategoryField[] = ["noteFree", "noteSubtext", "noteIntonation", "notePlay"];
+  const categoryFields: CategoryField[] = ["noteSubtext", "noteIntonation", "notePlay"];
 
   return (
     <div ref={rootRef} className="relative flex flex-col gap-1.5">
@@ -545,11 +595,23 @@ export function LineHighlightsEditor(props: Props) {
           const h = findHighlight(seg.key);
           const title = getHoverTitle(h);
           const style = getHighlightStyle(h);
+          const summary = getPrimaryHoverSummary(h);
           return (
             <span
               key={seg.idx}
               role="button"
               tabIndex={0}
+              onMouseEnter={(e) => {
+                if (popover.open) return; // pas de tooltip pendant l'édition
+                if (!summary) return;
+                const el = e.currentTarget as HTMLElement;
+                if (hoverCheckRafRef.current != null) window.cancelAnimationFrame(hoverCheckRafRef.current);
+                hoverCheckRafRef.current = window.requestAnimationFrame(() => {
+                  hoverCheckRafRef.current = null;
+                  showHoverTip(el, summary);
+                });
+              }}
+              onMouseLeave={() => hideHoverTip()}
               onClick={(e) => {
                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                 openPopoverForKey(seg.key, rect);
@@ -570,6 +632,16 @@ export function LineHighlightsEditor(props: Props) {
           );
         })}
       </span>
+
+      {hoverTip.open && (
+        <div
+          style={{ top: hoverTip.top, left: hoverTip.left, width: 320 }}
+          className="pointer-events-none absolute z-50 rounded-xl border border-[#e7e1d9] bg-white/95 px-3 py-2 text-sm font-semibold text-[#3b1f4a] shadow-lg shadow-[#3b1f4a1a] backdrop-blur"
+          role="tooltip"
+        >
+          {hoverTip.text}
+        </div>
+      )}
 
       {popover.open && current && (
         <div

@@ -47,6 +47,15 @@ export default async function SceneDetailPage({ params }: Props) {
   const lastCharacterId = userProgress?.lastCharacterId;
   const lastCharacterName = userProgress?.lastCharacterName;
 
+  const continueLearnHref = (() => {
+    if (!user) return null;
+    if (!lastCharacterId) return null;
+    const params = new URLSearchParams();
+    params.set("character", lastCharacterId);
+    if (lastCharacterName) params.set("characterName", lastCharacterName);
+    return `/learn/${id}?${params.toString()}`;
+  })();
+
   const [lineMastery, highlightsByLineId] = await Promise.all([
     user && lastCharacterId ? fetchLineMastery(user.id, id, lastCharacterId) : Promise.resolve([]),
     user ? fetchUserLineHighlights(user.id, sortedLines.map((l) => l.id)) : Promise.resolve({}),
@@ -54,6 +63,32 @@ export default async function SceneDetailPage({ params }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
+      {user && (
+        <div className="sticky top-0 z-30 -mx-4 border-b border-[#e7e1d9] bg-[rgba(249,247,243,0.92)] px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+            <Link
+              href="/home"
+              className="inline-flex items-center gap-2 rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a66]"
+            >
+              ← {t.common.nav.accueil}
+            </Link>
+
+            {continueLearnHref ? (
+              <Link
+                href={continueLearnHref}
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-[#ff6b6b33] transition hover:-translate-y-[1px]"
+              >
+                {t.common.buttons.continuer}
+              </Link>
+            ) : (
+              <span className="text-sm font-semibold text-[#7a7184]">
+                Choisis un personnage dans “Réglages” pour continuer.
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-2">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">{t.scenes.detail.sectionLabel}</p>
         <h1 className="font-display text-3xl font-semibold text-[#1c1b1f]">

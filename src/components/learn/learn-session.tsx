@@ -670,7 +670,9 @@ export function LearnSession(props: LearnSessionProps) {
 
         {flashcardContext && (
           <div className="rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] px-3 py-2 text-sm text-[#1c1b1f]">
-            <div className="text-xs uppercase text-[#7a7184]">{t.learn.labels.repliqueAdverse}</div>
+            <div className="text-xs uppercase text-[#7a7184]">
+              {(flashcardContext.characterName || "").trim() || t.learn.labels.repliqueAdverse}
+            </div>
             <div>{renderCue(flashcardContext.text, 5) ?? flashcardContext.text}</div>
           </div>
         )}
