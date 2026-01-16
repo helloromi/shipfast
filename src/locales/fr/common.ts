@@ -29,6 +29,7 @@ export const common = {
     details: "Gérer",
     retour: "Retour",
     retourBibliotheque: "Retour à la bibliothèque",
+    retourAccueil: "Retour à l'accueil"
   },
   empty: {
     aucuneScene: "Aucune scène pour le moment.",
