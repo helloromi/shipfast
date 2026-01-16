@@ -56,11 +56,14 @@ export async function POST() {
 
       // Anonymize Stripe customer (keep accounting history)
       await stripe.customers.update(stripeCustomerId, {
-        email: null,
+        // Stripe types don't accept null; overwrite with a non-PII placeholder instead.
+        email: `deleted+${stripeCustomerId}@example.invalid`,
         name: "Deleted user",
         metadata: {
           gdpr_deleted: "true",
           gdpr_deleted_at: new Date().toISOString(),
+          // Ensure we don't keep a direct mapping after deletion.
+          supabase_user_id: "deleted",
         },
       });
     }
