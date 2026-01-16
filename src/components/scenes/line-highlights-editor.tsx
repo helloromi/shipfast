@@ -316,14 +316,18 @@ export function LineHighlightsEditor(props: Props) {
     const rootRect = root.getBoundingClientRect();
     const r = target.getBoundingClientRect();
     const width = 320;
+    const maxHeight = 220;
     const padding = 10;
 
-    // Position désirée: au-dessus du surlignage.
+    // Position désirée: en dessous du surlignage (pour ne pas masquer le texte).
     let leftViewport = r.left + r.width / 2 - width / 2;
-    let topViewport = r.top - 10;
+    let topViewport = r.bottom + 10;
 
     leftViewport = Math.max(padding, Math.min(leftViewport, window.innerWidth - width - padding));
-    topViewport = Math.max(padding, topViewport);
+    topViewport = Math.max(
+      padding,
+      Math.min(topViewport, window.innerHeight - maxHeight - padding)
+    );
 
     setHoverTip({
       open: true,
@@ -595,7 +599,7 @@ export function LineHighlightsEditor(props: Props) {
           const h = findHighlight(seg.key);
           const title = getHoverTitle(h);
           const style = getHighlightStyle(h);
-          const summary = getPrimaryHoverSummary(h);
+          const summary = title;
           return (
             <span
               key={seg.idx}
@@ -636,7 +640,7 @@ export function LineHighlightsEditor(props: Props) {
       {hoverTip.open && (
         <div
           style={{ top: hoverTip.top, left: hoverTip.left, width: 320 }}
-          className="pointer-events-none absolute z-50 rounded-xl border border-[#e7e1d9] bg-white/95 px-3 py-2 text-sm font-semibold text-[#3b1f4a] shadow-lg shadow-[#3b1f4a1a] backdrop-blur"
+          className="pointer-events-none absolute z-50 max-h-[220px] overflow-hidden whitespace-pre-line rounded-xl border border-[#e7e1d9] bg-white/95 px-3 py-2 text-sm font-semibold text-[#3b1f4a] shadow-lg shadow-[#3b1f4a1a] backdrop-blur"
           role="tooltip"
         >
           {hoverTip.text}
