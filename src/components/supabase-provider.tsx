@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -23,7 +23,7 @@ export function SupabaseProvider({ children, initialSession }: SupabaseProviderP
   const [supabase] = useState(() => createSupabaseBrowserClient());
   const [session, setSession] = useState<Session | null>(initialSession);
   const router = useRouter();
-  const exchangingRef = useRef(false);
+  void router;
 
   useEffect(() => {
     // Hydrate user via getUser (authentifié par Supabase)
@@ -43,33 +43,6 @@ export function SupabaseProvider({ children, initialSession }: SupabaseProviderP
       subscription.unsubscribe();
     };
   }, [supabase]);
-
-  // Gère le code PKCE du magic link côté client (permet de créer la session même si les cookies ne sont pas mutables côté serveur)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    
-    const searchParams = new URLSearchParams(window.location.search);
-    const code = searchParams.get("code");
-    if (!code || exchangingRef.current) return;
-    exchangingRef.current = true;
-
-    supabase.auth
-      .exchangeCodeForSession(code)
-      .then(() => {
-        const params = new URLSearchParams(window.location.search);
-        params.delete("code");
-        params.delete("next");
-        const query = params.toString();
-        const path = window.location.pathname + (query ? `?${query}` : "");
-        router.replace(path);
-      })
-      .catch((error) => {
-        console.error("exchangeCodeForSession error", error);
-      })
-      .finally(() => {
-        exchangingRef.current = false;
-      });
-  }, [supabase, router]);
 
   const value: SupabaseContextValue = {
     supabase,
