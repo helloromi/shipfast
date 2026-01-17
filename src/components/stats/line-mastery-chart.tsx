@@ -26,12 +26,11 @@ export function LineMasteryChart({ data }: LineMasteryChartProps) {
     );
   }
 
-  const preview = (raw: string, words = 7) => {
+  const preview = (raw: string, maxChars = 70) => {
     const text = String(raw ?? "").replace(/\s+/g, " ").trim();
     if (!text) return "";
-    const parts = text.split(" ");
-    const slice = parts.slice(0, words).join(" ");
-    return parts.length > words ? `${slice}…` : slice;
+    if (text.length <= maxChars) return text;
+    return `${text.slice(0, Math.max(0, maxChars - 1)).trimEnd()}…`;
   };
 
   const chartData = data.map((d) => ({
@@ -41,6 +40,40 @@ export function LineMasteryChart({ data }: LineMasteryChartProps) {
     attempts: d.attempts,
     text: d.text,
   }));
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null;
+    const p = payload[0]?.payload as any;
+    if (!p) return null;
+    const label = String(p.label ?? "");
+    const linePreview = preview(String(p.text ?? ""), 80);
+    const mastery = typeof p.mastery === "number" ? p.mastery : Number(p.mastery ?? 0);
+    const attempts = Number(p.attempts ?? 0);
+
+    return (
+      <div
+        className="rounded-lg border border-[#e7e1d9] bg-white px-3 py-2 shadow-sm"
+        style={{ maxWidth: 280 }}
+      >
+        <div
+          className="mb-1 block text-sm font-semibold text-[#3b1f4a]"
+          style={{
+            maxWidth: 260,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+          title={linePreview ? `${label} — ${linePreview}` : label}
+        >
+          {linePreview ? `${label} — ${linePreview}` : label}
+        </div>
+        <div className="text-xs text-[#524b5a]">
+          <span className="font-semibold text-[#1c1b1f]">{t.stats.charts.mastery} :</span>{" "}
+          {Number.isFinite(mastery) ? mastery.toFixed(2) : "0.00"}/10 · {attempts} {t.stats.charts.attempts}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="w-full">
@@ -73,27 +106,7 @@ export function LineMasteryChart({ data }: LineMasteryChartProps) {
             }}
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: "white",
-              border: "1px solid #e7e1d9",
-              borderRadius: "8px",
-              padding: "8px 12px",
-              maxWidth: "360px",
-            }}
-            labelStyle={{ color: "#3b1f4a", fontWeight: "600", marginBottom: "4px" }}
-            formatter={(value, name, props) => {
-              if (name === "mastery" && typeof value === "number") {
-                const attempts = (props as any)?.payload?.attempts ?? 0;
-                return [`${value.toFixed(2)}/10 · ${attempts} ${t.stats.charts.attempts}`, t.stats.charts.mastery];
-              }
-              return [String(value ?? ""), String(name ?? "")];
-            }}
-            labelFormatter={(_, payload) => {
-              const p = payload?.[0]?.payload as any;
-              if (!p) return "";
-              const text = preview(String(p.text ?? ""), 10);
-              return text ? `${p.label} — ${text}` : String(p.label ?? "");
-            }}
+            content={<CustomTooltip />}
           />
           <Bar dataKey="mastery" fill="#3b1f4a" radius={[8, 8, 0, 0]} />
         </BarChart>

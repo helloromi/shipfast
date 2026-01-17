@@ -14,6 +14,37 @@ function normalizeScore(score: number): number {
   return score;
 }
 
+type SessionWithScoreAndStart = {
+  started_at: string;
+  average_score: number | null;
+};
+
+function weightedAverageScoreByRecency(
+  sessions: SessionWithScoreAndStart[],
+  halfLifeDays = 14,
+  nowMs = Date.now()
+): number {
+  const halfLifeSeconds = halfLifeDays * 24 * 60 * 60;
+  const sumWeightsMin = 1e-9;
+  let sumW = 0;
+  let sumWS = 0;
+
+  for (const s of sessions) {
+    if (s.average_score === null || s.average_score === undefined) continue;
+    const startedMs = typeof s.started_at === "string" ? new Date(s.started_at).getTime() : NaN;
+    if (!Number.isFinite(startedMs)) continue;
+
+    const ageSeconds = Math.max(0, (nowMs - startedMs) / 1000);
+    const w = Math.pow(2, -ageSeconds / halfLifeSeconds); // demi-vie
+    const score = normalizeScore(s.average_score);
+
+    sumW += w;
+    sumWS += w * score;
+  }
+
+  return sumW > sumWeightsMin ? sumWS / sumW : 0;
+}
+
 export async function trackSessionStart(
   userId: string,
   sceneId: string,
@@ -110,8 +141,7 @@ export async function fetchUserStatsSummary(userId: string): Promise<UserStatsSu
     sessions.reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0) / 60
   );
   const uniqueScenes = new Set(sessions.map((s) => s.scene_id)).size;
-  const scores = sessions.filter((s) => s.average_score !== null).map((s) => normalizeScore(s.average_score!));
-  const averageScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+  const averageScore = weightedAverageScoreByRecency(sessions as any, 14);
 
   // Calculer le streak
   let currentStreak = 0;
@@ -202,8 +232,7 @@ export async function fetchSceneStats(userId: string, sceneId: string): Promise<
     sessions.reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0) / 60
   );
   const totalLinesLearned = sessions.reduce((acc, s) => acc + (s.completed_lines ?? 0), 0);
-  const scores = sessions.filter((s) => s.average_score !== null).map((s) => normalizeScore(s.average_score!));
-  const averageScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+  const averageScore = weightedAverageScoreByRecency(sessions as any, 14);
 
   // Évolution des scores (agrégée par jour pour éviter plusieurs points avec la même date)
   const byDay = new Map<string, { sum: number; count: number }>();
