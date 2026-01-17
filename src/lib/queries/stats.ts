@@ -1,49 +1,11 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { LearningSession, LineMasteryPoint, SceneStats, TimeSeriesDataPoint, UserStatsSummary } from "@/types/stats";
-
-/**
- * Convertit un score de l'ancien format (0-3) vers le nouveau (0-10).
- * Si le score est déjà en format 0-10, il est retourné tel quel.
- */
-function normalizeScore(score: number): number {
-  if (score <= 3) {
-    // Ancien format : convertir 0-3 vers 0-10
-    return (score / 3) * 10;
-  }
-  // Déjà en format 0-10
-  return score;
-}
+import { normalizeScore, weightedAverageScoreByRecency } from "@/lib/utils/score";
 
 type SessionWithScoreAndStart = {
   started_at: string;
   average_score: number | null;
 };
-
-function weightedAverageScoreByRecency(
-  sessions: SessionWithScoreAndStart[],
-  halfLifeDays = 14,
-  nowMs = Date.now()
-): number {
-  const halfLifeSeconds = halfLifeDays * 24 * 60 * 60;
-  const sumWeightsMin = 1e-9;
-  let sumW = 0;
-  let sumWS = 0;
-
-  for (const s of sessions) {
-    if (s.average_score === null || s.average_score === undefined) continue;
-    const startedMs = typeof s.started_at === "string" ? new Date(s.started_at).getTime() : NaN;
-    if (!Number.isFinite(startedMs)) continue;
-
-    const ageSeconds = Math.max(0, (nowMs - startedMs) / 1000);
-    const w = Math.pow(2, -ageSeconds / halfLifeSeconds); // demi-vie
-    const score = normalizeScore(s.average_score);
-
-    sumW += w;
-    sumWS += w * score;
-  }
-
-  return sumW > sumWeightsMin ? sumWS / sumW : 0;
-}
 
 export async function trackSessionStart(
   userId: string,
