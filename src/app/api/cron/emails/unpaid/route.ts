@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { assertCronAuth } from "@/lib/utils/cron";
 import { sendUnpaidReminder1Email } from "@/lib/resend/automation";
 
