@@ -757,7 +757,7 @@ export function LineHighlightsEditor(props: Props) {
                 }
               }}
               style={style}
-              className="rounded-[6px] px-0.5 outline-none ring-offset-2 transition hover:brightness-[0.98] focus-visible:ring-2 focus-visible:ring-[#ff6b6b]"
+              className="cursor-pointer rounded-[6px] px-0.5 outline-none ring-offset-2 transition hover:brightness-[0.98] focus-visible:ring-2 focus-visible:ring-[#ff6b6b]"
               title={title || undefined}
             >
               {seg.text}
