@@ -4,6 +4,7 @@ export const stats = {
     sessions: "sessions",
     timeSpent: "de pratique",
     averageScore: "Score moyen",
+    streakSingular: "jour",
     streak: "jours",
     minutes: "min",
     minutesShort: "min",

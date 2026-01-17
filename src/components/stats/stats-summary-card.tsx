@@ -18,6 +18,9 @@ export function StatsSummaryCard({ stats }: StatsSummaryCardProps) {
     return `${hours}h ${mins}${t.stats.summary.minutesShort}`;
   };
 
+  const streakLabel =
+    stats.currentStreak === 1 ? t.stats.summary.streakSingular : t.stats.summary.streak;
+
   return (
     <div className="rounded-2xl border border-[#e7e1d9] bg-white/92 p-5 shadow-sm shadow-[#3b1f4a14]">
       <h3 className="mb-4 font-display text-lg font-semibold text-[#3b1f4a]">
@@ -45,7 +48,7 @@ export function StatsSummaryCard({ stats }: StatsSummaryCardProps) {
             <span className="text-[#7a7184]">•</span>
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-[#f4c95d33] px-2 py-1 text-xs font-semibold text-[#3b1f4a]">
-                🔥 {stats.currentStreak} {t.stats.summary.streak}
+                🔥 {stats.currentStreak} {streakLabel}
               </span>
             </div>
           </>

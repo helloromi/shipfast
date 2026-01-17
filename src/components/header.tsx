@@ -56,7 +56,7 @@ export function Header() {
   };
 
   return (
-    <header className="border-b border-[#e7e1d9] bg-[rgba(255,255,255,0.9)] backdrop-blur shadow-sm shadow-[#3b1f4a0d]">
+    <header className="relative isolate z-[120] border-b border-[#e7e1d9] bg-[rgba(255,255,255,0.9)] backdrop-blur shadow-sm shadow-[#3b1f4a0d]">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
         <div className="flex items-center gap-6">
           <Link

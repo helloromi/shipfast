@@ -29,6 +29,11 @@ type PopoverState =
     };
 
 type CategoryField = "noteSubtext" | "noteIntonation" | "notePlay";
+type CaretPosition = { offsetNode: Node; offset: number };
+type DocumentWithCaret = Document & {
+  caretPositionFromPoint?: (x: number, y: number) => CaretPosition | null;
+  caretRangeFromPoint?: (x: number, y: number) => Range | null;
+};
 
 const CATEGORY_CONFIG: Record<
   CategoryField,
@@ -92,6 +97,22 @@ function getSelectionOffsets(container: HTMLElement, range: Range) {
   return { startOffset: start, endOffset: end };
 }
 
+function caretRangeFromPoint(clientX: number, clientY: number): Range | null {
+  const doc = document as DocumentWithCaret;
+  if (typeof doc.caretPositionFromPoint === "function") {
+    const pos = doc.caretPositionFromPoint(clientX, clientY);
+    if (!pos?.offsetNode) return null;
+    const r = document.createRange();
+    r.setStart(pos.offsetNode, pos.offset);
+    r.collapse(true);
+    return r;
+  }
+  if (typeof doc.caretRangeFromPoint === "function") {
+    return doc.caretRangeFromPoint(clientX, clientY);
+  }
+  return null;
+}
+
 export function LineHighlightsEditor(props: Props) {
   const { lineId, userId, text, initialHighlights, className, isUserCharacter } = props;
   const { supabase } = useSupabase();
@@ -111,6 +132,10 @@ export function LineHighlightsEditor(props: Props) {
   const [popover, setPopover] = useState<PopoverState>({ open: false });
   const [activeField, setActiveField] = useState<CategoryField | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
+  const [isCoarsePointer, setIsCoarsePointer] = useState(false);
+  const [annotateMode, setAnnotateMode] = useState(false);
+  const [tapStartOffset, setTapStartOffset] = useState<number | null>(null);
+  const [mobileNotesOpen, setMobileNotesOpen] = useState(false);
   const [hoverTip, setHoverTip] = useState<
     | { open: false }
     | { open: true; text: string; top: number; left: number }
@@ -131,6 +156,16 @@ export function LineHighlightsEditor(props: Props) {
         hoverCheckRafRef.current = null;
       }
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia?.("(pointer: coarse)");
+    if (!mq) return;
+    const update = () => setIsCoarsePointer(Boolean(mq.matches));
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
   }, []);
 
   useEffect(() => {
@@ -208,7 +243,6 @@ export function LineHighlightsEditor(props: Props) {
       window.removeEventListener("scroll", hide, true);
       window.removeEventListener("resize", hide);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hoverTip.open]);
 
   const sortedHighlights = useMemo(() => {
@@ -244,7 +278,7 @@ export function LineHighlightsEditor(props: Props) {
     if (!h) return [];
     const out: CategoryField[] = [];
     for (const f of ["noteSubtext", "noteIntonation", "notePlay"] as const) {
-      const v = ((h as any)[f] as string | null | undefined) ?? "";
+      const v = h[f] ?? "";
       if (v.trim().length > 0) out.push(f);
     }
     return out;
@@ -256,7 +290,7 @@ export function LineHighlightsEditor(props: Props) {
     if (fields.length === 0) return "";
     const lines = fields.map((f) => {
       const cfg = CATEGORY_CONFIG[f];
-      const v = ((h as any)[f] as string | null | undefined) ?? "";
+      const v = h[f] ?? "";
       return `${cfg.label} : ${compactOneLine(v, 80)}`;
     });
     return lines.join("\n");
@@ -266,7 +300,7 @@ export function LineHighlightsEditor(props: Props) {
     if (!h) return "";
     const priority: CategoryField[] = ["notePlay", "noteIntonation", "noteSubtext"];
     for (const f of priority) {
-      const v = ((h as any)[f] as string | null | undefined) ?? "";
+      const v = h[f] ?? "";
       if (!v.trim()) continue;
       const cfg = CATEGORY_CONFIG[f];
       return `${cfg.label} : ${compactOneLine(v, 80)}`;
@@ -346,6 +380,48 @@ export function LineHighlightsEditor(props: Props) {
   };
 
   const hideHoverTip = () => setHoverTip({ open: false });
+
+  const createOrOpenFromOffsets = (start: number, end: number, anchorRect: DOMRect) => {
+    setToast(null);
+    const max = (text ?? "").length;
+    const clamped = clampRange(start, end, max);
+    if (clamped.end <= clamped.start) return;
+    const selectedText = (text ?? "").slice(clamped.start, clamped.end);
+    if (selectedText.trim().length === 0) return;
+
+    const key = `${clamped.start}:${clamped.end}`;
+    const exact = highlights.find((h) => highlightKey(h) === key);
+    const overlaps = highlights.find(
+      (h) => clamped.start < h.endOffset && clamped.end > h.startOffset && highlightKey(h) !== key
+    );
+    if (!exact && overlaps) {
+      setToast({ message: t.scenes.detail.highlights.overlapError, variant: "error" });
+      return;
+    }
+
+    if (exact) {
+      openPopoverForKey(key, anchorRect);
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const draft: HighlightDraft = {
+      lineId,
+      startOffset: clamped.start,
+      endOffset: clamped.end,
+      selectedText,
+      noteFree: null,
+      noteSubtext: null,
+      noteIntonation: null,
+      notePlay: null,
+      createdAt: now,
+      updatedAt: now,
+      isDraft: true,
+    };
+
+    setHighlights((prev) => [...prev, draft].sort((a, b) => a.startOffset - b.startOffset || a.endOffset - b.endOffset));
+    openPopoverForKey(key, anchorRect, { preferField: "noteSubtext" });
+  };
 
   const persistHighlightNow = async (h: HighlightDraft) => {
     const noteSubtext = (h.noteSubtext ?? "").trim();
@@ -488,7 +564,6 @@ export function LineHighlightsEditor(props: Props) {
   };
 
   const createOrOpenFromSelection = () => {
-    setToast(null);
     const container = containerRef.current;
     if (!container) return;
     const sel = window.getSelection();
@@ -503,48 +578,49 @@ export function LineHighlightsEditor(props: Props) {
     const max = (text ?? "").length;
     const { start, end } = clampRange(offsets.startOffset, offsets.endOffset, max);
     if (end <= start) return;
-
-    const selectedText = (text ?? "").slice(start, end);
-    if (selectedText.trim().length === 0) return;
-
-    const key = `${start}:${end}`;
-
-    const exact = highlights.find((h) => highlightKey(h) === key);
-    const overlaps = highlights.find(
-      (h) => start < h.endOffset && end > h.startOffset && highlightKey(h) !== key
-    );
-    if (!exact && overlaps) {
-      setToast({ message: t.scenes.detail.highlights.overlapError, variant: "error" });
-      sel.removeAllRanges();
-      return;
-    }
-
     const rect = range.getBoundingClientRect();
+    createOrOpenFromOffsets(start, end, rect);
+    sel.removeAllRanges();
+  };
 
-    if (exact) {
-      openPopoverForKey(key, rect);
-      sel.removeAllRanges();
+  const getOffsetFromPoint = (clientX: number, clientY: number) => {
+    const container = containerRef.current;
+    if (!container) return null;
+    const r = caretRangeFromPoint(clientX, clientY);
+    if (!r) return null;
+    if (!container.contains(r.startContainer)) return null;
+    const offsets = getSelectionOffsets(container, r);
+    if (!offsets) return null;
+    return offsets.startOffset;
+  };
+
+  const handleContainerPointerUp = (e: React.PointerEvent) => {
+    if (!isCoarsePointer) {
+      // Desktop: sélection classique du texte
+      createOrOpenFromSelection();
       return;
     }
 
-    const now = new Date().toISOString();
-    const draft: HighlightDraft = {
-      lineId,
-      startOffset: start,
-      endOffset: end,
-      selectedText,
-      noteFree: null,
-      noteSubtext: null,
-      noteIntonation: null,
-      notePlay: null,
-      createdAt: now,
-      updatedAt: now,
-      isDraft: true,
-    };
+    // Mobile: on ne dépend pas de la sélection iOS, on passe par un mode "Annoter".
+    if (!annotateMode) return;
 
-    setHighlights((prev) => [...prev, draft].sort((a, b) => a.startOffset - b.startOffset || a.endOffset - b.endOffset));
-    openPopoverForKey(key, rect, { preferField: "noteSubtext" });
-    sel.removeAllRanges();
+    const max = (text ?? "").length;
+    if (max <= 0) return;
+    const offset = getOffsetFromPoint(e.clientX, e.clientY);
+    if (offset == null) return;
+
+    if (tapStartOffset == null) {
+      setTapStartOffset(Math.max(0, Math.min(offset, max)));
+      setToast({ message: "Début sélectionné. Tape la fin du passage.", variant: "success" });
+      return;
+    }
+
+    const start = Math.min(tapStartOffset, offset);
+    const end = Math.max(tapStartOffset, offset);
+    setTapStartOffset(null);
+    setAnnotateMode(false);
+    const anchorRect = new DOMRect(e.clientX, e.clientY, 1, 1);
+    createOrOpenFromOffsets(start, end, anchorRect);
   };
 
   const schedulePersist = (h: HighlightDraft) => {
@@ -594,12 +670,57 @@ export function LineHighlightsEditor(props: Props) {
 
   const current = popover.open ? findHighlight(popover.key) : null;
   const categoryFields: CategoryField[] = ["noteSubtext", "noteIntonation", "notePlay"];
+  const mobileSummaries = useMemo(() => {
+    if (!isCoarsePointer) return [];
+    const out: Array<{ key: string; text: string }> = [];
+    for (const h of highlights) {
+      const key = highlightKey(h);
+      const summary = getPrimaryHoverSummary(h);
+      if (summary) out.push({ key, text: summary });
+    }
+    return out;
+  }, [isCoarsePointer, highlights]);
 
   return (
     <div ref={rootRef} className="relative flex flex-col gap-1.5">
+      {isCoarsePointer && (
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setToast(null);
+              setMobileNotesOpen(false);
+              setTapStartOffset(null);
+              setAnnotateMode((v) => !v);
+            }}
+            className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+              annotateMode
+                ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
+                : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
+            }`}
+          >
+            {annotateMode ? "Annuler l’annotation" : "Annoter"}
+          </button>
+          {mobileSummaries.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setToast(null);
+                setAnnotateMode(false);
+                setTapStartOffset(null);
+                setMobileNotesOpen((v) => !v);
+              }}
+              className="rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-xs font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a66]"
+            >
+              {mobileNotesOpen ? "Masquer les notes" : `Voir les notes (${mobileSummaries.length})`}
+            </button>
+          )}
+        </div>
+      )}
+
       <span
         ref={containerRef}
-        onMouseUp={() => createOrOpenFromSelection()}
+        onPointerUp={handleContainerPointerUp}
         className={className}
       >
         {segments.map((seg) => {
@@ -645,6 +766,25 @@ export function LineHighlightsEditor(props: Props) {
         })}
       </span>
 
+      {isCoarsePointer && annotateMode && (
+        <div className="rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] px-3 py-2 text-xs font-semibold text-[#3b1f4a]">
+          {tapStartOffset == null ? "Tape le début du passage à annoter." : "Tape la fin du passage."}
+        </div>
+      )}
+
+      {isCoarsePointer && mobileNotesOpen && mobileSummaries.length > 0 && (
+        <div className="rounded-xl border border-[#e7e1d9] bg-white/92 px-3 py-2 text-sm text-[#3b1f4a]">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-[#7a7184]">Notes</div>
+          <div className="mt-1 grid gap-1">
+            {mobileSummaries.map((s) => (
+              <div key={s.key} className="whitespace-pre-line text-sm font-semibold">
+                {s.text}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {hoverTip.open && (
         <div
           style={{ top: hoverTip.top, left: hoverTip.left, width: 320 }}
@@ -687,7 +827,7 @@ export function LineHighlightsEditor(props: Props) {
             <div className="grid grid-cols-2 gap-2">
               {categoryFields.map((field) => {
                 const cfg = CATEGORY_CONFIG[field];
-                const value = ((current as any)?.[field] as string | null | undefined) ?? "";
+                const value = current[field] ?? "";
                 const filled = value.trim().length > 0;
                 const isActive = activeField === field;
                 return (

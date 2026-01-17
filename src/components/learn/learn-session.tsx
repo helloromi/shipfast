@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useSupabase } from "@/components/supabase-provider";
@@ -41,7 +41,7 @@ type ScoreOption = {
   color: string;
 };
 
-type LimitChoice = { type: "percent"; pct: number } | { type: "all" } | { type: "custom" };
+type LimitChoice = { type: "count"; count: number } | { type: "all" };
 
 const scoreOptions: ScoreOption[] = [
   { value: 0, emoji: t.learn.scores.rate.emoji, label: t.learn.scores.rate.label, color: "bg-[#e11d48] text-white hover:bg-[#c4153c]" },
@@ -207,12 +207,19 @@ export function LearnSession(props: LearnSessionProps) {
 
   const userLinesAll = useMemo(() => lines.filter((l) => l.isUserLine), [lines]);
   const remainingUserLinesCount = useMemo(() => Math.max(0, userLinesAll.length - startIndex), [userLinesAll.length, startIndex]);
-  const limitPercentPresets = [25, 50, 75] as const;
-  const computeLimitFromPercent = (pct: number) => {
+  const computeLimitFromCount = useCallback((count: number) => {
     if (remainingUserLinesCount <= 0) return 0;
-    return Math.max(1, Math.ceil((remainingUserLinesCount * pct) / 100));
-  };
-  const formatLinesCount = (count: number) => `${count} ${count === 1 ? "réplique" : "répliques"}`;
+    return Math.max(1, Math.min(count, remainingUserLinesCount));
+  }, [remainingUserLinesCount]);
+  const limitCountPresets = useMemo(() => {
+    const max = remainingUserLinesCount;
+    if (max <= 6) return [] as number[];
+    const desired = [5, 10, 15];
+    const clamped = desired.map((n) => Math.min(n, max));
+    const unique = [...new Set(clamped)];
+    // Éviter de proposer un bouton équivalent à "Toutes" (n === max).
+    return unique.filter((n) => n > 0 && n < max);
+  }, [remainingUserLinesCount]);
   const userLines = useMemo(() => {
     const availableLines = userLinesAll.slice(startIndex);
     if (limitCount === null) return availableLines;
@@ -271,15 +278,15 @@ export function LearnSession(props: LearnSessionProps) {
   }, [startIndex]);
 
   useEffect(() => {
-    // Si on est en mode pourcentage, recalculer la limite quand le point de départ change
-    // (car le % s'applique aux répliques restantes).
-    if (limitChoice.type === "percent") {
-      setLimitCount(computeLimitFromPercent(limitChoice.pct));
+    // Si on est en mode "count", recalculer la limite quand le point de départ change
+    // (car le nombre s'applique aux répliques restantes et doit être clampé).
+    if (limitChoice.type === "count") {
+      setLimitCount(computeLimitFromCount(limitChoice.count));
     }
     if (limitChoice.type === "all") {
       setLimitCount(null);
     }
-  }, [startIndex, limitChoice, remainingUserLinesCount]);
+  }, [startIndex, limitChoice, remainingUserLinesCount, computeLimitFromCount]);
 
   const remainingCount = useMemo(
     () => userLines.filter((l) => scoreValue[l.id] === null || scoreValue[l.id] === undefined).length,
@@ -846,31 +853,41 @@ export function LearnSession(props: LearnSessionProps) {
                 </div>
                 <div className="grid gap-2">
                   <div className="grid grid-cols-3 gap-2">
-                    {limitPercentPresets.map((pct) => {
-                      const computed = computeLimitFromPercent(pct);
+                    {limitCountPresets.map((count) => {
+                      const computed = computeLimitFromCount(count);
                       const disabled = remainingUserLinesCount === 0 || computed === 0;
-                      const isSelected = limitChoice.type === "percent" && limitChoice.pct === pct;
+                      const isSelected = limitChoice.type === "count" && limitChoice.count === count;
+                      const pct =
+                        remainingUserLinesCount > 0 ? Math.round((computed / remainingUserLinesCount) * 100) : 0;
                       return (
                         <button
-                          key={pct}
+                          key={count}
                           type="button"
                           disabled={disabled}
                           onClick={() => {
-                            setLimitChoice({ type: "percent", pct });
+                            setLimitChoice({ type: "count", count });
                             setLimitCount(computed);
                           }}
-                          className={`w-full rounded-full border px-4 py-2 text-sm font-semibold transition disabled:opacity-50 ${
+                          className={`w-full rounded-full border px-4 py-2 text-left text-sm font-semibold transition disabled:opacity-50 ${
                             isSelected
                               ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
                               : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
                           }`}
                         >
-                          <span className="inline-flex items-baseline gap-2">
-                            <span>{pct}%</span>
-                            <span className={`text-xs font-medium ${isSelected ? "text-white/80" : "text-[#7a7184]"}`}>
-                              {formatLinesCount(computed)}
+                          <div className="flex items-baseline justify-between gap-3">
+                            <span className="inline-flex items-baseline gap-2">
+                              <span className="text-base">{computed}</span>
+                              <span className={`text-xs font-medium ${isSelected ? "text-white/80" : "text-[#7a7184]"}`}>
+                                {computed === 1 ? "réplique" : "répliques"}
+                              </span>
                             </span>
-                          </span>
+                            <span className={`text-xs font-medium ${isSelected ? "text-white/80" : "text-[#7a7184]"}`}>
+                              {pct}%
+                            </span>
+                          </div>
+                          <div className={`mt-0.5 text-[11px] font-medium ${isSelected ? "text-white/80" : "text-[#7a7184]"}`}>
+                            sur {remainingUserLinesCount}
+                          </div>
                         </button>
                       );
                     })}
