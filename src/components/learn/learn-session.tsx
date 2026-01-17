@@ -852,13 +852,19 @@ export function LearnSession(props: LearnSessionProps) {
                   {t.learn.setup.limitLabel}
                 </div>
                 <div className="grid gap-2">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div
+                    className={`grid gap-2 ${
+                      limitCountPresets.length >= 3
+                        ? "grid-cols-3"
+                        : limitCountPresets.length === 2
+                          ? "grid-cols-2"
+                          : "grid-cols-1"
+                    }`}
+                  >
                     {limitCountPresets.map((count) => {
                       const computed = computeLimitFromCount(count);
                       const disabled = remainingUserLinesCount === 0 || computed === 0;
                       const isSelected = limitChoice.type === "count" && limitChoice.count === count;
-                      const pct =
-                        remainingUserLinesCount > 0 ? Math.round((computed / remainingUserLinesCount) * 100) : 0;
                       return (
                         <button
                           key={count}
@@ -868,21 +874,16 @@ export function LearnSession(props: LearnSessionProps) {
                             setLimitChoice({ type: "count", count });
                             setLimitCount(computed);
                           }}
-                          className={`w-full rounded-full border px-4 py-2 text-left text-sm font-semibold transition disabled:opacity-50 ${
+                          className={`w-full rounded-full border px-4 py-2 text-center text-sm font-semibold transition disabled:opacity-50 ${
                             isSelected
                               ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
                               : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
                           }`}
                         >
-                          <div className="flex items-baseline justify-between gap-3">
-                            <span className="inline-flex items-baseline gap-2">
-                              <span className="text-base">{computed}</span>
-                              <span className={`text-xs font-medium ${isSelected ? "text-white/80" : "text-[#7a7184]"}`}>
-                                {computed === 1 ? "réplique" : "répliques"}
-                              </span>
-                            </span>
+                          <div className="inline-flex items-baseline justify-center gap-2">
+                            <span className="text-base">{computed}</span>
                             <span className={`text-xs font-medium ${isSelected ? "text-white/80" : "text-[#7a7184]"}`}>
-                              {pct}%
+                              {computed === 1 ? "réplique" : "répliques"}
                             </span>
                           </div>
                           <div className={`mt-0.5 text-[11px] font-medium ${isSelected ? "text-white/80" : "text-[#7a7184]"}`}>
