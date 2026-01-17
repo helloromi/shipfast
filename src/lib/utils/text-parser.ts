@@ -17,10 +17,27 @@ export interface ParseResult {
   error?: string;
 }
 
+export type ParseTextWithAIOptions = {
+  /**
+   * Autorise l'envoi du contenu à un prestataire tiers (OpenAI).
+   * Par défaut: false (privacy by default).
+   */
+  allowThirdPartyAI?: boolean;
+};
+
 /**
  * Parse le texte extrait d'une scène de théâtre/script en utilisant OpenAI
  */
-export async function parseTextWithAI(text: string): Promise<ParseResult> {
+export async function parseTextWithAI(text: string, options?: ParseTextWithAIOptions): Promise<ParseResult> {
+  const allowThirdPartyAI = Boolean(options?.allowThirdPartyAI);
+  if (!allowThirdPartyAI) {
+    return {
+      success: false,
+      error:
+        "Analyse IA désactivée (consentement manquant). Activez le consentement ou désactivez l'IA côté configuration.",
+    };
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {

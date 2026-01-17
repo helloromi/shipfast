@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { redirect } from "next/navigation";
 import { getStripe } from "@/lib/stripe/client";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import Stripe from "stripe";
 
@@ -18,16 +19,43 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    console.log("[SUCCESS] Route success appelée avec session_id:", sessionId);
+    const debug = process.env.LOG_STRIPE_SUCCESS === "1";
+    if (debug) console.log("[SUCCESS] Route success appelée avec session_id:", sessionId);
+
+    // Exiger un utilisateur connecté: évite qu'un tiers pousse des upserts billing via un session_id "deviné/leaké".
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      redirect("/login");
+    }
+
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     
-    console.log("[SUCCESS] Session récupérée - status:", session.status, "mode:", session.mode);
-    console.log("[SUCCESS] Metadata:", JSON.stringify(session.metadata, null, 2));
+    if (debug) {
+      console.log("[SUCCESS] Session récupérée - status:", session.status, "mode:", session.mode);
+      console.log("[SUCCESS] Metadata keys:", Object.keys(session.metadata ?? {}));
+    }
 
     const userId = session.metadata?.user_id ?? null;
     const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
     const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null;
+
+    // Validation: la session Stripe doit appartenir à l'utilisateur courant (défense anti-abus / confidentialité).
+    if (!userId || userId !== user.id) {
+      if (debug) console.warn("[SUCCESS] Mismatch user_id (metadata) vs user session");
+      redirect("/subscribe");
+    }
+
+    // Validation: session attendue pour un abonnement et complète.
+    const isComplete = session.status === "complete";
+    const isSubscription = session.mode === "subscription";
+    if (!isSubscription || !isComplete) {
+      if (debug) console.warn("[SUCCESS] Session Stripe non complète ou mauvais mode:", session.status, session.mode);
+      redirect("/subscribe");
+    }
 
     // Fallback: attempt to upsert billing snapshot directly (in case webhook is delayed)
     if (userId && customerId && subscriptionId) {

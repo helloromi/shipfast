@@ -1,10 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { getStripe } from "@/lib/stripe/client";
+import { assertSameOrigin } from "@/lib/utils/csrf";
+import { checkRateLimit } from "@/lib/utils/rate-limit";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    const csrf = assertSameOrigin(request);
+    if (!csrf.ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
     const supabase = await createSupabaseServerClient();
     const {
       data: { user },
@@ -12,6 +17,14 @@ export async function POST() {
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = checkRateLimit(`account_delete:${user.id}`, { windowMs: 60_000, max: 3 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+      );
     }
 
     // Load Stripe customer id (if any)

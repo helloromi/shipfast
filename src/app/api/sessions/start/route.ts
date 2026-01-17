@@ -1,12 +1,25 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { trackSessionStart } from "@/lib/queries/stats";
 import { getSupabaseSessionUser } from "@/lib/queries/scenes";
+import { assertSameOrigin } from "@/lib/utils/csrf";
+import { checkRateLimit } from "@/lib/utils/rate-limit";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const csrf = assertSameOrigin(request);
+    if (!csrf.ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
     const user = await getSupabaseSessionUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = checkRateLimit(`session_start:${user.id}`, { windowMs: 60_000, max: 120 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+      );
     }
 
     const body = await request.json();

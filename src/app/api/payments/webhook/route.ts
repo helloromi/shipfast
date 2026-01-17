@@ -41,10 +41,11 @@ async function resolveUserIdFromCustomerId(
 export async function POST(request: NextRequest) {
   const body = await request.text();
   const signature = request.headers.get("stripe-signature");
-
-  // Log de réception du webhook
-  console.log("[WEBHOOK] Webhook reçu à", new Date().toISOString());
-  console.log("[WEBHOOK] Signature présente:", !!signature);
+  const debug = process.env.LOG_STRIPE_WEBHOOKS === "1";
+  if (debug) {
+    console.log("[WEBHOOK] Webhook reçu à", new Date().toISOString());
+    console.log("[WEBHOOK] Signature présente:", !!signature);
+  }
 
   if (!signature) {
     console.error("[WEBHOOK] ERREUR: Pas de signature Stripe");
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
 
   try {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    console.log("[WEBHOOK] Événement vérifié avec succès:", event.type, "ID:", event.id);
+    if (debug) console.log("[WEBHOOK] Événement vérifié avec succès:", event.type, "ID:", event.id);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[WEBHOOK] ERREUR: Échec de vérification de signature:", message);
@@ -67,8 +68,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Logger tous les événements reçus (pour debug)
-  console.log(`[WEBHOOK] Événement reçu: ${event.type} (ID: ${event.id})`);
+  if (debug) console.log(`[WEBHOOK] Événement reçu: ${event.type} (ID: ${event.id})`);
 
   // Subscription-centric billing sync
   if (
@@ -81,10 +81,12 @@ export async function POST(request: NextRequest) {
 
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log("[WEBHOOK] Traitement de checkout.session.completed");
-        console.log("[WEBHOOK] Session ID:", session.id);
-        console.log("[WEBHOOK] Mode:", session.mode);
-        console.log("[WEBHOOK] Metadata:", JSON.stringify(session.metadata, null, 2));
+        if (debug) {
+          console.log("[WEBHOOK] Traitement de checkout.session.completed");
+          console.log("[WEBHOOK] Session ID:", session.id);
+          console.log("[WEBHOOK] Mode:", session.mode);
+          console.log("[WEBHOOK] Metadata keys:", Object.keys(session.metadata ?? {}));
+        }
 
         const userId = session.metadata?.user_id ?? null;
         const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
@@ -139,7 +141,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "Failed to upsert billing_subscriptions" }, { status: 500 });
         }
 
-        console.log("[WEBHOOK] ✅ Billing snapshot upsert OK (checkout)");
+        if (debug) console.log("[WEBHOOK] ✅ Billing snapshot upsert OK (checkout)");
         return NextResponse.json({ received: true });
       }
 
@@ -186,7 +188,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Failed to upsert billing_subscriptions" }, { status: 500 });
       }
 
-      console.log("[WEBHOOK] ✅ Billing snapshot upsert OK (subscription event)", event.type);
+      if (debug) console.log("[WEBHOOK] ✅ Billing snapshot upsert OK (subscription event)", event.type);
       return NextResponse.json({ received: true });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Internal server error";
@@ -196,7 +198,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  console.log(`[WEBHOOK] Événement non géré: ${event.type} (ignoré)`);
+  if (debug) console.log(`[WEBHOOK] Événement non géré: ${event.type} (ignoré)`);
 
   return NextResponse.json({ received: true });
 }

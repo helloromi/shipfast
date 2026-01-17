@@ -76,6 +76,14 @@ export interface ExtractionResult {
   error?: string;
 }
 
+export type ExtractTextOptions = {
+  /**
+   * Autorise l'envoi des fichiers/contents à un prestataire tiers (OpenAI) pour OCR Vision.
+   * Par défaut: true (rétro-compatibilité); les routes sensibles doivent passer false sans consentement.
+   */
+  allowOpenAI?: boolean;
+};
+
 export type ExtractionProgressEvent =
   | {
       type: "pdf_ocr_page";
@@ -249,7 +257,7 @@ async function extractTextWithOpenAIVision(file: File): Promise<ExtractionResult
 /**
  * Extrait le texte d'une image en utilisant Tesseract.js (OCR)
  */
-export async function extractTextFromImage(file: File): Promise<ExtractionResult> {
+export async function extractTextFromImage(file: File, options?: ExtractTextOptions): Promise<ExtractionResult> {
   const validation = validateFile(file);
   if (!validation.valid) {
     return {
@@ -281,7 +289,8 @@ export async function extractTextFromImage(file: File): Promise<ExtractionResult
     const cleanedText = text.trim();
 
     if (!cleanedText) {
-      // Fallback OpenAI Vision
+      const allowOpenAI = options?.allowOpenAI ?? true;
+      if (!allowOpenAI) return { text: "", success: false, error: "OCR OpenAI désactivé (consentement manquant)." };
       const visionResult = await extractTextWithOpenAIVision(file);
       if (visionResult.success) return visionResult;
       return {
@@ -310,7 +319,8 @@ export async function extractTextFromImage(file: File): Promise<ExtractionResult
  */
 export async function extractTextFromPDF(
   file: File,
-  onProgress?: (event: ExtractionProgressEventV2) => void
+  onProgress?: (event: ExtractionProgressEventV2) => void,
+  options?: ExtractTextOptions
 ): Promise<ExtractionResult> {
   const validation = validateFile(file);
   if (!validation.valid) {
@@ -430,7 +440,8 @@ export async function extractTextFromPDF(
     }
 
     // 2a) OpenAI Vision (batch) si possible — beaucoup plus adapté au serverless Hobby.
-    if (process.env.OPENAI_API_KEY && renderedPngs.length > 0) {
+    const allowOpenAI = options?.allowOpenAI ?? true;
+    if (allowOpenAI && process.env.OPENAI_API_KEY && renderedPngs.length > 0) {
       onProgress?.({ type: "pdf_progress", phase: "ai", message: "Analyse OCR (OpenAI)..." });
       // Heartbeat pour éviter l'impression de freeze pendant l'appel réseau.
       let hb = 0;
@@ -513,15 +524,16 @@ export async function extractTextFromPDF(
  */
 export async function extractTextFromFile(
   file: File,
-  onProgress?: (event: ExtractionProgressEventV2) => void
+  onProgress?: (event: ExtractionProgressEventV2) => void,
+  options?: ExtractTextOptions
 ): Promise<ExtractionResult> {
   const isImage = SUPPORTED_IMAGE_TYPES.includes(file.type);
   const isPDF = file.type === SUPPORTED_PDF_TYPE;
 
   if (isImage) {
-    return extractTextFromImage(file);
+    return extractTextFromImage(file, options);
   } else if (isPDF) {
-    return extractTextFromPDF(file, onProgress);
+    return extractTextFromPDF(file, onProgress, options);
   } else {
     return {
       text: "",

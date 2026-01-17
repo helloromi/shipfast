@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { grantFreeSlotAccess } from "@/lib/utils/access-control";
+import { assertSameOrigin } from "@/lib/utils/csrf";
+import { checkRateLimit } from "@/lib/utils/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
+    const csrf = assertSameOrigin(request);
+    if (!csrf.ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
     const supabase = await createSupabaseServerClient();
     const {
       data: { user },
@@ -11,6 +16,14 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = checkRateLimit(`free_slot:${user.id}`, { windowMs: 60_000, max: 30 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+      );
     }
 
     const body = await request.json();

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getStripe } from "@/lib/stripe/client";
 import { getSiteUrl } from "@/lib/url";
+import { assertSameOrigin } from "@/lib/utils/csrf";
+import { checkRateLimit } from "@/lib/utils/rate-limit";
 
 function getSubscriptionPriceId(): string {
   const priceId = process.env.STRIPE_SUBSCRIPTION_PRICE_ID;
@@ -13,7 +15,9 @@ function getSubscriptionPriceId(): string {
 
 export async function POST(request: NextRequest) {
   try {
-    void request;
+    const csrf = assertSameOrigin(request);
+    if (!csrf.ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
     const stripe = getStripe();
     const supabase = await createSupabaseServerClient();
     const {
@@ -22,6 +26,14 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rl = checkRateLimit(`checkout:${user.id}`, { windowMs: 60_000, max: 5 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+      );
     }
 
     // Reuse billing_customers mapping to attach the Checkout session to a Stripe customer.

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { extractTextFromFile, type ExtractionProgressEventV2 } from "@/lib/utils/text-extraction";
 import { parseTextWithAI, type ParsedScene } from "@/lib/utils/text-parser";
+import { assertSameOrigin } from "@/lib/utils/csrf";
+import { checkRateLimit } from "@/lib/utils/rate-limit";
 
 export const runtime = "nodejs"; // Nécessaire pour Tesseract.js et pdfjs-dist
 export const maxDuration = 300; // 5 minutes max pour le traitement
@@ -32,6 +34,9 @@ type ImportStreamEvent =
 
 export async function POST(request: NextRequest) {
   try {
+    const csrf = assertSameOrigin(request);
+    if (!csrf.ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
     const supabase = await createSupabaseServerClient();
     const {
       data: { user },
@@ -41,13 +46,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
+    const rl = checkRateLimit(`import:${user.id}`, { windowMs: 60_000, max: 10 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Trop de requêtes" },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+      );
+    }
+
     // Récupérer les chemins des fichiers depuis le body JSON
     const body = await request.json();
-    const { filePaths, action } = body;
+    const { filePaths, action, consentToThirdPartyAI } = body as {
+      filePaths?: unknown;
+      action?: unknown;
+      consentToThirdPartyAI?: unknown;
+    };
     const importAction: "preview" | "create" = action === "preview" ? "preview" : "create";
 
     if (!filePaths || !Array.isArray(filePaths) || filePaths.length === 0) {
       return NextResponse.json({ error: "Aucun chemin de fichier fourni" }, { status: 400 });
+    }
+
+    // Defense-in-depth: refuser tout accès à des fichiers Storage qui ne sont pas dans le dossier user_id.
+    // Cela protège même si les policies Storage sont mal configurées.
+    const expectedPrefix = `${user.id}/`;
+    const invalidPath = (filePaths as unknown[]).find(
+      (p) => typeof p !== "string" || !p.startsWith(expectedPrefix)
+    );
+    if (invalidPath) {
+      return NextResponse.json({ error: "Chemin de fichier invalide (accès refusé)" }, { status: 403 });
+    }
+
+    // Consentement explicite (RGPD / confidentialité): l'import peut envoyer le contenu à un prestataire IA tiers (OpenAI)
+    // pour OCR/parsing. Par défaut, on exige ce consentement.
+    const requireConsent = process.env.REQUIRE_AI_CONSENT !== "0";
+    const allowThirdPartyAI = Boolean(consentToThirdPartyAI);
+    if (requireConsent && !allowThirdPartyAI) {
+      return NextResponse.json(
+        {
+          error:
+            "Consentement requis: l'import peut envoyer le contenu à un prestataire d'IA tiers pour OCR/parsing.",
+          code: "CONSENT_REQUIRED",
+        },
+        { status: 403 }
+      );
     }
 
     // Mode background: créer un job et traiter en arrière-plan
@@ -61,6 +103,8 @@ export async function POST(request: NextRequest) {
           user_id: user.id,
           status: "pending",
           file_paths: filePaths,
+          // Colonne ajoutée via migration (voir supabase/migrations)
+          consent_to_ai: allowThirdPartyAI,
         })
         .select()
         .single();
@@ -74,7 +118,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Lancer le traitement en arrière-plan (sans bloquer la réponse)
-      processImportJob(job.id, filePaths, supabase).catch((error) => {
+      processImportJob(job.id, filePaths, allowThirdPartyAI, supabase).catch((error) => {
         console.error(`[Import Job ${job.id}] Erreur lors du traitement:`, error);
       });
 
@@ -140,7 +184,9 @@ export async function POST(request: NextRequest) {
                 });
 
                 let aiTicks = 0;
-                const extractionResult = await extractTextFromFile(file, (evt: ExtractionProgressEventV2) => {
+                const extractionResult = await extractTextFromFile(
+                  file,
+                  (evt: ExtractionProgressEventV2) => {
                   const perFileBase = 0.1 + (index / Math.max(1, totalFiles)) * 0.6;
                   const perFileSpan = 0.6 / Math.max(1, totalFiles);
 
@@ -207,7 +253,9 @@ export async function POST(request: NextRequest) {
                       });
                     }
                   }
-                });
+                  },
+                  { allowOpenAI: allowThirdPartyAI }
+                );
 
                 if (!extractionResult.success) {
                   write({
@@ -240,7 +288,7 @@ export async function POST(request: NextRequest) {
                 progress: 0.85,
               });
 
-              const parseResult = await parseTextWithAI(aggregatedText);
+              const parseResult = await parseTextWithAI(aggregatedText, { allowThirdPartyAI });
               if (!parseResult.success || !parseResult.data) {
                 write({
                   type: "error",
@@ -362,7 +410,10 @@ export async function POST(request: NextRequest) {
     // Télécharger et concaténer le texte de tous les fichiers (images ou PDF)
     let aggregatedText = "";
     for (const filePath of filePaths) {
-      console.log(`[Import] Téléchargement du fichier depuis Storage: ${filePath}...`);
+      // Éviter les logs verbeux contenant des infos utilisateur (file paths). Active via DEBUG_IMPORTS=1.
+      if (process.env.DEBUG_IMPORTS === "1") {
+        console.log(`[Import] Téléchargement du fichier depuis Storage: ${filePath}...`);
+      }
       const { data: fileData, error: downloadError } = await supabase.storage
         .from("scene-imports")
         .download(filePath);
@@ -378,8 +429,10 @@ export async function POST(request: NextRequest) {
       const fileName = filePath.split("/").pop() || "file";
       const file = new File([fileData], fileName, { type: fileData.type });
 
-      console.log(`[Import] Extraction du texte depuis ${file.name}...`);
-      const extractionResult = await extractTextFromFile(file);
+      if (process.env.DEBUG_IMPORTS === "1") {
+        console.log(`[Import] Extraction du texte depuis ${file.name}...`);
+      }
+      const extractionResult = await extractTextFromFile(file, undefined, { allowOpenAI: allowThirdPartyAI });
 
       if (!extractionResult.success) {
         return NextResponse.json(
@@ -406,16 +459,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Étape 2 : Parsing avec l'IA
-    console.log(`[Import] Parsing du texte avec l'IA...`);
-    const parseResult = await parseTextWithAI(aggregatedText);
+    if (process.env.DEBUG_IMPORTS === "1") {
+      console.log(`[Import] Parsing du texte avec l'IA...`);
+    }
+    const parseResult = await parseTextWithAI(aggregatedText, { allowThirdPartyAI });
 
     if (!parseResult.success || !parseResult.data) {
       return NextResponse.json(
         {
           error: "Erreur lors du parsing du texte",
           details: parseResult.error || "Erreur inconnue",
-          // Optionnel : retourner le texte brut pour permettre une édition manuelle
-          rawText: aggregatedText,
         },
         { status: 400 }
       );
@@ -551,6 +604,7 @@ export async function POST(request: NextRequest) {
 async function processImportJob(
   jobId: string,
   filePaths: string[],
+  allowThirdPartyAI: boolean,
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>
 ) {
   try {
@@ -586,7 +640,7 @@ async function processImportJob(
       const file = new File([fileData], fileName, { type: fileData.type });
 
       console.log(`[Import Job ${jobId}] Extraction du texte depuis ${file.name}...`);
-      const extractionResult = await extractTextFromFile(file);
+      const extractionResult = await extractTextFromFile(file, undefined, { allowOpenAI: allowThirdPartyAI });
 
       if (!extractionResult.success) {
         console.error(`[Import Job ${jobId}] Erreur lors de l'extraction:`, extractionResult.error);
@@ -618,7 +672,7 @@ async function processImportJob(
 
     // Parsing avec l'IA
     console.log(`[Import Job ${jobId}] Parsing du texte avec l'IA...`);
-    const parseResult = await parseTextWithAI(aggregatedText);
+    const parseResult = await parseTextWithAI(aggregatedText, { allowThirdPartyAI });
 
     if (!parseResult.success || !parseResult.data) {
       console.error(`[Import Job ${jobId}] Erreur lors du parsing:`, parseResult.error);

@@ -81,6 +81,7 @@ export function ImportForm() {
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
   const [draftTitle, setDraftTitle] = useState("");
   const [draftAuthor, setDraftAuthor] = useState("");
+  const [consentToAI, setConsentToAI] = useState(false);
 
   const totalSizeMb = useMemo(
     () => files.reduce((acc, f) => acc + f.size, 0) / 1024 / 1024,
@@ -147,6 +148,15 @@ export function ImportForm() {
       return;
     }
 
+    if (!consentToAI) {
+      setToast({
+        message:
+          "Pour importer, vous devez autoriser l’analyse par un prestataire d’IA tiers (OCR/parsing). Vous pouvez importer sans IA en la désactivant côté configuration.",
+        variant: "error",
+      });
+      return;
+    }
+
     try {
       setProcessing({ stage: "uploading", progress: 0.02, detail: "" });
 
@@ -183,6 +193,7 @@ export function ImportForm() {
         body: JSON.stringify({
           filePaths: uploads,
           action: "preview",
+          consentToThirdPartyAI: true,
         }),
       });
 
@@ -210,7 +221,7 @@ export function ImportForm() {
         variant: "error",
       });
     }
-  }, [files, session, supabase, router]);
+  }, [files, session, supabase, router, consentToAI]);
 
   const handleReviewBack = useCallback(() => {
     setDraft(null);
@@ -403,65 +414,84 @@ export function ImportForm() {
 
       {/* Zone de drop */}
       {processing.stage === "idle" && (
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`relative rounded-2xl border-2 border-dashed p-8 transition ${
-            isDragging
-              ? "border-[#3b1f4a] bg-[#3b1f4a08]"
-              : "border-[#e7e1d9] bg-white/90 hover:border-[#3b1f4a33]"
-          }`}
-        >
-          <input
-            multiple
-            type="file"
-            id="file-input"
-            accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
-            onChange={handleFileSelect}
-            className="absolute inset-0 cursor-pointer opacity-0"
-          />
-          <div className="flex flex-col items-center gap-4 text-center">
-            <div className="rounded-full bg-[#f4c95d33] p-4">
-              <svg
-                className="h-8 w-8 text-[#3b1f4a]"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                />
-              </svg>
-            </div>
-            <div className="flex flex-col gap-2">
-              <p className="text-sm font-semibold text-[#1c1b1f]">
-                {files.length ? `${files.length} fichier(s) sélectionné(s)` : t.scenes.import.dropzone.title}
-              </p>
-              {!files.length && (
-                <>
-                  <p className="text-xs text-[#524b5a]">
-                    {t.scenes.import.dropzone.or}{" "}
-                    <span className="font-semibold text-[#3b1f4a]">{t.scenes.import.dropzone.browse}</span>
-                  </p>
-                  <p className="text-xs text-[#7a7184]">{t.scenes.import.dropzone.supportedFormats}</p>
-                  <p className="text-xs text-[#7a7184]">{t.scenes.import.dropzone.maxSize}</p>
-                  <p className="text-xs text-[#7a7184]">Jusqu'à 10 fichiers, total 20MB</p>
-                </>
+        <div className="flex flex-col gap-3">
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`relative rounded-2xl border-2 border-dashed p-8 transition ${
+              isDragging
+                ? "border-[#3b1f4a] bg-[#3b1f4a08]"
+                : "border-[#e7e1d9] bg-white/90 hover:border-[#3b1f4a33]"
+            }`}
+          >
+            <input
+              multiple
+              type="file"
+              id="file-input"
+              accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
+              onChange={handleFileSelect}
+              className="absolute inset-0 cursor-pointer opacity-0"
+            />
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="rounded-full bg-[#f4c95d33] p-4">
+                <svg
+                  className="h-8 w-8 text-[#3b1f4a]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
+                </svg>
+              </div>
+              <div className="flex flex-col gap-2">
+                <p className="text-sm font-semibold text-[#1c1b1f]">
+                  {files.length ? `${files.length} fichier(s) sélectionné(s)` : t.scenes.import.dropzone.title}
+                </p>
+                {!files.length && (
+                  <>
+                    <p className="text-xs text-[#524b5a]">
+                      {t.scenes.import.dropzone.or}{" "}
+                      <span className="font-semibold text-[#3b1f4a]">{t.scenes.import.dropzone.browse}</span>
+                    </p>
+                    <p className="text-xs text-[#7a7184]">{t.scenes.import.dropzone.supportedFormats}</p>
+                    <p className="text-xs text-[#7a7184]">{t.scenes.import.dropzone.maxSize}</p>
+                    <p className="text-xs text-[#7a7184]">Jusqu'à 10 fichiers, total 20MB</p>
+                  </>
+                )}
+              </div>
+              {files.length > 0 && (
+                <div className="mt-2 flex flex-col items-center gap-1 text-xs text-[#524b5a]">
+                  <span>Total : {totalSizeMb.toFixed(2)} MB</span>
+                  <span className="max-w-sm truncate text-center">
+                    {files.map((f) => f.name).join(", ")}
+                  </span>
+                </div>
               )}
             </div>
-            {files.length > 0 && (
-              <div className="mt-2 flex flex-col items-center gap-1 text-xs text-[#524b5a]">
-                <span>Total : {totalSizeMb.toFixed(2)} MB</span>
-                <span className="max-w-sm truncate text-center">
-                  {files.map((f) => f.name).join(", ")}
-                </span>
-              </div>
-            )}
           </div>
+
+          <label className="flex items-start gap-3 rounded-2xl border border-[#e7e1d9] bg-white/90 p-4 text-left">
+            <input
+              type="checkbox"
+              checked={consentToAI}
+              onChange={(e) => setConsentToAI(e.target.checked)}
+              className="mt-1 h-4 w-4 accent-[#3b1f4a]"
+            />
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-semibold text-[#1c1b1f]">
+                J’autorise l’analyse par un prestataire d’IA tiers (OCR/parsing)
+              </span>
+              <span className="text-xs text-[#7a7184]">
+                Vos fichiers peuvent être envoyés à un prestataire externe (ex: OpenAI) pour extraire et structurer le texte.
+              </span>
+            </div>
+          </label>
         </div>
       )}
 
