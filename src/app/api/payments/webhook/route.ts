@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import Stripe from "stripe";
+import { sendPaymentThankYouEmailIfNeeded } from "@/lib/resend/automation";
 
 function getWebhookSecret(): string {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -142,6 +143,11 @@ export async function POST(request: NextRequest) {
         }
 
         if (debug) console.log("[WEBHOOK] ✅ Billing snapshot upsert OK (checkout)");
+
+        // Email de remerciement (idempotent)
+        await sendPaymentThankYouEmailIfNeeded(userId).catch((e) => {
+          console.warn("[WEBHOOK] Payment thank-you email error:", e);
+        });
         return NextResponse.json({ received: true });
       }
 
@@ -189,6 +195,16 @@ export async function POST(request: NextRequest) {
       }
 
       if (debug) console.log("[WEBHOOK] ✅ Billing snapshot upsert OK (subscription event)", event.type);
+
+      // Pour subscription.updated: envoyer merci si l'abonnement est actif/trialing (idempotent).
+      if (event.type === "customer.subscription.updated") {
+        const status = subscription.status;
+        if (status === "active" || status === "trialing") {
+          await sendPaymentThankYouEmailIfNeeded(userId).catch((e) => {
+            console.warn("[WEBHOOK] Payment thank-you email error:", e);
+          });
+        }
+      }
       return NextResponse.json({ received: true });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Internal server error";
