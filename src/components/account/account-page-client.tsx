@@ -76,9 +76,19 @@ export function AccountPageClient({ userEmail }: AccountPageClientProps) {
 
       setMarketingConsent(next);
 
-      // Si opt-in activé, synchroniser dans Resend Audience (best-effort)
+      // Synchroniser l'état dans Resend Audience (best-effort)
       if (next) {
-        await fetch("/api/resend/sync-contact", { method: "POST" }).catch(() => null);
+        await fetch("/api/resend/sync-contact", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "subscribe" }),
+        }).catch(() => null);
+      } else {
+        await fetch("/api/resend/sync-contact", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "unsubscribe" }),
+        }).catch(() => null);
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Erreur inconnue.");

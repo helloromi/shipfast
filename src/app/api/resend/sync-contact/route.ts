@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { syncAudienceContactIfOptIn } from "@/lib/resend/automation";
+import { setAudienceUnsubscribedFromMarketing, syncAudienceContactIfOptIn } from "@/lib/resend/automation";
 import { assertSameOrigin } from "@/lib/utils/csrf";
 
 export async function POST(request: NextRequest) {
@@ -15,6 +15,16 @@ export async function POST(request: NextRequest) {
 
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const body = await request.json().catch(() => ({} as unknown));
+  const action =
+    typeof (body as any)?.action === "string" ? String((body as any).action) : "subscribe";
+
+  if (action === "unsubscribe") {
+    const res = await setAudienceUnsubscribedFromMarketing({ userId: user.id, unsubscribed: true });
+    return NextResponse.json(res);
+  }
+
+  // Default: subscribe/sync if opt-in
   const res = await syncAudienceContactIfOptIn(user.id);
   return NextResponse.json(res);
 }

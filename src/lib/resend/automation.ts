@@ -153,6 +153,45 @@ export async function syncAudienceContactIfOptIn(userId: string) {
   return { synced: true as const };
 }
 
+export async function setAudienceUnsubscribedFromMarketing(params: {
+  userId: string;
+  unsubscribed: boolean;
+}) {
+  const { audienceId } = getResendEnv();
+  if (!audienceId) return { ok: false as const, reason: "no_audience" as const };
+
+  const email = await resolveEmailForUser(params.userId);
+  if (!email) return { ok: false as const, reason: "no_email" as const };
+
+  const resend = createResendClient();
+
+  // get-by-email -> update, else create with unsubscribed state
+  const existing = await resend.contacts.get({ audienceId, email });
+  if (existing.error) {
+    if (existing.error.name !== "not_found") {
+      return { ok: false as const, reason: "resend_error" as const, error: existing.error.message };
+    }
+  }
+
+  if (existing.data?.id) {
+    const upd = await resend.contacts.update({
+      audienceId,
+      id: existing.data.id,
+      unsubscribed: params.unsubscribed,
+    });
+    if (upd.error) return { ok: false as const, reason: "resend_error" as const, error: upd.error.message };
+    return { ok: true as const };
+  }
+
+  const created = await resend.contacts.create({
+    audienceId,
+    email,
+    unsubscribed: params.unsubscribed,
+  });
+  if (created.error) return { ok: false as const, reason: "resend_error" as const, error: created.error.message };
+  return { ok: true as const };
+}
+
 export async function sendWelcomeEmailIfNeeded(userId: string) {
   await ensureUserEmailStateRow(userId);
 
