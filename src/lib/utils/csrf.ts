@@ -1,5 +1,3 @@
-import { getSiteUrl } from "@/lib/url";
-
 /**
  * Anti-CSRF basique pour les routes mutantes qui reposent sur des cookies.
  * - Vérifie que Origin (ou à défaut Referer) correspond au site.
@@ -8,8 +6,9 @@ import { getSiteUrl } from "@/lib/url";
  * Note: best-effort. Pour des clients non-navigateurs, prévoir un mécanisme d'auth dédié (token).
  */
 export function assertSameOrigin(request: Request): { ok: true } | { ok: false; reason: string } {
-  const site = getSiteUrl();
-  const expectedOrigin = new URL(site).origin;
+  // Important: on valide l'Origin/Referer par rapport à l'origin de la requête,
+  // pas une URL "canonique" en env (ça casse dès qu'on a plusieurs domaines: custom + vercel).
+  const expectedOrigin = new URL(request.url).origin;
 
   const origin = request.headers.get("origin");
   if (origin) {

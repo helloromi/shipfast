@@ -38,7 +38,7 @@ export default function AuthCallbackPage() {
         }
 
         // Post-login (emails + profil) en best-effort
-        await fetch("/api/auth/post-login", { method: "POST" }).catch(() => null);
+        await fetch("/api/auth/post-login", { method: "POST", credentials: "include" }).catch(() => null);
 
         router.replace(next);
       })
