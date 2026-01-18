@@ -30,7 +30,7 @@ export default async function OnboardingPage() {
     },
     {
       title: "Import en 2 minutes",
-      desc: "Importe ta scène, détecte les personnages, puis choisis les répliques à travailler.",
+      desc: "Importe ta scène automatiquement, modifie là à ta guise, puis choisis les répliques à travailler.",
       img: "/file.svg",
       alt: "Aperçu import",
     },

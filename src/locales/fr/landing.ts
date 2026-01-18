@@ -88,6 +88,14 @@ export const landing = {
         question: "Ça fonctionne sur mobile ?",
         answer: "Absolument ! L'application est optimisée pour mobile et fonctionne parfaitement sur smartphone et tablette.",
       },
+      q5: {
+        question: "Des fonctionnalités en plus ?",
+        answer: "En plus de te permettre d'apprendre, tu peux aussi annoter tes scènes pour te donner des indications de jeu, de sous-texte ou d'intonation.",
+      },
+      q6: {
+        question: "Est-ce que Côté-Cour va évoluer ?",
+        answer: "Côté-Cour est le travail d'une petite équipe, mais sont prévues dans les nouvelles fonctionnalités d'exporter en pdf son texte, de pouvoir s'entraîner en vocal ou encore de partager les scènes avec d'autres étudiants. Toutes vos recommandations sont les bienvenues !",
+      },
     },
   },
   ctaBottom: {
