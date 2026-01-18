@@ -44,19 +44,6 @@ export default function OnboardingPageClient() {
 
   return (
     <div className="relative">
-      {/* Barre de progression */}
-      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-[#e7e1d9] px-4 py-3">
-        <div className="mx-auto max-w-3xl">
-          <div className="flex items-center justify-between text-xs font-semibold text-[#7a7184]">
-            <span>Étape 2 sur 3</span>
-            <span>66%</span>
-          </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#e7e1d9]">
-            <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] transition-all duration-500" />
-          </div>
-        </div>
-      </div>
-
       <div className="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-8 pb-32">
         <div className="flex flex-col gap-3">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">
@@ -71,7 +58,7 @@ export default function OnboardingPageClient() {
           {/* Preuve sociale */}
           <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-[#ff6b6b]">
             <span className="text-lg">🎭</span>
-            <span>Rejoint par +500 comédiens cette semaine</span>
+            <span>Rejoins une grande communauté de comédiens ! </span>
           </div>
         </div>
 
