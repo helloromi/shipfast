@@ -57,7 +57,29 @@ Pour que les magic links fonctionnent correctement en production :
 - `/scenes/[id]` : détails + choix du personnage.
 - `/learn/[sceneId]?character=...` : mode apprentissage (révélation + score 0-3).
 
-## Configuration Stripe Webhook
+## Configuration Stripe
+
+### Créer les produits et prix dans Stripe
+
+L'application propose 3 plans d'abonnement. Vous devez créer les Price IDs correspondants dans Stripe :
+
+1. **Dans Stripe Dashboard** :
+   - Allez dans **Products** → **Create product**
+   - Créez un produit (ex: "Abonnement Côté-Cour")
+   - Ajoutez 3 prix récurrents :
+     - **Mensuel** : 5€ / mois → copiez le Price ID (commence par `price_`)
+     - **Trimestriel** : 12€ / 3 mois → copiez le Price ID
+     - **Annuel** : 50€ / an → copiez le Price ID
+
+2. **Ajoutez les Price IDs à vos variables d'environnement** :
+   ```
+   STRIPE_SUBSCRIPTION_PRICE_ID_MONTHLY=price_xxxxx
+   STRIPE_SUBSCRIPTION_PRICE_ID_QUARTERLY=price_xxxxx
+   STRIPE_SUBSCRIPTION_PRICE_ID_YEARLY=price_xxxxx
+   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_xxxxx
+   ```
+
+### Configuration Stripe Webhook
 
 Pour que les paiements fonctionnent correctement, vous devez configurer le webhook Stripe :
 

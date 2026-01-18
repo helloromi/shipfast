@@ -5,10 +5,16 @@ import { getSiteUrl } from "@/lib/url";
 import { assertSameOrigin } from "@/lib/utils/csrf";
 import { checkRateLimit } from "@/lib/utils/rate-limit";
 
-function getSubscriptionPriceId(): string {
-  const priceId = process.env.STRIPE_SUBSCRIPTION_PRICE_ID;
+function getSubscriptionPriceId(plan: "monthly" | "quarterly" | "yearly"): string {
+  const envKey = plan === "monthly" 
+    ? "STRIPE_SUBSCRIPTION_PRICE_ID_MONTHLY"
+    : plan === "quarterly"
+    ? "STRIPE_SUBSCRIPTION_PRICE_ID_QUARTERLY"
+    : "STRIPE_SUBSCRIPTION_PRICE_ID_YEARLY";
+  
+  const priceId = process.env[envKey];
   if (!priceId) {
-    throw new Error("STRIPE_SUBSCRIPTION_PRICE_ID is not set");
+    throw new Error(`${envKey} is not set`);
   }
   return priceId;
 }
@@ -34,6 +40,18 @@ export async function POST(request: NextRequest) {
         { error: "Too many requests" },
         { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
       );
+    }
+
+    // Parse request body to get the plan
+    const body = await request.json();
+    const plan = body.plan as "monthly" | "quarterly" | "yearly" | undefined;
+    
+    // Default to monthly if no plan specified (backward compatibility)
+    const selectedPlan = plan || "monthly";
+    
+    // Validate plan
+    if (!["monthly", "quarterly", "yearly"].includes(selectedPlan)) {
+      return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
 
     // Reuse billing_customers mapping to attach the Checkout session to a Stripe customer.
@@ -84,16 +102,18 @@ export async function POST(request: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       customer: stripeCustomerId,
-      line_items: [{ price: getSubscriptionPriceId(), quantity: 1 }],
+      line_items: [{ price: getSubscriptionPriceId(selectedPlan), quantity: 1 }],
       mode: "subscription",
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: {
         user_id: user.id,
+        plan: selectedPlan,
       },
       subscription_data: {
         metadata: {
           user_id: user.id,
+          plan: selectedPlan,
         },
       },
     });

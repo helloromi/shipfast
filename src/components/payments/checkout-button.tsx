@@ -5,11 +5,13 @@ import { useState } from "react";
 type CheckoutButtonProps = {
   className?: string;
   children: React.ReactNode;
+  plan: "monthly" | "quarterly" | "yearly";
 };
 
 export function CheckoutButton({
   className,
   children,
+  plan,
 }: CheckoutButtonProps) {
   const [loading, setLoading] = useState(false);
 
@@ -22,7 +24,7 @@ export function CheckoutButton({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ plan }),
       });
 
       const data = await response.json();
