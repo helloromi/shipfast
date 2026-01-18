@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { useSupabase } from "@/components/supabase-provider";
-import { useImportNotifications } from "@/hooks/use-import-notifications";
 import { t } from "@/locales/fr";
 
 export function Header() {
@@ -16,7 +15,6 @@ export function Header() {
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const hasImportNotifications = useImportNotifications();
 
   // Mode Zen devient le mode par défaut sur /learn.
   // `?zen=0` reste un échappatoire (debug) pour afficher la nav.
@@ -70,16 +68,13 @@ export function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`relative rounded-full px-3 py-1 transition ${
+                className={`rounded-full px-3 py-1 transition ${
                   isActive(item.href)
                     ? "bg-[#3b1f4a] text-white shadow-sm"
                     : "hover:bg-[#f4c95d33] hover:text-[#3b1f4a]"
                 }`}
               >
                 {item.label}
-                {item.href === "/bibliotheque" && hasImportNotifications && (
-                  <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-[#ff6b6b] border-2 border-white" />
-                )}
               </Link>
             ))}
           </nav>
@@ -124,16 +119,13 @@ export function Header() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`relative rounded-full px-3 py-2 text-sm font-medium transition ${
+                        className={`rounded-full px-3 py-2 text-sm font-medium transition ${
                           isActive(item.href)
                             ? "bg-[#3b1f4a] text-white shadow-sm"
                             : "text-[#524b5a] hover:bg-[#f4c95d33] hover:text-[#3b1f4a]"
                         }`}
                       >
                         {item.label}
-                        {item.href === "/bibliotheque" && hasImportNotifications && (
-                          <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-[#ff6b6b] border-2 border-white" />
-                        )}
                       </Link>
                     ))}
                     <div className="border-t border-[#e7e1d9] my-1" />

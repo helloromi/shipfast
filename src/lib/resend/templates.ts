@@ -78,7 +78,7 @@ export function inactivityEmail(days: number): EmailTemplate {
   const html = `
     <div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;">
       <h1 style="margin:0 0 12px;">On reprend ?</h1>
-      <p style="margin:0 0 16px;">Ça fait ${days} jours depuis ta dernière session. Un petit run aujourd’hui ?</p>
+      <p style="margin:0 0 16px;">Ça fait ${days} jours depuis ta dernière session. Un petit run aujourd'hui ?</p>
       <p style="margin:0 0 16px;">
         <a href="${ctaUrl}" style="display:inline-block;padding:10px 14px;border-radius:10px;background:#3b1f4a;color:white;text-decoration:none;">
           Reprendre
@@ -90,3 +90,28 @@ export function inactivityEmail(days: number): EmailTemplate {
   return { subject, html, text };
 }
 
+export function importReadyEmail(params: { jobId: string; title?: string }): EmailTemplate {
+  const { siteUrl } = base();
+  const sceneTitle = params.title || "Ta scène";
+  const subject = `${sceneTitle} est prête à valider`;
+  const ctaUrl = `${siteUrl}/imports/${params.jobId}/preview`;
+  const text = `Ton import "${sceneTitle}" est prêt ! Valide-le ici: ${ctaUrl}\n`;
+  const html = `
+    <div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;">
+      <h1 style="margin:0 0 12px;">Ton import est prêt !</h1>
+      <p style="margin:0 0 16px;">
+        <strong>${sceneTitle}</strong> a été traité avec succès et attend ta validation.
+      </p>
+      <p style="margin:0 0 16px;">
+        Clique ci-dessous pour vérifier le contenu extrait, ajuster si nécessaire, et valider la création de ta scène.
+      </p>
+      <p style="margin:0 0 16px;">
+        <a href="${ctaUrl}" style="display:inline-block;padding:10px 14px;border-radius:10px;background:#ff6b6b;color:white;text-decoration:none;">
+          Valider mon import
+        </a>
+      </p>
+      <p style="margin:24px 0 0;color:#6b6471;font-size:12px;">Lien direct: ${ctaUrl}</p>
+    </div>
+  `.trim();
+  return { subject, html, text };
+}

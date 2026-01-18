@@ -1,5 +1,8 @@
 import { extractTextFromFile } from "@/lib/utils/text-extraction";
 import { parseTextWithAI } from "@/lib/utils/text-parser";
+import { createResendClient } from "@/lib/resend/client";
+import { importReadyEmail } from "@/lib/resend/templates";
+import { getResendEnv } from "@/lib/resend/env";
 
 export type ImportJobForProcessing = {
   id: string;
@@ -153,6 +156,29 @@ export async function processImportJobPreview(
         error_message: null,
       })
       .eq("id", jobId);
+
+    // Envoyer un email de notification
+    try {
+      const { data: userData } = await supabase.auth.admin.getUserById(job.user_id);
+      if (userData?.user?.email) {
+        const resend = createResendClient();
+        const { from } = getResendEnv();
+        const emailTemplate = importReadyEmail({
+          jobId: job.id,
+          title: parseResult.data?.title,
+        });
+        await resend.emails.send({
+          from,
+          to: userData.user.email,
+          subject: emailTemplate.subject,
+          html: emailTemplate.html,
+          text: emailTemplate.text,
+        });
+      }
+    } catch (emailError) {
+      // Ne pas bloquer le processus si l'email échoue
+      console.error("Erreur lors de l'envoi de l'email de notification:", emailError);
+    }
 
     return { ok: true };
   } catch (e: any) {
