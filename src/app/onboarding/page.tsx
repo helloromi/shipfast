@@ -40,6 +40,12 @@ export default async function OnboardingPage() {
       img: "/globe.svg",
       alt: "Aperçu bibliothèque",
     },
+    {
+      title: "Annote-tes scènes",
+      desc: "Pour être sûr de te souvenir des petits détails, ajoute des indications précises de jeu, de sous-texte ou d'intonation.",
+      img: "/pencil.svg",
+      alt: "Aperçu annotations",
+    }
   ] as const;
 
   return (
@@ -52,7 +58,7 @@ export default async function OnboardingPage() {
           Tout débloquer en 1 abonnement
         </h1>
         <p className="text-sm text-[#524b5a] leading-relaxed">
-          En 5€/mois, tu débloques l’apprentissage, l’import, la bibliothèque et le suivi.
+          Avec 5€/mois, tu débloques l’apprentissage, l’import, la bibliothèque et le suivi.
         </p>
       </div>
 
@@ -74,17 +80,7 @@ export default async function OnboardingPage() {
               </div>
             </div>
 
-            <div className="relative overflow-hidden rounded-2xl border border-[#e7e1d9] bg-[linear-gradient(120deg,#f4c95d22,#ff6b6b12,#3b1f4a10)]">
-              <div className="p-6">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                  Screenshot
-                </p>
-                <p className="mt-1 text-sm text-[#3b1f4a]">
-                  (à remplacer par une capture réelle)
-                </p>
-              </div>
-              <div className="h-28" />
-            </div>
+          
           </div>
         ))}
       </div>
