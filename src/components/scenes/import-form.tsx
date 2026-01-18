@@ -203,13 +203,21 @@ export function ImportForm() {
         throw new Error(data.error || data.details || t.scenes.import.errors.generic);
       }
 
+      const jobId: string | undefined = typeof data.jobId === "string" ? data.jobId : undefined;
+
       // Afficher un message de succès et réinitialiser
       setToast({
-        message: "Import lancé en arrière-plan. Vous pouvez continuer à naviguer. Vous serez notifié quand le preview sera prêt.",
+        message:
+          "Import lancé en arrière-plan. Redirection vers le suivi de l'import… (vous pouvez aussi retrouver vos imports via /imports)",
         variant: "success",
       });
       setFiles([]);
       setProcessing({ stage: "idle" });
+
+      // Rediriger vers la page preview (elle attendra jusqu'à ce que le preview soit prêt).
+      if (jobId) {
+        router.push(`/imports/${jobId}/preview`);
+      }
     } catch (error: any) {
       console.error("Erreur lors de l'import:", error);
       setProcessing({

@@ -23,12 +23,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Récupérer les imports avec status 'preview_ready' pour cet utilisateur
+    // Récupérer les imports "non terminés" / actionnables pour cet utilisateur
     const { data: jobs, error } = await supabase
       .from("import_jobs")
-      .select("id, status, created_at, draft_data")
+      .select("id, status, created_at, draft_data, error_message")
       .eq("user_id", user.id)
-      .eq("status", "preview_ready")
+      .in("status", ["pending", "processing", "preview_ready", "error"])
       .order("created_at", { ascending: false });
 
     if (error) {

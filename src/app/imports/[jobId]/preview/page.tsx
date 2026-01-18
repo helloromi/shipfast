@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Toast } from "@/components/ui/toast";
 import { t } from "@/locales/fr";
 import type { ParsedScene } from "@/lib/utils/text-parser";
+
+type ImportJobStatus = "pending" | "processing" | "preview_ready" | "completed" | "error" | string;
 
 export default function ImportPreviewPage() {
   const router = useRouter();
@@ -13,6 +15,8 @@ export default function ImportPreviewPage() {
   const jobId = params.jobId as string;
 
   const [loading, setLoading] = useState(true);
+  const [jobStatus, setJobStatus] = useState<ImportJobStatus | null>(null);
+  const [jobError, setJobError] = useState<string | null>(null);
   const [draft, setDraft] = useState<ParsedScene | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftAuthor, setDraftAuthor] = useState("");
@@ -20,17 +24,49 @@ export default function ImportPreviewPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
 
+  const statusLabel = useMemo(() => {
+    switch (jobStatus) {
+      case "pending":
+        return "En attente…";
+      case "processing":
+        return "Traitement en cours…";
+      case "preview_ready":
+        return "Preview prêt";
+      case "completed":
+        return "Terminé";
+      case "error":
+        return "Erreur";
+      default:
+        return jobStatus ? `Statut: ${jobStatus}` : "";
+    }
+  }, [jobStatus]);
+
   useEffect(() => {
     const fetchJob = async () => {
       try {
-        const response = await fetch(`/api/scenes/import/${jobId}`);
+        const response = await fetch(`/api/scenes/import/${jobId}`, { cache: "no-store" });
         if (!response.ok) {
-          throw new Error("Job non trouvé");
+          throw new Error("Import introuvable (ou accès refusé).");
         }
 
         const data = await response.json();
-        if (!data.success || !data.job || data.job.status !== "preview_ready") {
-          throw new Error("Le preview n'est pas encore prêt");
+        if (!data.success || !data.job) {
+          throw new Error("Réponse invalide.");
+        }
+
+        const status = data.job.status as ImportJobStatus;
+        setJobStatus(status);
+
+        if (status === "error") {
+          setJobError(String(data.job.error_message || "L'import a échoué."));
+          setLoading(false);
+          return;
+        }
+
+        if (status !== "preview_ready") {
+          // pending/processing/... : on attend, sans afficher d'erreur
+          setLoading(true);
+          return;
         }
 
         const parsedDraft = data.job.draft_data as ParsedScene;
@@ -38,19 +74,30 @@ export default function ImportPreviewPage() {
         setDraftTitle(parsedDraft.title || "");
         setDraftAuthor(parsedDraft.author || "");
         setSelectedOrders(new Set(parsedDraft.lines.map((l) => l.order)));
+        setLoading(false);
       } catch (error: any) {
         console.error("Erreur lors de la récupération du job:", error);
-        setToast({
-          message: error.message || "Erreur lors de la récupération du preview",
-          variant: "error",
-        });
-      } finally {
+        setJobError(error.message || "Erreur lors de la récupération du preview");
         setLoading(false);
       }
     };
 
     if (jobId) {
-      fetchJob();
+      let cancelled = false;
+      let interval: number | undefined;
+
+      const tick = async () => {
+        if (cancelled) return;
+        await fetchJob();
+      };
+
+      void tick();
+      interval = window.setInterval(tick, 2000);
+
+      return () => {
+        cancelled = true;
+        if (interval) window.clearInterval(interval);
+      };
     }
   }, [jobId]);
 
@@ -119,7 +166,31 @@ export default function ImportPreviewPage() {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#e7e1d9] border-t-[#3b1f4a]"></div>
-        <p className="text-sm text-[#524b5a]">Chargement du preview...</p>
+        <p className="text-sm text-[#524b5a]">Import en cours…</p>
+        {statusLabel ? <p className="text-xs text-[#7a7184]">{statusLabel}</p> : null}
+        <Link
+          href="/imports"
+          className="text-xs font-semibold text-[#3b1f4a] underline underline-offset-4"
+        >
+          Voir tous mes imports
+        </Link>
+      </div>
+    );
+  }
+
+  if (jobError) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+          <p className="text-sm font-semibold text-red-800">Erreur</p>
+          <p className="text-xs text-red-700">{jobError}</p>
+          <Link
+            href="/imports"
+            className="mt-4 inline-block rounded-full border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+          >
+            Retour à mes imports
+          </Link>
+        </div>
       </div>
     );
   }
@@ -127,14 +198,16 @@ export default function ImportPreviewPage() {
   if (!draft) {
     return (
       <div className="flex flex-col gap-4">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
-          <p className="text-sm font-semibold text-red-800">Erreur</p>
-          <p className="text-xs text-red-700">Le preview n'est pas disponible.</p>
+        <div className="rounded-2xl border border-[#e7e1d9] bg-white/90 p-6">
+          <p className="text-sm font-semibold text-[#1c1b1f]">Preview indisponible</p>
+          <p className="text-xs text-[#524b5a]">
+            Le preview n'est pas encore prêt, ou cet import n'a pas généré de brouillon.
+          </p>
           <Link
-            href="/bibliotheque"
-            className="mt-4 inline-block rounded-full border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+            href="/imports"
+            className="mt-4 inline-block rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33]"
           >
-            Retour à la bibliothèque
+            Retour à mes imports
           </Link>
         </div>
       </div>
@@ -145,10 +218,10 @@ export default function ImportPreviewPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <Link
-          href="/bibliotheque"
+          href="/imports"
           className="text-sm font-semibold text-[#3b1f4a] underline underline-offset-4"
         >
-          ← {t.common.buttons.retourBibliotheque}
+          ← Retour à mes imports
         </Link>
         <h1 className="font-display text-3xl font-semibold text-[#1c1b1f]">
           Preview de l'import
