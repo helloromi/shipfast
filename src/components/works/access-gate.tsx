@@ -68,7 +68,7 @@ export function AccessGate({
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="text-sm text-[#524b5a]">Vérification de l’accès...</div>
+        <div className="text-sm text-[#524b5a]">Vérification de l'accès...</div>
       </div>
     );
   }
@@ -89,13 +89,16 @@ export function AccessGate({
           Accès réservé aux abonnés
         </h3>
         <p className="text-sm text-[#524b5a]">
-          Abonnez-vous à 5€/mois pour débloquer l’apprentissage, l’import et toute la bibliothèque.
+          Abonnez-vous à 5€/mois pour débloquer l'apprentissage, l'import et toute la bibliothèque.
         </p>
       </div>
 
       <div className="flex flex-col gap-3">
-        <CheckoutButton className="w-full rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]">
-          S’abonner — 5€/mois
+        <CheckoutButton 
+          plan="monthly"
+          className="w-full rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]"
+        >
+          S'abonner — 5€/mois
         </CheckoutButton>
 
         {!user && (
@@ -112,14 +115,10 @@ export function AccessGate({
             onClick={onAccessGranted}
             className="w-full rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33]"
           >
-            J’ai déjà payé
+            J'ai déjà payé
           </button>
         )}
       </div>
     </div>
   );
 }
-
-
-
-
