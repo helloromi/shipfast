@@ -133,6 +133,7 @@ export function LineHighlightsEditor(props: Props) {
   const [activeField, setActiveField] = useState<CategoryField | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
   const [isCoarsePointer, setIsCoarsePointer] = useState(false);
+  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
   const [annotateMode, setAnnotateMode] = useState(false);
   const [tapStartOffset, setTapStartOffset] = useState<number | null>(null);
   const [mobileNotesOpen, setMobileNotesOpen] = useState(false);
@@ -140,6 +141,8 @@ export function LineHighlightsEditor(props: Props) {
     | { open: false }
     | { open: true; text: string; top: number; left: number }
   >({ open: false });
+
+  const isMobileUi = isCoarsePointer || isNarrowViewport;
 
   useEffect(() => {
     setHighlights(
@@ -169,12 +172,32 @@ export function LineHighlightsEditor(props: Props) {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia?.("(max-width: 767px)");
+    if (!mq) return;
+    const update = () => setIsNarrowViewport(Boolean(mq.matches));
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
+  }, []);
+
+  useEffect(() => {
     if (!popover.open) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         void flushCurrentAndClose();
       }
     };
+    window.addEventListener("keydown", onKeyDown);
+
+    // Mobile UI: on ferme via l'overlay (pas via pointerdown global),
+    // pour éviter les fermetures erratiques pendant les interactions tactiles.
+    if (isMobileUi) {
+      return () => {
+        window.removeEventListener("keydown", onKeyDown);
+      };
+    }
+
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Node | null;
       if (!target) return;
@@ -182,14 +205,13 @@ export function LineHighlightsEditor(props: Props) {
       if (containerRef.current?.contains(target)) return;
       void flushCurrentAndClose();
     };
-    window.addEventListener("keydown", onKeyDown);
     window.addEventListener("pointerdown", onPointerDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("pointerdown", onPointerDown);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [popover.open, popoverRef, containerRef, highlights, activeField, popover]);
+  }, [popover.open, isMobileUi]);
 
   useEffect(() => {
     if (!popover.open) return;
@@ -200,7 +222,21 @@ export function LineHighlightsEditor(props: Props) {
   }, [activeField, popover.open]);
 
   useEffect(() => {
+    if (typeof document === "undefined") return;
     if (!popover.open) return;
+    if (!isMobileUi) return;
+
+    // Empêcher le scroll arrière-plan quand la bottom sheet est ouverte.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [popover.open, isMobileUi]);
+
+  useEffect(() => {
+    if (!popover.open) return;
+    if (isMobileUi) return;
     // Sur scroll/resize: si le popover sort de l'écran, on le ferme (avec flush).
     const check = () => {
       if (popoverCheckRafRef.current != null) return;
@@ -232,7 +268,7 @@ export function LineHighlightsEditor(props: Props) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [popover.open]);
+  }, [popover.open, isMobileUi]);
 
   useEffect(() => {
     if (!hoverTip.open) return;
@@ -681,6 +717,86 @@ export function LineHighlightsEditor(props: Props) {
     return out;
   }, [isCoarsePointer, highlights]);
 
+  const editorContent = current ? (
+    <>
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+          {t.scenes.detail.highlights.passage}
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            void flushCurrentAndClose();
+          }}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold text-[#524b5a] hover:bg-black/5"
+          aria-label={t.scenes.detail.highlights.actions.close}
+        >
+          ×
+        </button>
+      </div>
+      <div className="mt-1 line-clamp-2 text-sm text-[#1c1b1f]">{current.selectedText}</div>
+
+      <div className="mt-3 grid gap-2">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-[#7a7184]">
+          {t.scenes.detail.highlights.chooseCategory}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {categoryFields.map((field) => {
+            const cfg = CATEGORY_CONFIG[field];
+            const value = current[field] ?? "";
+            const filled = value.trim().length > 0;
+            const isActive = activeField === field;
+            return (
+              <button
+                key={field}
+                type="button"
+                onClick={() => setActiveField((prev) => (prev === field ? null : field))}
+                style={{
+                  borderColor: isActive ? `${cfg.accent}66` : undefined,
+                  background: isActive ? cfg.bg : undefined,
+                }}
+                className="flex items-center justify-between gap-2 rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-left transition hover:border-[#3b1f4a66]"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: cfg.accent }} />
+                  <span className="min-w-0 whitespace-normal text-sm font-semibold text-[#3b1f4a] leading-tight">
+                    {cfg.label}
+                  </span>
+                </span>
+                <span className="flex-none text-xs font-semibold text-[#7a7184]">
+                  {filled ? t.scenes.detail.highlights.status.filled : t.scenes.detail.highlights.status.empty}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {activeField && (
+          <textarea
+            ref={textareaRef}
+            rows={4}
+            value={(current[activeField] as string | null) ?? ""}
+            onChange={(e) => updateField(popover.key, activeField, e.target.value)}
+            style={{ outline: "none" }}
+            className="mt-1 w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner !outline-none focus:border-[#3b1f4a] focus:!outline-none focus-visible:!outline-none focus-visible:ring-2 focus-visible:ring-[#3b1f4a66] focus-visible:ring-offset-2"
+            placeholder={CATEGORY_CONFIG[activeField]?.placeholder ?? ""}
+          />
+        )}
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => void deleteHighlight(popover.key)}
+          className="text-sm font-semibold text-[#b42318] underline underline-offset-4"
+        >
+          {t.scenes.detail.highlights.actions.delete}
+        </button>
+        <div className="text-xs font-semibold text-[#7a7184]">{isUserCharacter ? "Ton personnage" : ""}</div>
+      </div>
+    </>
+  ) : null;
+
   return (
     <div ref={rootRef} className="relative flex flex-col gap-1.5">
       {isCoarsePointer && (
@@ -795,90 +911,41 @@ export function LineHighlightsEditor(props: Props) {
         </div>
       )}
 
-      {popover.open && current && (
-        <div
-          ref={popoverRef}
-          style={{ top: popover.top, left: popover.left }}
-          className="absolute z-60 w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl border border-[#e7e1d9] bg-white/95 p-4 shadow-lg shadow-[#3b1f4a22] backdrop-blur"
-          role="dialog"
-          aria-label={t.scenes.detail.highlights.title}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-              {t.scenes.detail.highlights.passage}
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                void flushCurrentAndClose();
-              }}
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold text-[#524b5a] hover:bg-black/5"
-              aria-label={t.scenes.detail.highlights.actions.close}
-            >
-              ×
-            </button>
-          </div>
-          <div className="mt-1 line-clamp-2 text-sm text-[#1c1b1f]">{current.selectedText}</div>
-
-          <div className="mt-3 grid gap-2">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-[#7a7184]">
-              {t.scenes.detail.highlights.chooseCategory}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {categoryFields.map((field) => {
-                const cfg = CATEGORY_CONFIG[field];
-                const value = current[field] ?? "";
-                const filled = value.trim().length > 0;
-                const isActive = activeField === field;
-                return (
-                  <button
-                    key={field}
-                    type="button"
-                    onClick={() => setActiveField((prev) => (prev === field ? null : field))}
-                    style={{
-                      borderColor: isActive ? `${cfg.accent}66` : undefined,
-                      background: isActive ? cfg.bg : undefined,
-                    }}
-                    className="flex items-center justify-between gap-2 rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-left transition hover:border-[#3b1f4a66]"
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: cfg.accent }} />
-                      <span className="min-w-0 whitespace-normal text-sm font-semibold text-[#3b1f4a] leading-tight">
-                        {cfg.label}
-                      </span>
-                    </span>
-                    <span className="flex-none text-xs font-semibold text-[#7a7184]">
-                      {filled ? t.scenes.detail.highlights.status.filled : t.scenes.detail.highlights.status.empty}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {activeField && (
-              <textarea
-                ref={textareaRef}
-                rows={4}
-                value={(current[activeField] as string | null) ?? ""}
-                onChange={(e) => updateField(popover.key, activeField, e.target.value)}
-                style={{ outline: "none" }}
-                className="mt-1 w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner !outline-none focus:border-[#3b1f4a] focus:!outline-none focus-visible:!outline-none focus-visible:ring-2 focus-visible:ring-[#3b1f4a66] focus-visible:ring-offset-2"
-                placeholder={CATEGORY_CONFIG[activeField]?.placeholder ?? ""}
+      {popover.open && current && editorContent && (
+        <>
+          {isMobileUi ? (
+            <>
+              <div
+                className="fixed inset-0 z-50 bg-black/25"
+                aria-hidden="true"
+                onClick={() => {
+                  void flushCurrentAndClose();
+                }}
               />
-            )}
-          </div>
-
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => void deleteHighlight(popover.key)}
-              className="text-sm font-semibold text-[#b42318] underline underline-offset-4"
+              <div
+                ref={popoverRef}
+                className="fixed inset-x-0 bottom-0 z-60 max-h-[75vh] overflow-auto overscroll-contain rounded-t-3xl border border-[#e7e1d9] bg-white/95 p-4 shadow-2xl shadow-[#3b1f4a22] backdrop-blur"
+                role="dialog"
+                aria-label={t.scenes.detail.highlights.title}
+                aria-modal="true"
+              >
+                <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-black/10" aria-hidden="true" />
+                {editorContent}
+                <div className="pb-[calc(env(safe-area-inset-bottom)+0.75rem)]" />
+              </div>
+            </>
+          ) : (
+            <div
+              ref={popoverRef}
+              style={{ top: popover.top, left: popover.left }}
+              className="absolute z-60 w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl border border-[#e7e1d9] bg-white/95 p-4 shadow-lg shadow-[#3b1f4a22] backdrop-blur"
+              role="dialog"
+              aria-label={t.scenes.detail.highlights.title}
             >
-              {t.scenes.detail.highlights.actions.delete}
-            </button>
-            <div className="text-xs font-semibold text-[#7a7184]">{isUserCharacter ? "Ton personnage" : ""}</div>
-          </div>
-        </div>
+              {editorContent}
+            </div>
+          )}
+        </>
       )}
 
       {toast && (

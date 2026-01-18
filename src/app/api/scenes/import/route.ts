@@ -4,6 +4,8 @@ import { extractTextFromFile, type ExtractionProgressEventV2 } from "@/lib/utils
 import { parseTextWithAI, type ParsedScene } from "@/lib/utils/text-parser";
 import { assertSameOrigin } from "@/lib/utils/csrf";
 import { checkRateLimit } from "@/lib/utils/rate-limit";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import { processImportJobPreview } from "@/lib/imports/process-import-job";
 
 export const runtime = "nodejs"; // Nécessaire pour Tesseract.js et pdfjs-dist
 export const maxDuration = 300; // 5 minutes max pour le traitement
@@ -117,8 +119,13 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Lancer le traitement en arrière-plan (sans bloquer la réponse)
-      processImportJob(job.id, filePaths, allowThirdPartyAI, supabase).catch((error) => {
+      // IMPORTANT: en environnement serverless, exécuter après la réponse n'est pas fiable.
+      // On tente quand même, mais un cron (ou un retry) doit pouvoir reprendre le job.
+      const admin = createSupabaseAdminClient();
+      processImportJobPreview(
+        { id: job.id, user_id: user.id, file_paths: filePaths, consent_to_ai: allowThirdPartyAI },
+        admin
+      ).catch((error) => {
         console.error(`[Import Job ${job.id}] Erreur lors du traitement:`, error);
       });
 
@@ -599,127 +606,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-// Fonction pour traiter un job d'import en arrière-plan
-async function processImportJob(
-  jobId: string,
-  filePaths: string[],
-  allowThirdPartyAI: boolean,
-  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>
-) {
-  try {
-    console.log(`[Import Job ${jobId}] Démarrage du traitement...`);
-
-    // Mettre à jour le job avec status 'processing'
-    await supabase
-      .from("import_jobs")
-      .update({ status: "processing" })
-      .eq("id", jobId);
-
-    // Télécharger et concaténer le texte de tous les fichiers
-    let aggregatedText = "";
-    for (const filePath of filePaths) {
-      console.log(`[Import Job ${jobId}] Téléchargement du fichier: ${filePath}...`);
-      const { data: fileData, error: downloadError } = await supabase.storage
-        .from("scene-imports")
-        .download(filePath);
-
-      if (downloadError || !fileData) {
-        console.error(`[Import Job ${jobId}] Erreur lors du téléchargement:`, downloadError);
-        await supabase
-          .from("import_jobs")
-          .update({
-            status: "error",
-            error_message: `Erreur lors du téléchargement: ${downloadError?.message || "inconnue"}`,
-          })
-          .eq("id", jobId);
-        return;
-      }
-
-      const fileName = filePath.split("/").pop() || "file";
-      const file = new File([fileData], fileName, { type: fileData.type });
-
-      console.log(`[Import Job ${jobId}] Extraction du texte depuis ${file.name}...`);
-      const extractionResult = await extractTextFromFile(file, undefined, { allowOpenAI: allowThirdPartyAI });
-
-      if (!extractionResult.success) {
-        console.error(`[Import Job ${jobId}] Erreur lors de l'extraction:`, extractionResult.error);
-        await supabase
-          .from("import_jobs")
-          .update({
-            status: "error",
-            error_message: `Erreur lors de l'extraction: ${extractionResult.error}`,
-          })
-          .eq("id", jobId);
-        return;
-      }
-
-      if (extractionResult.text?.trim()) {
-        aggregatedText += `${extractionResult.text.trim()}\n\n`;
-      }
-    }
-
-    if (!aggregatedText.trim()) {
-      await supabase
-        .from("import_jobs")
-        .update({
-          status: "error",
-          error_message: "Aucun texte n'a pu être extrait des fichiers",
-        })
-        .eq("id", jobId);
-      return;
-    }
-
-    // Parsing avec l'IA
-    console.log(`[Import Job ${jobId}] Parsing du texte avec l'IA...`);
-    const parseResult = await parseTextWithAI(aggregatedText, { allowThirdPartyAI });
-
-    if (!parseResult.success || !parseResult.data) {
-      console.error(`[Import Job ${jobId}] Erreur lors du parsing:`, parseResult.error);
-      await supabase
-        .from("import_jobs")
-        .update({
-          status: "error",
-          error_message: `Erreur lors du parsing: ${parseResult.error || "inconnue"}`,
-        })
-        .eq("id", jobId);
-      return;
-    }
-
-    const parsedScene = parseResult.data;
-
-    // Mettre à jour le job avec status 'preview_ready' et le draft_data
-    console.log(`[Import Job ${jobId}] Preview prêt, mise à jour du job...`);
-    const { error: updateError } = await supabase
-      .from("import_jobs")
-      .update({
-        status: "preview_ready",
-        draft_data: parsedScene as any,
-      })
-      .eq("id", jobId);
-
-    if (updateError) {
-      console.error(`[Import Job ${jobId}] Erreur lors de la mise à jour:`, updateError);
-      await supabase
-        .from("import_jobs")
-        .update({
-          status: "error",
-          error_message: `Erreur lors de la mise à jour: ${updateError.message}`,
-        })
-        .eq("id", jobId);
-      return;
-    }
-
-    console.log(`[Import Job ${jobId}] Traitement terminé avec succès`);
-  } catch (error: any) {
-    console.error(`[Import Job ${jobId}] Erreur lors du traitement:`, error);
-    await supabase
-      .from("import_jobs")
-      .update({
-        status: "error",
-        error_message: `Erreur interne: ${error.message || "inconnue"}`,
-      })
-      .eq("id", jobId);
-  }
-}
-

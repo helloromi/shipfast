@@ -17,6 +17,7 @@ export default function ImportPreviewPage() {
   const [loading, setLoading] = useState(true);
   const [jobStatus, setJobStatus] = useState<ImportJobStatus | null>(null);
   const [jobError, setJobError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const [draft, setDraft] = useState<ParsedScene | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftAuthor, setDraftAuthor] = useState("");
@@ -101,6 +102,29 @@ export default function ImportPreviewPage() {
     }
   }, [jobId]);
 
+  const handleRetry = useCallback(async () => {
+    if (!jobId) return;
+    setRetrying(true);
+    try {
+      const response = await fetch(`/api/scenes/import/${jobId}/retry`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.details || data?.error || "Impossible de relancer l'import.");
+      }
+      setToast({ message: "Import relancé. Le preview devrait arriver sous peu.", variant: "success" });
+      setJobError(null);
+      // Le polling existant récupérera ensuite le nouveau statut.
+    } catch (e: any) {
+      setToast({ message: e?.message || "Impossible de relancer l'import.", variant: "error" });
+    } finally {
+      setRetrying(false);
+    }
+  }, [jobId]);
+
   const handleSelectAll = useCallback(() => {
     if (!draft) return;
     setSelectedOrders(new Set(draft.lines.map((l) => l.order)));
@@ -168,6 +192,15 @@ export default function ImportPreviewPage() {
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#e7e1d9] border-t-[#3b1f4a]"></div>
         <p className="text-sm text-[#524b5a]">Import en cours…</p>
         {statusLabel ? <p className="text-xs text-[#7a7184]">{statusLabel}</p> : null}
+        {(jobStatus === "pending" || jobStatus === "processing") && (
+          <button
+            onClick={handleRetry}
+            disabled={retrying}
+            className="rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] disabled:opacity-50"
+          >
+            {retrying ? "Relance en cours…" : "Relancer l'import"}
+          </button>
+        )}
         <Link
           href="/imports"
           className="text-xs font-semibold text-[#3b1f4a] underline underline-offset-4"
