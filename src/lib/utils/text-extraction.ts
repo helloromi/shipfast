@@ -1,4 +1,3 @@
-import Tesseract from "tesseract.js";
 import OpenAI from "openai";
 import { createCanvas } from "canvas";
 import PDFParser from "pdf2json";
@@ -12,10 +11,6 @@ const MAX_PDF_OCR_PAGES = 10;
 const PDFJS_WORKER_READY = !!PdfjsWorkerMessageHandler;
 const PDF_OCR_SCALE = Number(process.env.PDF_OCR_SCALE || "1.5");
 const IMPORT_SOFT_TIMEOUT_MS = Number(process.env.IMPORT_SOFT_TIMEOUT_MS || "0"); // 0 = désactivé
-const TESSERACT_CACHE_PATH = process.env.TESSERACT_CACHE_PATH || "/tmp/tesseract-cache";
-// "fast" est beaucoup plus léger que "best" => startup plus rapide en serverless.
-const TESSERACT_LANG_PATH =
-  process.env.TESSERACT_LANG_PATH || "https://tessdata.projectnaptha.com/4.0.0_fast";
 
 function formatOpenAIError(error: any): string {
   // openai-node expose souvent: status, error (objet), code, type, param, request_id
@@ -47,29 +42,6 @@ function formatOpenAIError(error: any): string {
   return parts.length ? parts.join(" | ") : message;
 }
 
-/**
- * OCR local (Node) via Tesseract sur un buffer image.
- */
-async function extractTextWithTesseractFromBuffer(buffer: Buffer): Promise<ExtractionResult> {
-  try {
-    const {
-      data: { text },
-    } = await Tesseract.recognize(buffer, "fra", {
-      langPath: TESSERACT_LANG_PATH,
-      cachePath: TESSERACT_CACHE_PATH,
-    });
-    const cleaned = (text || "").trim();
-    if (!cleaned) return { text: "", success: false, error: "OCR Tesseract vide." };
-    return { text: cleaned, success: true };
-  } catch (error: any) {
-    return {
-      text: "",
-      success: false,
-      error: `Erreur OCR Tesseract : ${error.message || "inconnue"}`,
-    };
-  }
-}
-
 export interface ExtractionResult {
   text: string;
   success: boolean;
@@ -92,7 +64,7 @@ export type ExtractionProgressEvent =
     };
 
 // Événements de progression pour éviter une UI "bloquée" pendant les appels IA / OCR.
-export type PdfOcrPhase = "render" | "ai" | "tesseract";
+export type PdfOcrPhase = "render" | "ai";
 export type ExtractionPdfProgressEvent =
   | { type: "pdf_progress"; phase: PdfOcrPhase; page?: number; totalPages?: number; message?: string };
 
@@ -138,7 +110,7 @@ async function fileToArrayBuffer(file: File): Promise<ArrayBuffer> {
 }
 
 /**
- * Fallback OCR via OpenAI Vision pour les images si Tesseract échoue
+ * OCR via OpenAI Vision pour les images
  */
 async function extractTextWithOpenAIVisionFromBuffer(
   buffer: Buffer,
@@ -255,7 +227,7 @@ async function extractTextWithOpenAIVision(file: File): Promise<ExtractionResult
 }
 
 /**
- * Extrait le texte d'une image en utilisant Tesseract.js (OCR)
+ * Extrait le texte d'une image via OpenAI Vision (OCR).
  */
 export async function extractTextFromImage(file: File, options?: ExtractTextOptions): Promise<ExtractionResult> {
   const validation = validateFile(file);
@@ -267,51 +239,9 @@ export async function extractTextFromImage(file: File, options?: ExtractTextOpti
     };
   }
 
-  try {
-    // Convertir le fichier en buffer pour Tesseract
-    const buffer = await fileToBuffer(file);
-
-    // Utiliser Tesseract pour extraire le texte
-    // Langue française par défaut
-    const {
-      data: { text },
-    } = await Tesseract.recognize(buffer, "fra", {
-      langPath: TESSERACT_LANG_PATH,
-      cachePath: TESSERACT_CACHE_PATH,
-      logger: (m) => {
-        // Optionnel : logger la progression
-        if (m.status === "recognizing text") {
-          console.log(`OCR progression: ${Math.round(m.progress * 100)}%`);
-        }
-      },
-    });
-
-    const cleanedText = text.trim();
-
-    if (!cleanedText) {
-      const allowOpenAI = options?.allowOpenAI ?? true;
-      if (!allowOpenAI) return { text: "", success: false, error: "OCR OpenAI désactivé (consentement manquant)." };
-      const visionResult = await extractTextWithOpenAIVision(file);
-      if (visionResult.success) return visionResult;
-      return {
-        text: "",
-        success: false,
-        error: visionResult.error || "Aucun texte n'a pu être extrait de l'image.",
-      };
-    }
-
-    return {
-      text: cleanedText,
-      success: true,
-    };
-  } catch (error: any) {
-    console.error("Erreur lors de l'extraction OCR:", error);
-    return {
-      text: "",
-      success: false,
-      error: `Erreur lors de l'extraction du texte : ${error.message || "Erreur inconnue"}`,
-    };
-  }
+  const allowOpenAI = options?.allowOpenAI ?? true;
+  if (!allowOpenAI) return { text: "", success: false, error: "OCR OpenAI désactivé (consentement manquant)." };
+  return await extractTextWithOpenAIVision(file);
 }
 
 /**
@@ -407,12 +337,9 @@ export async function extractTextFromPDF(
       };
     }
 
-    // Sur Vercel Hobby, l'OCR CPU (Tesseract) est très susceptible de dépasser le timeout.
-    // Si OPENAI_API_KEY est présente, on privilégie OpenAI Vision en 1 seule requête.
+    // OCR: on privilégie OpenAI Vision en 1 seule requête (batch).
     const pagesToProcess = Math.min(numPages, MAX_PDF_OCR_PAGES);
     const renderedPngs: Buffer[] = [];
-    const partsOCR: string[] = [];
-    const ocrErrors: string[] = [];
 
     for (let pageNum = 1; pageNum <= pagesToProcess; pageNum++) {
       if (IMPORT_SOFT_TIMEOUT_MS > 0 && Date.now() - startedAt > IMPORT_SOFT_TIMEOUT_MS) {
@@ -441,7 +368,15 @@ export async function extractTextFromPDF(
 
     // 2a) OpenAI Vision (batch) si possible — beaucoup plus adapté au serverless Hobby.
     const allowOpenAI = options?.allowOpenAI ?? true;
-    if (allowOpenAI && process.env.OPENAI_API_KEY && renderedPngs.length > 0) {
+    if (!allowOpenAI) {
+      return { text: "", success: false, error: "OCR OpenAI désactivé (consentement manquant)." };
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return { text: "", success: false, error: "OPENAI_API_KEY non configurée pour l'OCR du PDF." };
+    }
+
+    if (renderedPngs.length > 0) {
       onProgress?.({ type: "pdf_progress", phase: "ai", message: "Analyse OCR (OpenAI)..." });
       // Heartbeat pour éviter l'impression de freeze pendant l'appel réseau.
       let hb = 0;
@@ -460,55 +395,10 @@ export async function extractTextFromPDF(
         return { text: visionBatch.text.trim(), success: true };
       }
       const openAiErr = visionBatch.error || "OpenAI Vision batch a échoué.";
-      ocrErrors.push(openAiErr);
-
-      // Par défaut: si OpenAI a échoué ET qu'on est en environnement serverless contraint,
-      // on ne tente pas Tesseract (trop risqué pour les timeouts).
-      if (process.env.ALLOW_TESSERACT_FALLBACK !== "1") {
-        return {
-          text: "",
-          success: false,
-          error: `OCR OpenAI a échoué. Détails: ${openAiErr}`,
-        };
-      }
+      return { text: "", success: false, error: `OCR OpenAI a échoué. Détails: ${openAiErr}` };
     }
 
-    // 2b) Fallback Tesseract page-à-page si pas de clé OpenAI (ou si tu exécutes hors constraints serverless).
-    for (let i = 0; i < renderedPngs.length; i++) {
-      const pageNum = i + 1;
-      onProgress?.({
-        type: "pdf_progress",
-        phase: "tesseract",
-        page: pageNum,
-        totalPages: renderedPngs.length,
-        message: "OCR (Tesseract) en cours...",
-      });
-      const tesseractResult = await extractTextWithTesseractFromBuffer(renderedPngs[i]);
-      if (tesseractResult.success && tesseractResult.text.trim()) {
-        partsOCR.push(tesseractResult.text.trim());
-      } else if (tesseractResult.error) {
-        ocrErrors.push(`p${pageNum}: ${tesseractResult.error}`);
-      } else {
-        ocrErrors.push(`p${pageNum}: OCR vide`);
-      }
-    }
-
-    const ocrText = partsOCR.join("\n\n").trim();
-    if (!ocrText) {
-      return {
-        text: "",
-        success: false,
-        error:
-          ocrErrors.length > 0
-            ? `Aucun texte n'a pu être extrait du PDF après OCR. Détails: ${ocrErrors.slice(0, 5).join(" | ")}`
-            : "Aucun texte n'a pu être extrait du PDF, même après OCR.",
-      };
-    }
-
-    return {
-      text: ocrText,
-      success: true,
-    };
+    return { text: "", success: false, error: "Aucune page n'a pu être rendue pour l'OCR." };
   } catch (error: any) {
     console.error("Erreur lors de l'extraction PDF:", error);
     return {

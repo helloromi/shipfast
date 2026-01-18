@@ -7,7 +7,7 @@ import { checkRateLimit } from "@/lib/utils/rate-limit";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { processImportJobPreview } from "@/lib/imports/process-import-job";
 
-export const runtime = "nodejs"; // Nécessaire pour Tesseract.js et pdfjs-dist
+export const runtime = "nodejs"; // Nécessaire pour canvas + pdfjs-dist
 export const maxDuration = 300; // 5 minutes max pour le traitement
 
 type ImportStreamEvent =
@@ -243,21 +243,6 @@ export async function POST(request: NextRequest) {
                         progress: Math.min(perFileBase + perFileSpan * (0.78 + Math.min(aiTicks, 30) * 0.003), 0.88),
                       });
                       return;
-                    }
-
-                    if (evt.phase === "tesseract" && evt.page && evt.totalPages) {
-                      const pageProgress = perFileSpan * (0.6 + (evt.page / Math.max(1, evt.totalPages)) * 0.35);
-                      write({
-                        type: "progress",
-                        stage: "extracting",
-                        message: evt.message || "OCR (Tesseract) en cours...",
-                        current: index + 1,
-                        total: totalFiles,
-                        fileName: file.name,
-                        page: evt.page,
-                        totalPages: evt.totalPages,
-                        progress: Math.min(perFileBase + pageProgress, 0.88),
-                      });
                     }
                   }
                   },
