@@ -92,6 +92,7 @@ export function LearnSession(props: LearnSessionProps) {
   const [inputMode, setInputMode] = useState<InputMode>("revealOnly");
   const [showStageDirections, setShowStageDirections] = useState(true);
   const [limitChoice, setLimitChoice] = useState<LimitChoice>({ type: "all" });
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [lineState, setLineState] = useState<Record<string, LineState>>(() =>
     lines.reduce(
@@ -841,12 +842,12 @@ export function LearnSession(props: LearnSessionProps) {
           aria-label={t.learn.setup.title}
         >
           <div className="w-full max-w-lg rounded-2xl border border-[#e7e1d9] bg-white p-6 shadow-2xl">
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               <h3 className="font-display text-lg font-semibold text-[#1c1b1f]">{t.learn.setup.title}</h3>
-              <p className="text-sm text-[#524b5a]">{t.learn.setup.description}</p>
+              <p className="text-sm text-[#7a7184]">Configure ta session d'entraînement</p>
             </div>
 
-            <div className="mt-5 flex flex-col gap-5">
+            <div className="mt-4 flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
                   {t.learn.setup.limitLabel}
@@ -874,20 +875,17 @@ export function LearnSession(props: LearnSessionProps) {
                             setLimitChoice({ type: "count", count });
                             setLimitCount(computed);
                           }}
-                          className={`w-full rounded-full border px-4 py-2 text-center text-sm font-semibold transition disabled:opacity-50 ${
+                          className={`w-full rounded-full border px-3 py-1.5 text-center text-sm font-semibold transition disabled:opacity-50 ${
                             isSelected
                               ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
                               : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
                           }`}
                         >
-                          <div className="inline-flex items-baseline justify-center gap-2">
+                          <div className="inline-flex items-baseline justify-center gap-1.5">
                             <span className="text-base">{computed}</span>
-                            <span className={`text-xs font-medium ${isSelected ? "text-white/80" : "text-[#7a7184]"}`}>
+                            <span className={`text-[11px] font-medium ${isSelected ? "text-white/70" : "text-[#7a7184]"}`}>
                               {computed === 1 ? "réplique" : "répliques"}
                             </span>
-                          </div>
-                          <div className={`mt-0.5 text-[11px] font-medium ${isSelected ? "text-white/80" : "text-[#7a7184]"}`}>
-                            sur {remainingUserLinesCount}
                           </div>
                         </button>
                       );
@@ -900,7 +898,7 @@ export function LearnSession(props: LearnSessionProps) {
                       setLimitChoice({ type: "all" });
                       setLimitCount(null);
                     }}
-                    className={`w-full rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                    className={`w-full rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
                       limitChoice.type === "all"
                         ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
                         : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
@@ -912,41 +910,74 @@ export function LearnSession(props: LearnSessionProps) {
               </div>
 
               <div className="flex flex-col gap-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                  {t.learn.setup.startAtLabel}
-                </div>
-                <div className="text-sm text-[#524b5a]">{t.learn.setup.startAtDesc}</div>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="flex items-center justify-between rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-left text-sm font-medium text-[#3b1f4a] transition hover:border-[#3b1f4a33] hover:bg-[#f9f7f3]"
+                >
+                  <span>Options avancées</span>
+                  <span className="text-xs">{showAdvanced ? "▲" : "▼"}</span>
+                </button>
 
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range"
-                    min={1}
-                    max={Math.max(1, userLinesAll.length)}
-                    value={Math.min(Math.max(1, startIndex + 1), Math.max(1, userLinesAll.length))}
-                    disabled={userLinesAll.length === 0}
-                    onChange={(e) => {
-                      const raw = Number(e.target.value);
-                      const clamped = Math.min(Math.max(1, raw), Math.max(1, userLinesAll.length));
-                      setStartIndex(clamped - 1);
-                    }}
-                    className="w-full"
-                    aria-label={t.learn.setup.startAtLabel}
-                  />
-                </div>
+                {showAdvanced && (
+                  <div className="flex flex-col gap-3 rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] p-3">
+                    <div className="flex flex-col gap-2">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                        {t.learn.setup.startAtLabel}
+                      </div>
+                      <div className="text-xs text-[#524b5a]">{t.learn.setup.startAtDesc}</div>
 
-                {userLinesAll.length > 0 && (
-                  <div className="rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] px-3 py-2 text-sm text-[#1c1b1f]">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                      {t.learn.setup.startAtPreviewLabel}
-                    </div>
-                    <div className="mt-1 min-h-[1.5rem] truncate whitespace-nowrap text-sm leading-6 text-[#1c1b1f]">
-                      {(() => {
-                        const line = userLinesAll[startIndex];
-                        if (!line) return "—";
-                        const preview = (line.text || "").trim().slice(0, 160);
-                        const suffix = (line.text || "").trim().length > 160 ? "…" : "";
-                        return `#${line.order} — ${preview}${suffix}`;
-                      })()}
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min={1}
+                          max={Math.max(1, userLinesAll.length)}
+                          value={Math.min(Math.max(1, startIndex + 1), Math.max(1, userLinesAll.length))}
+                          disabled={userLinesAll.length === 0}
+                          onChange={(e) => {
+                            const raw = Number(e.target.value);
+                            const clamped = Math.min(Math.max(1, raw), Math.max(1, userLinesAll.length));
+                            setStartIndex(clamped - 1);
+                          }}
+                          className="w-full h-2 bg-[#e7e1d9] rounded-full appearance-none cursor-pointer
+                            [&::-webkit-slider-thumb]:appearance-none
+                            [&::-webkit-slider-thumb]:w-5
+                            [&::-webkit-slider-thumb]:h-5
+                            [&::-webkit-slider-thumb]:rounded-full
+                            [&::-webkit-slider-thumb]:bg-[#3b1f4a]
+                            [&::-webkit-slider-thumb]:cursor-pointer
+                            [&::-webkit-slider-thumb]:shadow-md
+                            [&::-webkit-slider-thumb]:transition-all
+                            [&::-webkit-slider-thumb]:hover:scale-110
+                            [&::-moz-range-thumb]:w-5
+                            [&::-moz-range-thumb]:h-5
+                            [&::-moz-range-thumb]:rounded-full
+                            [&::-moz-range-thumb]:bg-[#3b1f4a]
+                            [&::-moz-range-thumb]:border-0
+                            [&::-moz-range-thumb]:cursor-pointer
+                            [&::-moz-range-thumb]:shadow-md
+                            [&::-moz-range-thumb]:transition-all
+                            [&::-moz-range-track]:bg-transparent"
+                          aria-label={t.learn.setup.startAtLabel}
+                        />
+                      </div>
+
+                      {userLinesAll.length > 0 && (
+                        <div className="rounded-lg border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f]">
+                          <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                            {t.learn.setup.startAtPreviewLabel}
+                          </div>
+                          <div className="mt-1 min-h-[1.5rem] truncate whitespace-nowrap text-sm leading-6 text-[#1c1b1f]">
+                            {(() => {
+                              const line = userLinesAll[startIndex];
+                              if (!line) return "—";
+                              const preview = (line.text || "").trim().slice(0, 160);
+                              const suffix = (line.text || "").trim().length > 160 ? "…" : "";
+                              return `#${line.order} — ${preview}${suffix}`;
+                            })()}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -956,36 +987,37 @@ export function LearnSession(props: LearnSessionProps) {
                 <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
                   {t.learn.setup.modeLabel}
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => setInputMode("revealOnly")}
-                    className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
+                    className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
                       inputMode === "revealOnly"
-                        ? "border-[#3b1f4a] bg-[#3b1f4a0d]"
-                        : "border-[#e7e1d9] bg-white hover:border-[#3b1f4a66]"
+                        ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
+                        : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
                     }`}
                   >
-                    <div className="font-semibold text-[#1c1b1f]">{t.learn.setup.revealOnlyTitle}</div>
-                    <div className="mt-1 text-xs text-[#524b5a]">{t.learn.setup.revealOnlyDesc}</div>
+                    {t.learn.setup.revealOnlyTitle}
                   </button>
                   <button
                     type="button"
                     onClick={() => setInputMode("write")}
-                    className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
+                    className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
                       inputMode === "write"
-                        ? "border-[#3b1f4a] bg-[#3b1f4a0d]"
-                        : "border-[#e7e1d9] bg-white hover:border-[#3b1f4a66]"
+                        ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
+                        : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
                     }`}
                   >
-                    <div className="font-semibold text-[#1c1b1f]">{t.learn.setup.writeTitle}</div>
-                    <div className="mt-1 text-xs text-[#524b5a]">{t.learn.setup.writeDesc}</div>
+                    {t.learn.setup.writeTitle}
                   </button>
                 </div>
+                <p className="text-xs text-[#7a7184]">
+                  {inputMode === "revealOnly" ? t.learn.setup.revealOnlyDesc : t.learn.setup.writeDesc}
+                </p>
               </div>
             </div>
 
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={() => router.push(`/scenes/${sceneId}`)}

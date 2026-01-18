@@ -9,6 +9,31 @@ import type { ParsedScene } from "@/lib/utils/text-parser";
 
 type ImportJobStatus = "pending" | "processing" | "preview_ready" | "completed" | "error" | string;
 
+type EditorCharacter = {
+  id: string;
+  name: string;
+};
+
+type EditorLine = {
+  id: string;
+  characterId: string;
+  text: string;
+  order: number;
+};
+
+function uid() {
+  const c = typeof globalThis !== "undefined" ? (globalThis.crypto as Crypto | undefined) : undefined;
+  if (c?.randomUUID) return c.randomUUID();
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function move<T>(arr: T[], from: number, to: number) {
+  const next = [...arr];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
 export default function ImportPreviewPage() {
   const router = useRouter();
   const params = useParams();
@@ -18,11 +43,12 @@ export default function ImportPreviewPage() {
   const [jobStatus, setJobStatus] = useState<ImportJobStatus | null>(null);
   const [jobError, setJobError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
-  const [draft, setDraft] = useState<ParsedScene | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftAuthor, setDraftAuthor] = useState("");
-  const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
+  const [characters, setCharacters] = useState<EditorCharacter[]>([]);
+  const [lines, setLines] = useState<EditorLine[]>([]);
   const [saving, setSaving] = useState(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
 
   const statusLabel = useMemo(() => {
@@ -71,10 +97,31 @@ export default function ImportPreviewPage() {
         }
 
         const parsedDraft = data.job.draft_data as ParsedScene;
-        setDraft(parsedDraft);
         setDraftTitle(parsedDraft.title || "");
         setDraftAuthor(parsedDraft.author || "");
-        setSelectedOrders(new Set(parsedDraft.lines.map((l) => l.order)));
+        
+        // Initialiser les personnages avec des IDs uniques
+        const characterMap = new Map<string, string>();
+        const uniqueCharacters = Array.from(new Set(parsedDraft.characters));
+        const editorCharacters = uniqueCharacters.map(name => {
+          const id = uid();
+          characterMap.set(name, id);
+          return { id, name };
+        });
+        setCharacters(editorCharacters);
+
+        // Initialiser les lignes avec des IDs et référencer les personnages
+        const editorLines = parsedDraft.lines.map(line => {
+          const characterId = characterMap.get(line.characterName) || editorCharacters[0]?.id || "";
+          return {
+            id: uid(),
+            characterId,
+            text: line.text,
+            order: line.order
+          };
+        });
+        setLines(editorLines);
+        
         setLoading(false);
       } catch (error: any) {
         console.error("Erreur lors de la récupération du job:", error);
@@ -102,6 +149,22 @@ export default function ImportPreviewPage() {
     }
   }, [jobId]);
 
+  const characterOptions = useMemo(
+    () => characters.map((c) => ({ id: c.id, name: c.name })),
+    [characters]
+  );
+
+  const characterIdSet = useMemo(() => new Set(characters.map((c) => c.id)), [characters]);
+  const referencedCharacterIds = useMemo(() => new Set(lines.map((l) => l.characterId)), [lines]);
+
+  const hasErrors = useMemo(() => {
+    if (characters.some((c) => (c.name ?? "").trim().length === 0)) return true;
+    if (lines.some((l) => (l.text ?? "").trim().length === 0)) return true;
+    if (lines.some((l) => !characterIdSet.has(l.characterId))) return true;
+    if (lines.length > 0 && characters.length === 0) return true;
+    return false;
+  }, [characters, characterIdSet, lines]);
+
   const handleRetry = useCallback(async () => {
     if (!jobId) return;
     setRetrying(true);
@@ -125,23 +188,68 @@ export default function ImportPreviewPage() {
     }
   }, [jobId]);
 
-  const handleSelectAll = useCallback(() => {
-    if (!draft) return;
-    setSelectedOrders(new Set(draft.lines.map((l) => l.order)));
-  }, [draft]);
-
-  const handleSelectNone = useCallback(() => {
-    setSelectedOrders(new Set());
+  const addCharacter = useCallback(() => {
+    setToast(null);
+    const id = uid();
+    setCharacters((prev) => [...prev, { id, name: "Nouveau personnage" }]);
+    // Si on n'avait aucun personnage, assigner ce personnage aux lignes existantes
+    setLines((prev) =>
+      prev.map((l) => (l.characterId ? l : { ...l, characterId: id }))
+    );
   }, []);
 
-  const toggleOrder = useCallback((order: number) => {
-    setSelectedOrders((prev) => {
-      const next = new Set(prev);
-      if (next.has(order)) next.delete(order);
-      else next.add(order);
-      return next;
-    });
+  const addStageDirection = useCallback(() => {
+    setToast(null);
+    // Chercher si un personnage "Didascalie" existe déjà
+    let didascalieChar = characters.find(c => c.name.toLowerCase() === "didascalie");
+    
+    if (!didascalieChar) {
+      // Créer le personnage "Didascalie"
+      const id = uid();
+      didascalieChar = { id, name: "Didascalie" };
+      setCharacters((prev) => [...prev, didascalieChar!]);
+    }
+
+    // Ajouter une ligne avec ce personnage
+    setLines((prev) => [...prev, { 
+      id: uid(), 
+      characterId: didascalieChar!.id, 
+      text: "",
+      order: prev.length + 1
+    }]);
+  }, [characters]);
+
+  const deleteCharacter = useCallback((id: string) => {
+    if (referencedCharacterIds.has(id)) {
+      setToast({ message: "Ce personnage est encore utilisé par au moins une réplique.", variant: "error" });
+      return;
+    }
+    setCharacters((prev) => prev.filter((c) => c.id !== id));
+  }, [referencedCharacterIds]);
+
+  const addLine = useCallback(() => {
+    setToast(null);
+    const firstChar = characterOptions[0]?.id;
+    if (!firstChar) {
+      setToast({ message: "Commence par ajouter au moins un personnage.", variant: "error" });
+      return;
+    }
+    setLines((prev) => [...prev, { 
+      id: uid(), 
+      characterId: firstChar, 
+      text: "",
+      order: prev.length + 1
+    }]);
+  }, [characterOptions]);
+
+  const deleteLine = useCallback((id: string) => {
+    setLines((prev) => prev.filter((l) => l.id !== id));
   }, []);
+
+  const moveLine = useCallback((fromIdx: number, toIdx: number) => {
+    if (toIdx < 0 || toIdx >= lines.length) return;
+    setLines((prev) => move(prev, fromIdx, toIdx));
+  }, [lines.length]);
 
   const handleCommit = useCallback(async () => {
     if (!draft) return;
