@@ -11,6 +11,8 @@ export function FAQSection() {
     t.landing.faq.items.q2,
     t.landing.faq.items.q3,
     t.landing.faq.items.q4,
+    t.landing.faq.items.q5,
+    t.landing.faq.items.q6,
   ];
 
   return (
