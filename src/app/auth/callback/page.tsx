@@ -38,7 +38,27 @@ export default function AuthCallbackPage() {
         }
 
         // Post-login (emails + profil) en best-effort
-        await fetch("/api/auth/post-login", { method: "POST", credentials: "include" }).catch(() => null);
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        const headers: Record<string, string> = {};
+        if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+
+        await fetch("/api/auth/post-login", {
+          method: "POST",
+          credentials: "include",
+          headers,
+        })
+          .then(async (r) => {
+            // Diagnostic non bloquant (utile en dev / support)
+            const data = await r.json().catch(() => ({}));
+            if (!r.ok) console.warn("post-login failed", { status: r.status, data });
+            else if ((data as any)?.welcome && (data as any)?.welcome?.sent === false) {
+              console.warn("welcome email skipped", (data as any).welcome);
+            }
+          })
+          .catch(() => null);
 
         router.replace(next);
       })
