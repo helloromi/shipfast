@@ -1,7 +1,7 @@
 export const login = {
   sectionLabel: "Connexion",
   title: "Connexion simple",
-  description: "Connexion simple via email.",
+  description: "",
   form: {
     label: "Email",
     placeholder: "jeunedemoiselle@cherchepiecemortelle.com",

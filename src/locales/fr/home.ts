@@ -1,7 +1,7 @@
 export const home = {
   sectionLabel: "Accueil",
   title: "Tes scènes en cours",
-  description: "Retrouve toutes les scènes sur lesquelles tu as déjà noté des répliques.",
+  description: "Retrouve toutes tes scènes.",
   empty: {
     message: "Aucune scène en cours. Va dans la",
     bibliotheque: "bibliothèque",

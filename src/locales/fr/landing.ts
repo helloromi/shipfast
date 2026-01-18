@@ -2,14 +2,14 @@ export const landing = {
   badge: "Pour étudiants en théâtre",
   title: "Maîtrise tes textes 3x plus vite",
   description:
-    "Importe ta scène, révèle tes répliques au fur et à mesure, et reçois un feedback instantané. Simple, efficace.",
+    "Importe tes scènes, choisis ton mode d'apprentissage préféré, suis ton évolution..",
   cta: {
     commencer: "Commencer maintenant",
-    commencerSubtext: "Inscription gratuite. Abonnement 5€/mois ensuite.",
+    commencerSubtext: "Disponible dès 5 euros par mois.",
     voirBibliotheque: "Voir la bibliothèque",
   },
   trustSignals: {
-    scenesAvailable: "scènes disponibles",
+    scenesAvailable: "scènes disponibles + toutes celles que tu importeras.",
   },
   features: {
     flashcardsScene: "Flashcards",
@@ -20,12 +20,12 @@ export const landing = {
     casting: {
       title: "En attendant Godot",
       meta: "Acte II, scène 3",
-      badge: "Niveau : 2.5/3",
+      badge: "Niveau : 8/10",
     },
     selftape: {
       title: "Roméo & Juliette",
       meta: "Acte I, scène 1",
-      badge: "Niveau : 1/3",
+      badge: "Niveau : 3,4/10",
     },
     replique: {
       title: "Hamlet",
@@ -35,37 +35,37 @@ export const landing = {
   },
   sections: {
     masquage: {
-      title: "Apprends sans tricher",
-      desc: "Tes répliques sont masquées. Révèle-les quand tu es prêt et reçois un feedback immédiat.",
+      title: "Apprends facilement",
+      desc: "Tes répliques sont masquées. Révèle-les une fois récitées pour vérifier ta mémoire.",
     },
     progression: {
-      title: "Sais toujours où tu en es",
-      desc: "Suis ta progression en temps réel et reprends exactement là où tu t'es arrêté.",
+      title: "Sois conscient de ton évolution",
+      desc: "Suis ta progression en temps réel et maîtrise tes textes.",
     },
     mobile: {
       title: "Apprends n'importe où",
-      desc: "Optimisé mobile : apprends dans les transports, entre les cours, où tu veux.",
+      desc: "Optimisé mobile : apprends dans les transports, en marchant, ou en faisant tes courses au Franprix.",
     },
   },
   howItWorks: {
     title: "Comment ça marche",
-    subtitle: "Simple comme 1-2-3",
+    subtitle: "Simple comme 1-2-3-4",
     steps: {
       step1: {
         title: "Importe ta scène",
-        desc: "Choisis une scène de la bibliothèque ou importe la tienne",
+        desc: "Choisis une scène de la bibliothèque ou importe la tienne.",
       },
       step2: {
-        title: "Apprends avec masquage",
-        desc: "Tes répliques sont masquées. Tape pour révéler et tester ta mémoire",
+        title: "Apprends facilement",
+        desc: "Tes répliques sont masquées. Tape pour révéler et tester ta mémoire.",
       },
       step3: {
-        title: "Reçois un feedback",
-        desc: "Évalue chaque réplique de 0 à 3 et vois ta progression en temps réel",
+        title: "Juge ta mémoire",
+        desc: "Évalue chaque réplique pour voir ta progression.",
       },
       step4: {
-        title: "Reprends où tu t'es arrêté",
-        desc: "Le système se souvient de ta progression et te propose de continuer",
+        title: "Va plus loin dans ton apprentissage",
+        desc: "Choisis où commencer tes sessions pour te concentrer sur ce que tu as besoin d'améliorer.",
       },
     },
   },
@@ -78,7 +78,7 @@ export const landing = {
       },
       q2: {
         question: "Combien ça coûte ?",
-        answer: "L'inscription est gratuite. Pour tout débloquer: 5€/mois (annulable à tout moment).",
+        answer: "Disponible dès 5 euros par mois, annulable en un clic.",
       },
       q3: {
         question: "Puis-je utiliser mes propres textes ?",
@@ -92,7 +92,7 @@ export const landing = {
   },
   ctaBottom: {
     title: "Prêt à maîtriser tes textes ?",
-    subtitle: "Rejoins les étudiants qui apprennent plus efficacement",
+    subtitle: "Rejoins les étudiants qui sont côté-cour.",
     button: "Commencer maintenant",
   },
 };

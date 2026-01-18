@@ -76,7 +76,7 @@ export function MagicLinkForm() {
         </button>
         {status === "sent" && (
           <p className="text-sm text-[#2cb67d]">
-            {t.login.form.success.message}
+            {t.login.form.success.message} à {email}.
           </p>
         )}
         {error && (
