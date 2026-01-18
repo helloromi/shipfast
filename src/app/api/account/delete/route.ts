@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { getStripe } from "@/lib/stripe/client";
+import { setAudienceUnsubscribedFromMarketing } from "@/lib/resend/automation";
 import { assertSameOrigin } from "@/lib/utils/csrf";
 import { checkRateLimit } from "@/lib/utils/rate-limit";
 
@@ -79,6 +80,35 @@ export async function POST(request: NextRequest) {
           supabase_user_id: "deleted",
         },
       });
+    }
+
+    // Best effort (or strict when possible): ensure the email is marked unsubscribed in Resend
+    // BEFORE deleting the user, because we may lose access to the email afterwards.
+    //
+    // If Resend is configured and returns an explicit API error, we abort deletion so we don't
+    // leave the user subscribed on the marketing audience.
+    const unsubscribeRes = await setAudienceUnsubscribedFromMarketing({
+      userId: user.id,
+      unsubscribed: true,
+    }).catch((e: unknown) => {
+      const message = e instanceof Error ? e.message : "Unknown error";
+      return { ok: false as const, reason: "exception" as const, error: message };
+    });
+
+    if (!unsubscribeRes.ok) {
+      // If Resend isn't configured or we can't resolve an email, don't block account deletion.
+      const isNonBlocking = unsubscribeRes.reason === "no_audience" || unsubscribeRes.reason === "no_email";
+      if (!isNonBlocking) {
+        return NextResponse.json(
+          {
+            error:
+              "Impossible de désabonner votre email côté Resend pour le moment. Réessayez plus tard.",
+            code: "RESEND_UNSUBSCRIBE_FAILED",
+            details: "error" in unsubscribeRes ? unsubscribeRes.error : undefined,
+          },
+          { status: 502 }
+        );
+      }
     }
 
     // Delete Supabase user (cascades in DB handle app data cleanup)
