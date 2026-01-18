@@ -915,7 +915,7 @@ export function LearnSession(props: LearnSessionProps) {
                   onClick={() => setShowAdvanced(!showAdvanced)}
                   className="flex items-center justify-between rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-left text-sm font-medium text-[#3b1f4a] transition hover:border-[#3b1f4a33] hover:bg-[#f9f7f3]"
                 >
-                  <span>Options avancées</span>
+                  <span>Choisir quand commencer</span>
                   <span className="text-xs">{showAdvanced ? "▲" : "▼"}</span>
                 </button>
 
