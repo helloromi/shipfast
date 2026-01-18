@@ -10,7 +10,7 @@ export const login = {
       envoi: "Envoi...",
     },
     success: {
-      message: "Lien envoyé. Vérifie ta boîte mail.",
+      message: "Vérifie ta boîte mail. Lien envoyé à ",
       toast: "Lien de connexion envoyé.",
     },
     error: {

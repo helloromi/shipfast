@@ -1,6 +1,15 @@
 export const pricing = {
   title: "Tarifs transparents",
   subtitle: "Choisis l'abonnement qui te convient",
+  includedFeatures: {
+    title: "Ce qui est inclus dans tous les plans :",
+    items: [
+      "Apprentissage complet de tes scènes",
+      "Import illimité de tes propres textes",
+      "Accès à la bibliothèque de scènes",
+      "Statistiques et suivi de progression",
+    ],
+  },
   plans: {
     monthly: {
       name: "Mensuel",
@@ -15,10 +24,10 @@ export const pricing = {
     },
     quarterly: {
       name: "Trimestriel",
-      price: "12€",
+      price: "13€",
       period: "/ 3 mois",
-      description: "Économise 20%",
-      savings: "4€ d'économie",
+      description: "Économise 13%",
+      savings: "2€ d'économie",
       features: [
         "Apprentissage complet",
         "Import illimité",
