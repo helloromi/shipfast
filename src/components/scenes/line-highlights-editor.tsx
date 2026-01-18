@@ -704,7 +704,8 @@ export function LineHighlightsEditor(props: Props) {
     }
   };
 
-  const current = popover.open ? findHighlight(popover.key) : null;
+  const popoverKey = popover.open ? popover.key : null;
+  const current = popoverKey ? findHighlight(popoverKey) : null;
   const categoryFields: CategoryField[] = ["noteSubtext", "noteIntonation", "notePlay"];
   const mobileSummaries = useMemo(() => {
     if (!isCoarsePointer) return [];
@@ -717,7 +718,7 @@ export function LineHighlightsEditor(props: Props) {
     return out;
   }, [isCoarsePointer, highlights]);
 
-  const editorContent = current ? (
+  const editorContent = current && popoverKey ? (
     <>
       <div className="flex items-start justify-between gap-3">
         <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
@@ -776,7 +777,7 @@ export function LineHighlightsEditor(props: Props) {
             ref={textareaRef}
             rows={4}
             value={(current[activeField] as string | null) ?? ""}
-            onChange={(e) => updateField(popover.key, activeField, e.target.value)}
+            onChange={(e) => updateField(popoverKey, activeField, e.target.value)}
             style={{ outline: "none" }}
             className="mt-1 w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner !outline-none focus:border-[#3b1f4a] focus:!outline-none focus-visible:!outline-none focus-visible:ring-2 focus-visible:ring-[#3b1f4a66] focus-visible:ring-offset-2"
             placeholder={CATEGORY_CONFIG[activeField]?.placeholder ?? ""}
@@ -787,7 +788,7 @@ export function LineHighlightsEditor(props: Props) {
       <div className="mt-3 flex items-center justify-between gap-2">
         <button
           type="button"
-          onClick={() => void deleteHighlight(popover.key)}
+          onClick={() => void deleteHighlight(popoverKey)}
           className="text-sm font-semibold text-[#b42318] underline underline-offset-4"
         >
           {t.scenes.detail.highlights.actions.delete}
