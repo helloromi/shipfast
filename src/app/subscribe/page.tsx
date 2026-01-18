@@ -36,18 +36,30 @@ export default async function SubscribePage() {
         </p>
       </div>
 
+      {/* Fonctionnalités incluses */}
+      <div className="mx-auto max-w-3xl rounded-3xl border border-[#e7e1d9] bg-gradient-to-br from-[#f4c95d11] to-[#ff6b6b11] p-6">
+        <h3 className="text-center text-lg font-semibold text-[#3b1f4a]">
+          {t.pricing.includedFeatures.title}
+        </h3>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {t.pricing.includedFeatures.items.map((feature, index) => (
+            <div key={index} className="flex items-center gap-2 text-sm text-[#524b5a]">
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-green-100 text-xs text-green-600">
+                ✓
+              </span>
+              <span>{feature}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {/* Plan Mensuel */}
         <div className="rounded-3xl border border-[#e7e1d9] bg-white/90 p-6 shadow-sm transition hover:shadow-lg">
           <div className="flex flex-col gap-4">
-            <div>
-              <h3 className="text-lg font-semibold text-[#3b1f4a]">
-                {t.pricing.plans.monthly.name}
-              </h3>
-              <p className="text-xs text-[#7a7184]">
-                {t.pricing.plans.monthly.description}
-              </p>
-            </div>
+            <h3 className="text-xl font-semibold text-[#3b1f4a]">
+              {t.pricing.plans.monthly.name}
+            </h3>
             
             <div className="flex items-baseline gap-1">
               <span className="text-4xl font-bold text-[#3b1f4a]">
@@ -58,18 +70,13 @@ export default async function SubscribePage() {
               </span>
             </div>
 
-            <ul className="flex flex-col gap-2 text-sm text-[#524b5a]">
-              {t.pricing.plans.monthly.features.map((feature, idx) => (
-                <li key={idx} className="flex items-start gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span>{feature}</span>
-                </li>
-              ))}
-            </ul>
+            <p className="text-xs text-[#7a7184]">
+              {t.pricing.plans.monthly.description}
+            </p>
 
             <CheckoutButton 
               plan="monthly"
-              className="w-full rounded-full bg-gradient-to-r from-[#3b1f4a] to-[#5a3d6b] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]"
+              className="mt-auto w-full rounded-full bg-gradient-to-r from-[#3b1f4a] to-[#5a3d6b] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]"
             >
               {t.pricing.cta}
             </CheckoutButton>
@@ -79,17 +86,9 @@ export default async function SubscribePage() {
         {/* Plan Trimestriel */}
         <div className="rounded-3xl border border-[#e7e1d9] bg-white/90 p-6 shadow-sm transition hover:shadow-lg">
           <div className="flex flex-col gap-4">
-            <div>
-              <h3 className="text-lg font-semibold text-[#3b1f4a]">
-                {t.pricing.plans.quarterly.name}
-              </h3>
-              <p className="text-xs text-[#7a7184]">
-                {t.pricing.plans.quarterly.description}
-              </p>
-              <p className="mt-1 text-xs font-semibold text-green-600">
-                {t.pricing.plans.quarterly.savings}
-              </p>
-            </div>
+            <h3 className="text-xl font-semibold text-[#3b1f4a]">
+              {t.pricing.plans.quarterly.name}
+            </h3>
             
             <div className="flex items-baseline gap-1">
               <span className="text-4xl font-bold text-[#3b1f4a]">
@@ -100,18 +99,13 @@ export default async function SubscribePage() {
               </span>
             </div>
 
-            <ul className="flex flex-col gap-2 text-sm text-[#524b5a]">
-              {t.pricing.plans.quarterly.features.map((feature, idx) => (
-                <li key={idx} className="flex items-start gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span>{feature}</span>
-                </li>
-              ))}
-            </ul>
+            <p className="text-sm font-semibold text-green-600">
+              💰 {t.pricing.plans.quarterly.savings}
+            </p>
 
             <CheckoutButton 
               plan="quarterly"
-              className="w-full rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]"
+              className="mt-auto w-full rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]"
             >
               {t.pricing.cta}
             </CheckoutButton>
@@ -125,17 +119,9 @@ export default async function SubscribePage() {
           </div>
           
           <div className="flex flex-col gap-4">
-            <div>
-              <h3 className="text-lg font-semibold text-[#3b1f4a]">
-                {t.pricing.plans.yearly.name}
-              </h3>
-              <p className="text-xs text-[#7a7184]">
-                {t.pricing.plans.yearly.description}
-              </p>
-              <p className="mt-1 text-xs font-semibold text-green-600">
-                {t.pricing.plans.yearly.savings}
-              </p>
-            </div>
+            <h3 className="text-xl font-semibold text-[#3b1f4a]">
+              {t.pricing.plans.yearly.name}
+            </h3>
             
             <div className="flex items-baseline gap-1">
               <span className="text-4xl font-bold text-[#3b1f4a]">
@@ -146,18 +132,13 @@ export default async function SubscribePage() {
               </span>
             </div>
 
-            <ul className="flex flex-col gap-2 text-sm text-[#524b5a]">
-              {t.pricing.plans.yearly.features.map((feature, idx) => (
-                <li key={idx} className="flex items-start gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span>{feature}</span>
-                </li>
-              ))}
-            </ul>
+            <p className="text-sm font-semibold text-green-600">
+              💰 {t.pricing.plans.yearly.savings}
+            </p>
 
             <CheckoutButton 
               plan="yearly"
-              className="w-full rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]"
+              className="mt-auto w-full rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]"
             >
               {t.pricing.cta}
             </CheckoutButton>
