@@ -12,7 +12,7 @@ function base(): { siteUrl: string } {
 
 export function welcomeEmail(): EmailTemplate {
   const { siteUrl } = base();
-  const subject = "Bienvenue — on démarre ?";
+  const subject = "Bienvenue sur Côté-Cour — on démarre ?";
   const ctaUrl = `${siteUrl}/home`;
   const text = `Bienvenue !\n\nTu peux commencer ici: ${ctaUrl}\n`;
   const html = `
@@ -32,7 +32,7 @@ export function welcomeEmail(): EmailTemplate {
 
 export function unpaidReminderEmail(): EmailTemplate {
   const { siteUrl } = base();
-  const subject = "Il te reste une étape pour tout débloquer";
+  const subject = "Il te reste une étape pour commencer ton apprentissage";
   const ctaUrl = `${siteUrl}/subscribe`;
   const text = `Tu peux débloquer toutes les fonctionnalités ici: ${ctaUrl}\n`;
   const html = `
@@ -93,7 +93,7 @@ export function inactivityEmail(days: number): EmailTemplate {
 export function importReadyEmail(params: { jobId: string; title?: string }): EmailTemplate {
   const { siteUrl } = base();
   const sceneTitle = params.title || "Ta scène";
-  const subject = `${sceneTitle} est prête à valider`;
+  const subject = `${sceneTitle} est prête à être importée`;
   const ctaUrl = `${siteUrl}/imports/${params.jobId}/preview`;
   const text = `Ton import "${sceneTitle}" est prêt ! Valide-le ici: ${ctaUrl}\n`;
   const html = `
