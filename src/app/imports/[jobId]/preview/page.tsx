@@ -252,26 +252,42 @@ export default function ImportPreviewPage() {
   }, [lines.length]);
 
   const handleCommit = useCallback(async () => {
-    if (!draft) return;
-    const keepOrders = Array.from(selectedOrders).sort((a, b) => a - b);
-    if (keepOrders.length === 0) {
-      setToast({ message: "Sélectionnez au moins une réplique.", variant: "error" });
+    // Validation
+    if (characters.length === 0) {
+      setToast({ message: "Ajoute au moins un personnage.", variant: "error" });
+      return;
+    }
+    if (lines.length === 0) {
+      setToast({ message: "Ajoute au moins une réplique.", variant: "error" });
+      return;
+    }
+    if (hasErrors) {
+      setToast({ message: "Corrige les champs vides avant de créer la scène.", variant: "error" });
       return;
     }
 
     try {
       setSaving(true);
 
+      // Construire le draft à partir de l'état édité
+      const characterMap = new Map(characters.map(c => [c.id, c.name]));
+      
+      const draft: ParsedScene = {
+        title: draftTitle.trim() || "Scène importée",
+        author: draftAuthor.trim() || undefined,
+        characters: characters.map(c => c.name.trim()),
+        lines: lines.map((l, idx) => ({
+          characterName: characterMap.get(l.characterId) || "",
+          text: l.text.trim(),
+          order: idx + 1 // Réordonnancer automatiquement
+        }))
+      };
+
       const response = await fetch("/api/scenes/import/commit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          draft: {
-            ...draft,
-            title: draftTitle,
-            author: draftAuthor || undefined,
-          },
-          keepOrders,
+          draft,
           jobId,
         }),
       });
@@ -292,7 +308,7 @@ export default function ImportPreviewPage() {
     } finally {
       setSaving(false);
     }
-  }, [draft, selectedOrders, draftTitle, draftAuthor, jobId, router]);
+  }, [characters, lines, draftTitle, draftAuthor, jobId, router, hasErrors]);
 
   if (loading) {
     return (
@@ -336,7 +352,7 @@ export default function ImportPreviewPage() {
     );
   }
 
-  if (!draft) {
+  if (characters.length === 0 && lines.length === 0 && !loading) {
     return (
       <div className="flex flex-col gap-4">
         <div className="rounded-2xl border border-[#e7e1d9] bg-white/90 p-6">
@@ -365,94 +381,252 @@ export default function ImportPreviewPage() {
           ← Retour à mes imports
         </Link>
         <h1 className="font-display text-3xl font-semibold text-[#1c1b1f]">
-          Preview de l'import
+          Éditer avant import
         </h1>
         <p className="text-sm text-[#524b5a] leading-relaxed">
-          Sélectionnez les répliques à conserver pour créer votre scène
+          Modifie le contenu avant de créer ta scène
         </p>
       </div>
 
-      <div className="rounded-2xl border border-[#e7e1d9] bg-white/90 p-6">
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                {t.scenes.import.review.fieldTitle}
-              </label>
-              <input
-                value={draftTitle}
-                onChange={(e) => setDraftTitle(e.target.value)}
-                className="rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] focus:border-[#3b1f4a]"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                {t.scenes.import.review.fieldAuthor}
-              </label>
-              <input
-                value={draftAuthor}
-                onChange={(e) => setDraftAuthor(e.target.value)}
-                className="rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] focus:border-[#3b1f4a]"
-              />
-            </div>
+      {/* Métadonnées : Titre et Auteur */}
+      <div className="rounded-2xl border border-[#e7e1d9] bg-white/90 p-5 shadow-sm shadow-[#3b1f4a14]">
+        <h2 className="mb-3 font-display text-xl font-semibold text-[#3b1f4a]">Informations générales</h2>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+              {t.scenes.import.review.fieldTitle}
+            </label>
+            <input
+              value={draftTitle}
+              onChange={(e) => setDraftTitle(e.target.value)}
+              className="rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
+            />
           </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-xs text-[#7a7184]">
-              <span className="font-semibold text-[#3b1f4a]">{selectedOrders.size}</span>{" "}
-              {t.scenes.import.review.keptCount}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={handleSelectAll}
-                className="rounded-full border border-[#e7e1d9] bg-white px-3 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33]"
-              >
-                {t.scenes.import.review.selectAll}
-              </button>
-              <button
-                onClick={handleSelectNone}
-                className="rounded-full border border-[#e7e1d9] bg-white px-3 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33]"
-              >
-                {t.scenes.import.review.selectNone}
-              </button>
-            </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+              {t.scenes.import.review.fieldAuthor}
+            </label>
+            <input
+              value={draftAuthor}
+              onChange={(e) => setDraftAuthor(e.target.value)}
+              className="rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
+            />
           </div>
+        </div>
+      </div>
 
-          <div className="max-h-[50vh] overflow-y-auto rounded-xl border border-[#e7e1d9] bg-white/92">
-            <div className="flex flex-col">
-              {draft.lines.map((l) => {
-                const checked = selectedOrders.has(l.order);
-                return (
-                  <label
-                    key={l.order}
-                    className="flex cursor-pointer gap-3 border-b border-[#f0ece6] px-4 py-3 hover:bg-[#f9f7f3]"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleOrder(l.order)}
-                      className="mt-1 h-4 w-4 accent-[#3b1f4a]"
-                    />
-                    <div className="flex flex-col gap-1">
-                      <div className="text-xs font-semibold text-[#7a7184]">
-                        {l.order}. <span className="text-[#3b1f4a]">{l.characterName}</span>
-                      </div>
-                      <p className="text-sm text-[#1c1b1f]">{l.text}</p>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-
+      {/* Section Personnages */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-[#e7e1d9] bg-white/92 p-5 shadow-sm shadow-[#3b1f4a14]">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display text-xl font-semibold text-[#3b1f4a]">Personnages</h2>
           <button
-            onClick={handleCommit}
-            disabled={saving || selectedOrders.size === 0}
-            className="w-full rounded-full bg-[#3b1f4a] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#2d1638] disabled:opacity-50"
+            type="button"
+            onClick={addCharacter}
+            className="rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a66]"
           >
-            {saving ? "Création en cours..." : t.scenes.import.review.create}
+            + Ajouter
           </button>
         </div>
+
+        {characters.length === 0 ? (
+          <p className="text-sm text-[#524b5a]">Aucun personnage. Ajoute-en un pour pouvoir créer des répliques.</p>
+        ) : (
+          <div className="grid gap-3">
+            {characters.map((c) => (
+              <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-[#e7e1d9] bg-white p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">Nom</div>
+                  <button
+                    type="button"
+                    onClick={() => deleteCharacter(c.id)}
+                    className="text-sm font-semibold text-[#b42318] underline underline-offset-4"
+                  >
+                    Supprimer
+                  </button>
+                </div>
+                <input
+                  value={c.name}
+                  onChange={(e) =>
+                    setCharacters((prev) => prev.map((x) => (x.id === c.id ? { ...x, name: e.target.value } : x)))
+                  }
+                  className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
+                  placeholder="Nom du personnage"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Section Répliques */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-[#e7e1d9] bg-white/92 p-5 shadow-sm shadow-[#3b1f4a14]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display text-xl font-semibold text-[#3b1f4a]">Répliques</h2>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={addLine}
+              className="rounded-full bg-[#ff6b6b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a]"
+            >
+              + Ajouter une réplique
+            </button>
+            <button
+              type="button"
+              onClick={addStageDirection}
+              className="rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a66]"
+            >
+              + Ajouter une didascalie
+            </button>
+          </div>
+        </div>
+
+        {lines.length === 0 ? (
+          <p className="text-sm text-[#524b5a]">Aucune réplique.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {lines.map((l, idx) => {
+              const isStageDirection = characters.find(c => c.id === l.characterId)?.name.toLowerCase().includes("didascalie");
+              return (
+                <div
+                  key={l.id}
+                  draggable
+                  onDragStart={(e) => {
+                    setDraggingId(l.id);
+                    try {
+                      e.dataTransfer.setData("text/plain", l.id);
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                  onDragEnd={() => setDraggingId(null)}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const dragged = (() => {
+                      try {
+                        return e.dataTransfer.getData("text/plain") || draggingId;
+                      } catch {
+                        return draggingId;
+                      }
+                    })();
+                    if (!dragged) return;
+                    const from = lines.findIndex((x) => x.id === dragged);
+                    const to = idx;
+                    if (from < 0 || from === to) return;
+                    setLines((prev) => move(prev, from, to));
+                    setDraggingId(null);
+                  }}
+                  className={`rounded-2xl border p-4 shadow-sm shadow-[#3b1f4a0f] ${
+                    isStageDirection ? "border-[#ffc107] bg-[#fff9e6]" : "border-[#e7e1d9] bg-white"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="cursor-grab select-none rounded-lg border border-[#e7e1d9] bg-[#f9f7f3] px-2 py-1 text-xs font-semibold text-[#7a7184]">
+                        ↕
+                      </div>
+                      <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                        #{idx + 1}
+                      </div>
+                      {isStageDirection && (
+                        <span className="rounded-full bg-[#ffc107] px-2 py-1 text-xs font-semibold text-[#805b00]">
+                          Didascalie
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => moveLine(idx, idx - 1)}
+                        className="rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a66] disabled:opacity-50"
+                        disabled={idx === 0}
+                        aria-label="Monter"
+                        title="Monter"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveLine(idx, idx + 1)}
+                        className="rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a66] disabled:opacity-50"
+                        disabled={idx === lines.length - 1}
+                        aria-label="Descendre"
+                        title="Descendre"
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteLine(l.id)}
+                        className="text-sm font-semibold text-[#b42318] underline underline-offset-4"
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
+                    <div className="flex flex-col gap-2 md:col-span-1">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">Personnage</div>
+                      <select
+                        value={l.characterId}
+                        onChange={(e) =>
+                          setLines((prev) =>
+                            prev.map((x) => (x.id === l.id ? { ...x, characterId: e.target.value } : x))
+                          )
+                        }
+                        className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
+                      >
+                        {characterOptions.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name || "—"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-2 md:col-span-2">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">Texte</div>
+                      <textarea
+                        value={l.text}
+                        onChange={(e) =>
+                          setLines((prev) => prev.map((x) => (x.id === l.id ? { ...x, text: e.target.value } : x)))
+                        }
+                        rows={3}
+                        className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
+                        placeholder="Texte de la réplique"
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="mt-2 flex flex-col gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+            L'ordre est l'ordre d'apparition dans la liste.
+          </p>
+          {hasErrors && (
+            <p className="text-sm font-medium text-[#b42318]">
+              Corrige les champs vides avant de créer la scène.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Bouton de création final */}
+      <div className="sticky bottom-4 rounded-2xl border border-[#e7e1d9] bg-white/95 p-4 shadow-lg backdrop-blur-sm">
+        <button
+          onClick={handleCommit}
+          disabled={saving || hasErrors || characters.length === 0 || lines.length === 0}
+          className="w-full rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-6 py-3 text-sm font-semibold text-white shadow-md shadow-[#ff6b6b33] transition hover:-translate-y-[1px] disabled:opacity-50"
+        >
+          {saving ? "Création en cours..." : t.scenes.import.review.create}
+        </button>
       </div>
 
       {toast && (

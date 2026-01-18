@@ -7,8 +7,7 @@ import { checkRateLimit } from "@/lib/utils/rate-limit";
 export const runtime = "nodejs";
 
 type CommitBody = {
-  draft: ParsedScene;
-  keepOrders: number[]; // orders à conserver
+  draft: ParsedScene; // Le draft modifié par l'utilisateur
   jobId?: string; // Optionnel : ID du job à mettre à jour
 };
 
@@ -43,16 +42,14 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json()) as CommitBody;
     const draft = body?.draft;
-    const keepOrders = Array.isArray(body?.keepOrders) ? body.keepOrders : [];
     const jobId = body?.jobId;
 
     if (!draft || !Array.isArray(draft.lines) || draft.lines.length === 0) {
       return NextResponse.json({ error: "Draft invalide" }, { status: 400 });
     }
 
-    const keep = new Set<number>(keepOrders.filter((n) => typeof n === "number" && Number.isFinite(n)));
+    // Utiliser toutes les lignes du draft (déjà filtrées et modifiées par l'utilisateur)
     const keptLines = draft.lines
-      .filter((l) => keep.has(l.order))
       .map((l) => ({
         characterName: (l.characterName || "").trim(),
         text: (l.text || "").trim(),
@@ -60,7 +57,7 @@ export async function POST(request: NextRequest) {
       .filter((l) => l.characterName && l.text);
 
     if (keptLines.length === 0) {
-      return NextResponse.json({ error: "Aucune réplique sélectionnée" }, { status: 400 });
+      return NextResponse.json({ error: "Aucune réplique valide" }, { status: 400 });
     }
 
     const title = (draft.title || "").trim() || "Scène importée";
