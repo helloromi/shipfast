@@ -142,7 +142,7 @@ export default async function BibliothequePage({ searchParams }: Props) {
                   key={scene.id}
                   className="group flex h-full flex-col gap-3 rounded-2xl border border-[#e7e1d9] bg-white/92 p-5 shadow-sm shadow-[#3b1f4a14] transition hover:-translate-y-[1px] hover:border-[#3b1f4a33] hover:shadow-lg"
                 >
-                  <Link href={isActive ? "/home" : `/scenes/${scene.id}`} className="flex flex-col gap-3">
+                  <Link href={`/scenes/${scene.id}`} className="flex flex-col gap-3">
                     <div className="flex items-center justify-between gap-2">
                       <h3 className="font-display text-lg font-semibold text-[#3b1f4a]">{scene.title}</h3>
                       <div className="flex items-center gap-2">
