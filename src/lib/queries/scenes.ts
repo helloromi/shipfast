@@ -197,7 +197,9 @@ type UserProgressQueryResult = {
 
 export async function fetchUserProgressScenes(userId: string): Promise<SceneProgress[]> {
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
+  
+  // Récupérer toutes les sessions (terminées et non terminées) pour obtenir toutes les scènes actives
+  const { data: allSessionsData, error: allSessionsError } = await supabase
     .from("user_learning_sessions")
     .select(
       `
@@ -205,19 +207,23 @@ export async function fetchUserProgressScenes(userId: string): Promise<SceneProg
         started_at,
         scene_id,
         character_id,
+        ended_at,
+        completed_lines,
         scenes ( id, title, author, summary, chapter ),
         characters ( id, name )
       `
     )
     .eq("user_id", userId)
-    // Ne compter que les sessions terminées et où au moins 1 réplique a été notée.
-    .not("ended_at", "is", null)
-    .gt("completed_lines", 0)
     .order("started_at", { ascending: false })
-    .returns<UserProgressQueryResult[]>();
+    .returns<
+      (UserProgressQueryResult & {
+        ended_at: string | null;
+        completed_lines: number | null;
+      })[]
+    >();
 
-  if (error || !data) {
-    console.error(error);
+  if (allSessionsError) {
+    console.error(allSessionsError);
     return [];
   }
 
@@ -231,38 +237,58 @@ export async function fetchUserProgressScenes(userId: string): Promise<SceneProg
     }
   >();
 
-  for (const row of data) {
-    if (!row.scene_id || !row.scenes) continue;
-    const sceneId = row.scene_id;
-    const scene = row.scenes;
-    const character = row.characters;
-    const entry = grouped.get(sceneId);
-    if (!entry) {
-      grouped.set(sceneId, {
-        scene,
-        lastCharacterId: character?.id ?? null,
-        lastCharacterName: character?.name ?? null,
-        points: [{ started_at: row.started_at, average_score: row.average_score }],
-      });
-    } else {
-      grouped.set(sceneId, {
-        scene: entry.scene,
-        lastCharacterId: entry.lastCharacterId,
-        lastCharacterName: entry.lastCharacterName,
-        points: [...entry.points, { started_at: row.started_at, average_score: row.average_score }],
-      });
+  // Traiter toutes les sessions pour regrouper par scène
+  if (allSessionsData) {
+    for (const row of allSessionsData) {
+      if (!row.scene_id || !row.scenes) continue;
+      const sceneId = row.scene_id;
+      const scene = row.scenes;
+      const character = row.characters;
+      
+      const entry = grouped.get(sceneId);
+      
+      // Ajouter le point de données seulement si la session est terminée avec des répliques notées
+      const hasValidScore = row.ended_at !== null && (row.completed_lines ?? 0) > 0;
+      
+      if (!entry) {
+        grouped.set(sceneId, {
+          scene,
+          lastCharacterId: character?.id ?? null,
+          lastCharacterName: character?.name ?? null,
+          points: hasValidScore 
+            ? [{ started_at: row.started_at, average_score: row.average_score }]
+            : [],
+        });
+      } else {
+        // Mettre à jour le dernier personnage si c'est la session la plus récente
+        const currentLastStarted = entry.points.length > 0 
+          ? entry.points[entry.points.length - 1]?.started_at 
+          : null;
+        const shouldUpdateCharacter = !currentLastStarted || row.started_at > currentLastStarted;
+        
+        grouped.set(sceneId, {
+          scene: entry.scene,
+          lastCharacterId: shouldUpdateCharacter ? (character?.id ?? entry.lastCharacterId) : entry.lastCharacterId,
+          lastCharacterName: shouldUpdateCharacter ? (character?.name ?? entry.lastCharacterName) : entry.lastCharacterName,
+          points: hasValidScore
+            ? [...entry.points, { started_at: row.started_at, average_score: row.average_score }]
+            : entry.points,
+        });
+      }
     }
   }
 
   return Array.from(grouped.values()).map((entry) => {
-    const avg = weightedAverageScoreByRecency(entry.points, 14);
+    const avg = entry.points.length > 0 
+      ? weightedAverageScoreByRecency(entry.points, 14)
+      : 0;
     return {
       sceneId: entry.scene.id,
       title: entry.scene.title,
       author: entry.scene.author,
       summary: entry.scene.summary,
       chapter: entry.scene.chapter,
-      average: Math.round(avg * 100) / 100,
+      average: entry.points.length > 0 ? Math.round(avg * 100) / 100 : 0,
       lastCharacterId: entry.lastCharacterId,
       lastCharacterName: entry.lastCharacterName,
     };

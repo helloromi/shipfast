@@ -58,7 +58,7 @@ export default function OnboardingPageClient() {
           {/* Preuve sociale */}
           <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-[#ff6b6b]">
             <span className="text-lg">🎭</span>
-            <span>Rejoins une grande communauté de comédiens ! </span>
+            <span>Rejoins une grande communauté de comédiens !</span>
           </div>
         </div>
 
