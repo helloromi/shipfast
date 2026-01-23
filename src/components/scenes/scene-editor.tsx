@@ -51,12 +51,16 @@ type Props = {
   userId: string;
   initialCharacters: MinimalCharacter[];
   initialLines: MinimalLine[];
+  initialTitle?: string;
+  initialSummary?: string | null;
 };
 
-export function SceneEditor({ sceneId, userId, initialCharacters, initialLines }: Props) {
+export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, initialTitle, initialSummary }: Props) {
   const router = useRouter();
   const { supabase } = useSupabase();
 
+  const [title, setTitle] = useState<string>(initialTitle ?? "");
+  const [summary, setSummary] = useState<string>(initialSummary ?? "");
   const [characters, setCharacters] = useState<EditorCharacter[]>(
     (initialCharacters ?? []).map((c) => ({ id: c.id, name: c.name ?? "" }))
   );
@@ -79,22 +83,29 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines }
   const referencedCharacterIds = useMemo(() => new Set(lines.map((l) => l.characterId)), [lines]);
 
   const hasErrors = useMemo(() => {
+    if ((title ?? "").trim().length === 0) return true;
     if (characters.some((c) => (c.name ?? "").trim().length === 0)) return true;
     if (lines.some((l) => (l.text ?? "").trim().length === 0)) return true;
     if (lines.some((l) => !characterIdSet.has(l.characterId))) return true;
     if (lines.length > 0 && characters.length === 0) return true;
     return false;
-  }, [characters, characterIdSet, lines]);
+  }, [title, characters, characterIdSet, lines]);
 
   const save = async () => {
     setToast(null);
 
     const payload = {
+      title: (title ?? "").trim(),
+      summary: (summary ?? "").trim() || null,
       characters: characters.map((c) => ({ id: c.id, name: (c.name ?? "").trim() })),
       lines: lines.map((l) => ({ id: l.id, characterId: l.characterId, text: (l.text ?? "").trim() })),
     };
 
     // Validation côté UI (en plus de l’API)
+    if (!payload.title) {
+      setToast({ message: "Le titre de la scène est requis.", variant: "error" });
+      return;
+    }
     if (payload.characters.some((c) => !c.id || !c.name)) {
       setToast({ message: "Chaque personnage doit avoir un nom.", variant: "error" });
       return;
@@ -175,6 +186,31 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines }
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3 rounded-2xl border border-[#e7e1d9] bg-white/92 p-5 shadow-sm shadow-[#3b1f4a14]">
+        <h2 className="font-display text-xl font-semibold text-[#3b1f4a]">Informations de la scène</h2>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">Titre</div>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
+              placeholder="Titre de la scène"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">Description</div>
+            <textarea
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              rows={3}
+              className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
+              placeholder="Description de la scène (optionnel)"
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-3 rounded-2xl border border-[#e7e1d9] bg-white/92 p-5 shadow-sm shadow-[#3b1f4a14]">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-display text-xl font-semibold text-[#3b1f4a]">Personnages</h2>

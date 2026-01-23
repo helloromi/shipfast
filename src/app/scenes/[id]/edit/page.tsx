@@ -58,6 +58,8 @@ export default async function SceneEditPage({ params }: Props) {
           userId={user.id}
           initialCharacters={scene.characters}
           initialLines={sortedLines}
+          initialTitle={scene.title}
+          initialSummary={scene.summary}
         />
       )}
 

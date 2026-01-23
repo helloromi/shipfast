@@ -53,8 +53,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  const title = typeof body?.title === "string" ? body.title.trim() : null;
+  const summary = typeof body?.summary === "string" ? body.summary.trim() || null : body?.summary === null ? null : undefined;
   const characters = Array.isArray(body?.characters) ? (body.characters as EditorCharacter[]) : null;
   const lines = Array.isArray(body?.lines) ? (body.lines as EditorLine[]) : null;
+  
+  if (!title) {
+    return NextResponse.json({ error: "Title is required" }, { status: 400 });
+  }
   if (!characters || !lines) {
     return NextResponse.json({ error: "Missing characters or lines" }, { status: 400 });
   }
@@ -228,6 +234,17 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       console.error("Error deleting characters:", deleteCharsError);
       return NextResponse.json({ error: "Failed to delete characters" }, { status: 500 });
     }
+  }
+
+  // Mettre à jour le titre et la description de la scène
+  const { error: updateSceneError } = await adminClient
+    .from("scenes")
+    .update({ title, summary })
+    .eq("id", sceneId);
+
+  if (updateSceneError) {
+    console.error("Error updating scene:", updateSceneError);
+    return NextResponse.json({ error: "Failed to update scene" }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });
