@@ -24,6 +24,7 @@ export const learn = {
     notePerso: "Note perso",
     noteAjoutee: "Ajoutée",
     aucuneNote: "Aucune",
+    vueEnsemble: "Vue d'ensemble",
   },
   scores: {
     rate: {
@@ -78,6 +79,10 @@ export const learn = {
     revealOnlyDesc: "Tu récites la réplique puis tu vérifies.",
     writeTitle: "Révéler + écrire",
     writeDesc: "Tu écris ta version, tu révèles et tu compares.",
+    displayModeLabel: "Mode d'affichage",
+    overviewTitle: "Vue d'ensemble",
+    overviewDesc: "Vois toute la scène avec tes répliques floutées. Clique pour révéler et noter.",
+    suggestionPeuRepliques: "Tu as peu de répliques ({count}). Pour mieux comprendre le contexte, nous recommandons le mode Vue d'ensemble.",
     cancel: "Annuler",
     start: "Commencer",
   },
@@ -99,6 +104,7 @@ export const learn = {
   modes: {
     flashcard: "Flashcard",
     liste: "Liste",
+    overview: "Vue d'ensemble",
   },
 };
 

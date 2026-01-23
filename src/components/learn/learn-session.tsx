@@ -116,7 +116,7 @@ export function LearnSession(props: LearnSessionProps) {
 
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<ToastState | null>(null);
-  const [mode, setMode] = useState<"list" | "flashcard">("list");
+  const [mode, setMode] = useState<"list" | "flashcard" | "overview">("list");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -147,17 +147,28 @@ export function LearnSession(props: LearnSessionProps) {
     return `drafts:${sceneId}:${characterId}:${sessionId}`;
   }, [sceneId, characterId, sessionId]);
 
-  // Mode Zen = une réplique à la fois (flashcard) pour tous.
+  const userLinesAll = useMemo(() => lines.filter((l) => l.isUserLine), [lines]);
+
+  // Mode Zen = une réplique à la fois (flashcard) pour tous, sauf si peu de répliques (≤5) -> overview
   useEffect(() => {
     if (typeof window === "undefined") return;
-    queueMicrotask(() => setMode("flashcard"));
-  }, []);
+    if (userLinesAll.length <= 5) {
+      queueMicrotask(() => setMode("overview"));
+    } else {
+      queueMicrotask(() => setMode("flashcard"));
+    }
+  }, [userLinesAll.length]);
 
   // En mode Zen, on reste en flashcard (mais on laisse l'utilisateur choisir s'il écrit ou non).
+  // Sauf si peu de répliques (≤5) -> overview
   useEffect(() => {
     if (!isZen) return;
-    queueMicrotask(() => setMode("flashcard"));
-  }, [isZen]);
+    if (userLinesAll.length <= 5) {
+      queueMicrotask(() => setMode("overview"));
+    } else {
+      queueMicrotask(() => setMode("flashcard"));
+    }
+  }, [isZen, userLinesAll.length]);
 
   // Timer pour afficher le temps écoulé
   useEffect(() => {
@@ -206,7 +217,6 @@ export function LearnSession(props: LearnSessionProps) {
     };
   }, [drafts, storageKey]);
 
-  const userLinesAll = useMemo(() => lines.filter((l) => l.isUserLine), [lines]);
   const remainingUserLinesCount = useMemo(() => Math.max(0, userLinesAll.length - startIndex), [userLinesAll.length, startIndex]);
   const computeLimitFromCount = useCallback((count: number) => {
     if (remainingUserLinesCount <= 0) return 0;
@@ -318,6 +328,16 @@ export function LearnSession(props: LearnSessionProps) {
 
         // En mode liste, révéler la première ligne cachée visible
         if (mode === "list") {
+          const firstHiddenLine = visibleLines.find(
+            (line) => line.isUserLine && lineState[line.id] === "hidden"
+          );
+          if (firstHiddenLine) {
+            revealLine(firstHiddenLine.id);
+          }
+        }
+
+        // En mode overview, révéler la première ligne cachée visible
+        if (mode === "overview") {
           const firstHiddenLine = visibleLines.find(
             (line) => line.isUserLine && lineState[line.id] === "hidden"
           );
@@ -458,7 +478,7 @@ export function LearnSession(props: LearnSessionProps) {
       }
     }
 
-    if (mode === "list") {
+    if (mode === "list" || mode === "overview") {
       // Auto-scroll intelligent: centrer la prochaine réplique utilisateur (non notée) dans l'écran.
       const sorted = [...visibleLines].sort((a, b) => a.order - b.order);
       const current = sorted.find((l) => l.id === lineId);
@@ -551,7 +571,7 @@ export function LearnSession(props: LearnSessionProps) {
     setCurrentIndex(0);
   };
 
-  const canWrite = inputMode === "write";
+  const canWrite = inputMode === "write" && mode !== "overview";
   const currentFlashcard = mode === "flashcard" ? userLines[currentIndex] : null;
   const flashcardContext =
     currentFlashcard &&
@@ -723,6 +743,77 @@ export function LearnSession(props: LearnSessionProps) {
     </div>
   );
 
+  const renderOverviewMode = () => (
+    <div className="flex flex-col gap-2">
+      {visibleLines.map((line) => {
+        const state = lineState[line.id];
+        const isHidden = state === "hidden";
+        const isStage = isLikelyStageDirection(line);
+        return (
+          <div
+            key={line.id}
+            ref={(el) => {
+              lineRefs.current.set(line.id, el);
+            }}
+            className={`flex flex-col gap-2 rounded-2xl border p-4 shadow-sm shadow-[#3b1f4a0f] ${
+              line.isUserLine
+                ? "border-[#f4c95d66] bg-[#f4c95d1f]"
+                : "border-[#e7e1d9] bg-white/90"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                {line.characterName}
+              </div>
+              {line.isUserLine && (
+                <span className="text-xs font-semibold text-[#3b1f4a]">{t.learn.labels.taReplique}</span>
+              )}
+            </div>
+
+            {line.isUserLine && isHidden ? (
+              <button
+                type="button"
+                onClick={() => revealLine(line.id)}
+                className="text-left"
+                aria-label={t.learn.buttons.reveler}
+              >
+                <p
+                  className={`text-sm text-[#1c1b1f] blur-sm select-none cursor-pointer transition hover:opacity-80 ${
+                    isStage ? "italic text-[#6a6274]" : ""
+                  }`}
+                >
+                  {line.text}
+                </p>
+              </button>
+            ) : (
+              <p
+                className={`text-sm ${
+                  line.isUserLine ? "text-[#1c1b1f]" : "text-[#3f3946]"
+                } ${isStage ? "italic text-[#6a6274]" : ""}`}
+              >
+                {line.text}
+              </p>
+            )}
+
+            {renderNoteAccordion(line.id)}
+
+            {line.isUserLine && state !== "scored" && (
+              isHidden ? null : (
+                renderScoreButtons(line.id, Boolean(saving[line.id]))
+              )
+            )}
+
+            {line.isUserLine && state === "scored" && (
+              <div className="text-xs font-medium text-[#2cb67d]">
+                {t.learn.messages.feedbackEnregistre}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
   const renderFlashcard = () => {
     if (!currentFlashcard) {
       return (
@@ -868,7 +959,7 @@ export function LearnSession(props: LearnSessionProps) {
         </button>
       </div>
 
-      {mode === "flashcard" ? renderFlashcard() : renderListMode()}
+      {mode === "flashcard" ? renderFlashcard() : mode === "overview" ? renderOverviewMode() : renderListMode()}
 
       {toast && (
         <Toast
@@ -1036,28 +1127,100 @@ export function LearnSession(props: LearnSessionProps) {
                   <button
                     type="button"
                     onClick={() => setInputMode("revealOnly")}
+                    disabled={mode === "overview"}
                     className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
                       inputMode === "revealOnly"
                         ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
                         : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
-                    }`}
+                    } ${mode === "overview" ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     {t.learn.setup.revealOnlyTitle}
                   </button>
                   <button
                     type="button"
                     onClick={() => setInputMode("write")}
+                    disabled={mode === "overview"}
                     className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
                       inputMode === "write"
                         ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
                         : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
-                    }`}
+                    } ${mode === "overview" ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     {t.learn.setup.writeTitle}
                   </button>
                 </div>
                 <p className="text-xs text-[#7a7184]">
-                  {inputMode === "revealOnly" ? t.learn.setup.revealOnlyDesc : t.learn.setup.writeDesc}
+                  {mode === "overview"
+                    ? "Le mode Vue d'ensemble utilise uniquement la révélation."
+                    : inputMode === "revealOnly"
+                      ? t.learn.setup.revealOnlyDesc
+                      : t.learn.setup.writeDesc}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                  {t.learn.setup.displayModeLabel}
+                </div>
+                {userLinesAll.length <= 5 && (
+                  <div className="rounded-xl border border-[#f4c95d66] bg-[#f4c95d1f] p-3 text-sm text-[#3b1f4a]">
+                    {t.learn.setup.suggestionPeuRepliques.replace("{count}", String(userLinesAll.length))}
+                  </div>
+                )}
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("flashcard");
+                      if (inputMode === "write" && mode === "overview") {
+                        setInputMode("revealOnly");
+                      }
+                    }}
+                    className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
+                      mode === "flashcard"
+                        ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
+                        : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
+                    }`}
+                  >
+                    {t.learn.modes.flashcard}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("list");
+                      if (inputMode === "write" && mode === "overview") {
+                        setInputMode("revealOnly");
+                      }
+                    }}
+                    className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
+                      mode === "list"
+                        ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
+                        : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
+                    }`}
+                  >
+                    {t.learn.modes.liste}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("overview");
+                      setInputMode("revealOnly");
+                    }}
+                    className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
+                      mode === "overview"
+                        ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
+                        : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
+                    }`}
+                  >
+                    {t.learn.modes.overview}
+                  </button>
+                </div>
+                <p className="text-xs text-[#7a7184]">
+                  {mode === "overview"
+                    ? t.learn.setup.overviewDesc
+                    : mode === "flashcard"
+                      ? "Une réplique à la fois avec contexte."
+                      : "Toutes les répliques visibles avec contexte."}
                 </p>
               </div>
             </div>
