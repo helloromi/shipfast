@@ -289,6 +289,51 @@ export function LearnSession(props: LearnSessionProps) {
     }
   }, [startIndex, limitChoice, remainingUserLinesCount, computeLimitFromCount]);
 
+  // Gestionnaire de clavier pour révéler avec Entrée ou Espace
+  useEffect(() => {
+    if (showSetupModal || showSummary) return; // Ne pas écouter si une modale est ouverte
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignorer si l'utilisateur est en train de taper dans un input ou textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+        return;
+      }
+
+      // Vérifier si c'est Entrée ou Espace
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+
+        // En mode flashcard, révéler la carte actuelle si elle est cachée
+        if (mode === "flashcard") {
+          const flashcard = userLines[currentIndex];
+          if (flashcard) {
+            const state = lineState[flashcard.id];
+            if (state === "hidden") {
+              revealLine(flashcard.id);
+              return;
+            }
+          }
+        }
+
+        // En mode liste, révéler la première ligne cachée visible
+        if (mode === "list") {
+          const firstHiddenLine = visibleLines.find(
+            (line) => line.isUserLine && lineState[line.id] === "hidden"
+          );
+          if (firstHiddenLine) {
+            revealLine(firstHiddenLine.id);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showSetupModal, showSummary, mode, userLines, currentIndex, lineState, visibleLines]);
+
   const remainingCount = useMemo(
     () => userLines.filter((l) => scoreValue[l.id] === null || scoreValue[l.id] === undefined).length,
     [userLines, scoreValue]
