@@ -103,14 +103,44 @@ async function resolveEmailForUser(userId: string): Promise<string | null> {
   }
 }
 
+/**
+ * Retourne l'adresse "From" à utiliser selon le type d'email.
+ * Permet de personnaliser l'expéditeur par type d'email.
+ * Fallback sur RESEND_FROM si aucune adresse spécifique n'est définie.
+ * 
+ * @param emailType - Type d'email (welcome, payment_thanks, inactivity, unpaid_reminder_1, import_ready)
+ * @returns L'adresse "From" à utiliser
+ */
+export function getFromAddress(emailType?: EmailType | "import_ready"): string {
+  const { from: defaultFrom } = getResendEnv();
+
+  switch (emailType) {
+    case "welcome":
+      return "paul@cote-cour.studio";
+    case "payment_thanks":
+      return "compta@cote-cour.studio";
+    case "inactivity":
+      return "abonnement@cote-cour.studio";
+    case "unpaid_reminder_1":
+      return "abonnement@cote-cour.studio";
+    case "import_ready":
+      return "abonnement@cote-cour.studio";
+    default:
+      return defaultFrom;
+  }
+}
+
 async function sendEmail(params: {
   to: string;
   subject: string;
   html: string;
   text: string;
+  from?: string;
+  emailType?: EmailType;
 }) {
   const resend = createResendClient();
-  const { from } = getResendEnv();
+  // Utilise l'adresse fournie, ou celle du type d'email, ou celle par défaut
+  const from = params.from ?? getFromAddress(params.emailType);
   const res = await resend.emails.send({
     from,
     to: [params.to],
@@ -204,7 +234,7 @@ export async function sendWelcomeEmailIfNeeded(userId: string) {
 
   const tpl = welcomeEmail();
   try {
-    const res = await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    const res = await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text, emailType: "welcome" });
     if (res.error) {
       await updateEmailLog({ dedupeKey, status: "error", error: res.error.message });
       return { sent: false as const, reason: "resend_error" as const, error: res.error.message };
@@ -233,7 +263,7 @@ export async function sendPaymentThankYouEmailIfNeeded(userId: string) {
 
   const tpl = paymentThankYouEmail();
   try {
-    const res = await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    const res = await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text, emailType: "payment_thanks" });
     if (res.error) {
       await updateEmailLog({ dedupeKey, status: "error", error: res.error.message });
       return { sent: false as const, reason: "resend_error" as const, error: res.error.message };
@@ -261,7 +291,7 @@ export async function sendUnpaidReminder1Email(userId: string) {
 
   const tpl = unpaidReminderEmail();
   try {
-    const res = await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    const res = await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text, emailType: "unpaid_reminder_1" });
     if (res.error) {
       await updateEmailLog({ dedupeKey, status: "error", error: res.error.message });
       return { sent: false as const, reason: "resend_error" as const, error: res.error.message };
@@ -298,7 +328,7 @@ export async function sendInactivityEmailIfNeeded(params: {
 
   const tpl = inactivityEmail(params.inactivityDays);
   try {
-    const res = await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    const res = await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text, emailType: "inactivity" });
     if (res.error) {
       await updateEmailLog({ dedupeKey, status: "error", error: res.error.message });
       return { sent: false as const, reason: "resend_error" as const, error: res.error.message };

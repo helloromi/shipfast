@@ -12,7 +12,7 @@ WebApp d'entraînement de textes (masquage/révélation + feedback 0-3).
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY` (optionnel, utile pour les scripts d'admin)
    - `NEXT_PUBLIC_SITE_URL` (optionnel en dev, requis en production : URL de votre site déployé)
-   - (emails) `RESEND_API_KEY`, `RESEND_FROM` (ex: `noreply@votredomaine.com`)
+   - (emails) `RESEND_API_KEY`, `RESEND_FROM` (ex: `contact@votredomaine.com` ou `hello@votredomaine.com` - éviter `noreply` pour améliorer la confiance)
    - (optionnel) `RESEND_AUDIENCE_ID` (sync opt-in vers une Audience Resend)
    - (cron) `CRON_SECRET` (protège les endpoints de jobs planifiés)
 2. Installe les dépendances : `npm install`
@@ -30,7 +30,7 @@ WebApp d'entraînement de textes (masquage/révélation + feedback 0-3).
 - `STRIPE_SECRET_KEY` : Clé secrète Stripe (commence par `sk_`)
 - `STRIPE_WEBHOOK_SECRET` : Secret du webhook Stripe (commence par `whsec_`)
 - `RESEND_API_KEY` : API key Resend
-- `RESEND_FROM` : expéditeur par défaut (doit être sur un domaine vérifié)
+- `RESEND_FROM` : expéditeur par défaut (doit être sur un domaine vérifié, éviter `noreply` pour améliorer la confiance et la délivrabilité)
 - `CRON_SECRET` : secret utilisé pour appeler les endpoints cron (Authorization Bearer)
 
 ### Configuration Supabase Dashboard
