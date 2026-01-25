@@ -116,7 +116,7 @@ export function LearnSession(props: LearnSessionProps) {
 
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<ToastState | null>(null);
-  const [mode, setMode] = useState<"list" | "flashcard" | "overview">("list");
+  const [mode, setMode] = useState<"flashcard" | "overview">("flashcard");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -326,16 +326,6 @@ export function LearnSession(props: LearnSessionProps) {
           }
         }
 
-        // En mode liste, révéler la première ligne cachée visible
-        if (mode === "list") {
-          const firstHiddenLine = visibleLines.find(
-            (line) => line.isUserLine && lineState[line.id] === "hidden"
-          );
-          if (firstHiddenLine) {
-            revealLine(firstHiddenLine.id);
-          }
-        }
-
         // En mode overview, révéler la première ligne cachée visible
         if (mode === "overview") {
           const firstHiddenLine = visibleLines.find(
@@ -478,7 +468,7 @@ export function LearnSession(props: LearnSessionProps) {
       }
     }
 
-    if (mode === "list" || mode === "overview") {
+    if (mode === "overview") {
       // Auto-scroll intelligent: centrer la prochaine réplique utilisateur (non notée) dans l'écran.
       const sorted = [...visibleLines].sort((a, b) => a.order - b.order);
       const current = sorted.find((l) => l.id === lineId);
@@ -631,118 +621,6 @@ export function LearnSession(props: LearnSessionProps) {
     );
   };
 
-  const renderListMode = () => (
-    <div className="flex flex-col gap-2">
-      {visibleLines.map((line) => {
-        const state = lineState[line.id];
-        const isHidden = state === "hidden";
-        const isCue = cueLineIds.has(line.id);
-        const isStage = isLikelyStageDirection(line);
-        return (
-          <div
-            key={line.id}
-            ref={(el) => {
-              lineRefs.current.set(line.id, el);
-            }}
-            className={`flex flex-col gap-2 rounded-2xl border p-4 shadow-sm shadow-[#3b1f4a0f] ${
-              line.isUserLine
-                ? "border-[#f4c95d66] bg-[#f4c95d1f]"
-                : "border-[#e7e1d9] bg-white/90"
-            }`}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                {line.characterName}
-              </div>
-              {line.isUserLine && (
-                <span className="text-xs font-semibold text-[#3b1f4a]">{t.learn.labels.taReplique}</span>
-              )}
-            </div>
-
-            <p
-              className={`text-sm ${
-                line.isUserLine ? "text-[#1c1b1f]" : "text-[#3f3946]"
-              } ${isStage ? "italic text-[#6a6274]" : ""} ${isHidden ? "blur-sm select-none" : ""}`}
-            >
-              {line.isUserLine && isHidden
-                ? renderBlurHint(line.text, hintUsed[line.id] ? PREVIEW_WORDS : 0)
-                : isCue && !line.isUserLine && !isHidden
-                  ? renderCue(line.text, 5)
-                  : line.text}
-            </p>
-
-            {renderNoteAccordion(line.id)}
-
-            {line.isUserLine && canWrite && !isZen && (
-              <div className="flex flex-col gap-2">
-                <textarea
-                  value={drafts[line.id] ?? ""}
-                  onChange={(e) =>
-                    setDrafts((prev) => ({
-                      ...prev,
-                      [line.id]: e.target.value,
-                    }))
-                  }
-                  placeholder={t.learn.placeholders.ecrisReplique}
-                  rows={2}
-                  className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
-                />
-              </div>
-            )}
-
-            {line.isUserLine && state !== "scored" && (
-              isHidden ? (
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => revealHintOnce(line.id)}
-                    className="w-fit rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-sm font-medium text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a33]"
-                  >
-                    {t.learn.buttons.indice}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => revealLine(line.id)}
-                    className="w-fit rounded-full bg-[#ff6b6b] px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a]"
-                  >
-                    {t.learn.buttons.reveler}
-                  </button>
-                </div>
-              ) : (
-                renderScoreButtons(line.id, Boolean(saving[line.id]))
-              )
-            )}
-
-            {line.isUserLine && state === "scored" && (
-              <div className="text-xs font-medium text-[#2cb67d]">
-                {t.learn.messages.feedbackEnregistre}
-              </div>
-            )}
-
-            {line.isUserLine && !isHidden && canWrite && !isZen && (
-              <div className="mt-2 grid gap-2 rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] p-3 text-sm">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                    {t.learn.labels.taVersion}
-                  </div>
-                  <div className="whitespace-pre-wrap text-[#1c1b1f]">
-                    {(drafts[line.id] ?? "").trim() || "—"}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                    {t.learn.labels.original}
-                  </div>
-                  <div className="whitespace-pre-wrap text-[#1c1b1f]">{line.text}</div>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-
   const renderOverviewMode = () => (
     <div className="flex flex-col gap-2">
       {visibleLines.map((line) => {
@@ -759,7 +637,21 @@ export function LearnSession(props: LearnSessionProps) {
               line.isUserLine
                 ? "border-[#f4c95d66] bg-[#f4c95d1f]"
                 : "border-[#e7e1d9] bg-white/90"
-            }`}
+            } ${line.isUserLine && isHidden ? "cursor-pointer transition hover:opacity-90" : ""}`}
+            onClick={line.isUserLine && isHidden ? () => revealLine(line.id) : undefined}
+            role={line.isUserLine && isHidden ? "button" : undefined}
+            tabIndex={line.isUserLine && isHidden ? 0 : undefined}
+            onKeyDown={
+              line.isUserLine && isHidden
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      revealLine(line.id);
+                    }
+                  }
+                : undefined
+            }
+            aria-label={line.isUserLine && isHidden ? t.learn.buttons.reveler : undefined}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
@@ -770,30 +662,13 @@ export function LearnSession(props: LearnSessionProps) {
               )}
             </div>
 
-            {line.isUserLine && isHidden ? (
-              <button
-                type="button"
-                onClick={() => revealLine(line.id)}
-                className="text-left"
-                aria-label={t.learn.buttons.reveler}
-              >
-                <p
-                  className={`text-sm text-[#1c1b1f] blur-sm select-none cursor-pointer transition hover:opacity-80 ${
-                    isStage ? "italic text-[#6a6274]" : ""
-                  }`}
-                >
-                  {line.text}
-                </p>
-              </button>
-            ) : (
-              <p
-                className={`text-sm ${
-                  line.isUserLine ? "text-[#1c1b1f]" : "text-[#3f3946]"
-                } ${isStage ? "italic text-[#6a6274]" : ""}`}
-              >
-                {line.text}
-              </p>
-            )}
+            <p
+              className={`text-sm ${
+                line.isUserLine ? "text-[#1c1b1f]" : "text-[#3f3946]"
+              } ${isStage ? "italic text-[#6a6274]" : ""} ${line.isUserLine && isHidden ? "blur-sm select-none" : ""}`}
+            >
+              {line.text}
+            </p>
 
             {renderNoteAccordion(line.id)}
 
@@ -959,7 +834,7 @@ export function LearnSession(props: LearnSessionProps) {
         </button>
       </div>
 
-      {mode === "flashcard" ? renderFlashcard() : mode === "overview" ? renderOverviewMode() : renderListMode()}
+      {mode === "flashcard" ? renderFlashcard() : renderOverviewMode()}
 
       {toast && (
         <Toast
@@ -1187,22 +1062,6 @@ export function LearnSession(props: LearnSessionProps) {
                   <button
                     type="button"
                     onClick={() => {
-                      setMode("list");
-                      if (inputMode === "write" && mode === "overview") {
-                        setInputMode("revealOnly");
-                      }
-                    }}
-                    className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
-                      mode === "list"
-                        ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
-                        : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
-                    }`}
-                  >
-                    {t.learn.modes.liste}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
                       setMode("overview");
                       setInputMode("revealOnly");
                     }}
@@ -1218,9 +1077,7 @@ export function LearnSession(props: LearnSessionProps) {
                 <p className="text-xs text-[#7a7184]">
                   {mode === "overview"
                     ? t.learn.setup.overviewDesc
-                    : mode === "flashcard"
-                      ? "Une réplique à la fois avec contexte."
-                      : "Toutes les répliques visibles avec contexte."}
+                    : "Une réplique à la fois avec contexte."}
                 </p>
               </div>
             </div>
@@ -1293,71 +1150,71 @@ export function LearnSession(props: LearnSessionProps) {
             </div>
 
             <div className="mt-6 flex flex-col gap-3">
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                {(() => {
-                  const workedCount = userLines.length;
-                  const lastWorkedLine = userLines[userLines.length - 1];
-                  const lastWorkedIndex = lastWorkedLine 
-                    ? userLinesAll.findIndex((l) => l.id === lastWorkedLine.id)
-                    : -1;
-                  const remainingCount = lastWorkedIndex >= 0 
-                    ? userLinesAll.length - (lastWorkedIndex + 1)
-                    : 0;
-                  
-                  // Calculer le nombre de répliques pour continuer
-                  let continueCount = workedCount;
-                  // Si il reste moins de répliques que ce qu'on a travaillé, prendre toutes les restantes
-                  if (remainingCount < continueCount) {
-                    continueCount = remainingCount;
-                  }
-                  // Si il reste exactement 3 répliques et qu'on a travaillé moins de 3, prendre 3
-                  if (remainingCount === 3 && workedCount < 3) {
-                    continueCount = 3;
-                  }
-                  
-                  const canContinue = remainingCount > 0 && continueCount > 0;
-                  
-                  return (
-                    <>
-                      {canContinue && (
-                        <button
-                          onClick={() => {
-                            const nextStartIndex = lastWorkedIndex + 1;
-                            resetLocalState();
-                            setShowSummary(false);
-                            setStartIndex(nextStartIndex);
-                            setLimitCount(continueCount);
-                            setShowSetupModal(false);
-                            void startTrackingSession(continueCount);
-                          }}
-                          className="w-full rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-[#ff6b6b33] transition hover:-translate-y-[1px] sm:w-auto"
-                        >
-                          {t.learn.buttons.continuer} : {continueCount} {continueCount === 1 ? "réplique suivante" : "répliques suivantes"}
-                        </button>
-                      )}
+              {(() => {
+                const workedCount = userLines.length;
+                const lastWorkedLine = userLines[userLines.length - 1];
+                const lastWorkedIndex = lastWorkedLine 
+                  ? userLinesAll.findIndex((l) => l.id === lastWorkedLine.id)
+                  : -1;
+                const remainingCount = lastWorkedIndex >= 0 
+                  ? userLinesAll.length - (lastWorkedIndex + 1)
+                  : 0;
+                
+                // Calculer le nombre de répliques pour continuer
+                let continueCount = workedCount;
+                // Si il reste moins de répliques que ce qu'on a travaillé, prendre toutes les restantes
+                if (remainingCount < continueCount) {
+                  continueCount = remainingCount;
+                }
+                // Si il reste exactement 3 répliques et qu'on a travaillé moins de 3, prendre 3
+                if (remainingCount === 3 && workedCount < 3) {
+                  continueCount = 3;
+                }
+                
+                const canContinue = remainingCount > 0 && continueCount > 0;
+                
+                return (
+                  <>
+                    {canContinue && (
+                      <button
+                        onClick={() => {
+                          const nextStartIndex = lastWorkedIndex + 1;
+                          resetLocalState();
+                          setShowSummary(false);
+                          setStartIndex(nextStartIndex);
+                          setLimitCount(continueCount);
+                          setShowSetupModal(false);
+                          void startTrackingSession(continueCount);
+                        }}
+                        className="w-full rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-[#ff6b6b33] transition hover:-translate-y-[1px]"
+                      >
+                        {t.learn.buttons.continuer} : {continueCount} {continueCount === 1 ? "réplique suivante" : "répliques suivantes"}
+                      </button>
+                    )}
+                    <div className="flex flex-col gap-2 sm:flex-row">
                       <button
                         onClick={() => {
                           resetLocalState(true);
                           setShowSummary(false);
                           setShowSetupModal(true);
                         }}
-                        className="w-full rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] sm:w-auto"
+                        className="flex-1 rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33]"
                       >
                         {t.learn.buttons.recommencer}
                       </button>
-                    </>
-                  );
-                })()}
-              </div>
-              <button
-                onClick={() => {
-                  setShowSummary(false);
-                  router.push("/home");
-                }}
-                className="w-full rounded-full bg-[#ff6b6b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a]"
-              >
-                {t.learn.buttons.retournerAccueil}
-              </button>
+                      <button
+                        onClick={() => {
+                          setShowSummary(false);
+                          router.push("/home");
+                        }}
+                        className="flex-1 rounded-full bg-[#ff6b6b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a]"
+                      >
+                        {t.learn.buttons.retournerAccueil}
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
