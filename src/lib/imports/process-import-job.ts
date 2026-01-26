@@ -1,8 +1,6 @@
 import { extractTextFromFile } from "@/lib/utils/text-extraction";
 import { parseTextWithAI } from "@/lib/utils/text-parser";
-import { createResendClient } from "@/lib/resend/client";
-import { importReadyEmail } from "@/lib/resend/templates";
-import { getFromAddress } from "@/lib/resend/automation";
+import { sendImportReadyEmailIfNeeded } from "@/lib/resend/automation";
 
 export type ImportJobForProcessing = {
   id: string;
@@ -157,23 +155,13 @@ export async function processImportJobPreview(
       })
       .eq("id", jobId);
 
-    // Envoyer un email de notification
+    // Envoyer un email de notification avec journalisation
     try {
-      const { data: userData } = await supabase.auth.admin.getUserById(job.user_id);
-      if (userData?.user?.email) {
-        const resend = createResendClient();
-        const emailTemplate = importReadyEmail({
-          jobId: job.id,
-          title: parseResult.data?.title,
-        });
-        await resend.emails.send({
-          from: getFromAddress("import_ready"),
-          to: userData.user.email,
-          subject: emailTemplate.subject,
-          html: emailTemplate.html,
-          text: emailTemplate.text,
-        });
-      }
+      await sendImportReadyEmailIfNeeded({
+        userId: job.user_id,
+        jobId: job.id,
+        title: parseResult.data?.title,
+      });
     } catch (emailError) {
       // Ne pas bloquer le processus si l'email échoue
       console.error("Erreur lors de l'envoi de l'email de notification:", emailError);

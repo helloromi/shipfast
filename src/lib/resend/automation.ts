@@ -3,12 +3,13 @@ import { createResendClient } from "./client";
 import { getResendEnv } from "./env";
 import {
   inactivityEmail,
+  importReadyEmail,
   paymentThankYouEmail,
   unpaidReminderEmail,
   welcomeEmail,
 } from "./templates";
 
-type EmailType = "welcome" | "unpaid_reminder_1" | "payment_thanks" | "inactivity";
+type EmailType = "welcome" | "unpaid_reminder_1" | "payment_thanks" | "inactivity" | "import_ready";
 
 function nowIso() {
   return new Date().toISOString();
@@ -111,7 +112,7 @@ async function resolveEmailForUser(userId: string): Promise<string | null> {
  * @param emailType - Type d'email (welcome, payment_thanks, inactivity, unpaid_reminder_1, import_ready)
  * @returns L'adresse "From" à utiliser
  */
-export function getFromAddress(emailType?: EmailType | "import_ready"): string {
+export function getFromAddress(emailType?: EmailType): string {
   const { from: defaultFrom } = getResendEnv();
 
   switch (emailType) {
@@ -165,19 +166,23 @@ export async function syncAudienceContactIfOptIn(userId: string) {
 
   // Upsert (get-by-email -> update, else create)
   const existing = await resend.contacts.get({ audienceId, email });
+  
+  // Si erreur ET ce n'est pas "not_found", retourner l'erreur
   if (existing.error) {
-    // If not_found, create. For other errors, return.
     if (existing.error.name !== "not_found") {
       return { synced: false as const, reason: "resend_error" as const, error: existing.error.message };
     }
+    // Si erreur "not_found", on continue pour créer le contact
   }
 
+  // Si le contact existe (pas d'erreur ou erreur "not_found" mais data existe quand même)
   if (existing.data?.id) {
     const upd = await resend.contacts.update({ audienceId, id: existing.data.id, unsubscribed: false });
     if (upd.error) return { synced: false as const, reason: "resend_error" as const, error: upd.error.message };
     return { synced: true as const };
   }
 
+  // Le contact n'existe pas, on le crée
   const created = await resend.contacts.create({ audienceId, email, unsubscribed: false });
   if (created.error) return { synced: false as const, reason: "resend_error" as const, error: created.error.message };
   return { synced: true as const };
@@ -197,12 +202,16 @@ export async function setAudienceUnsubscribedFromMarketing(params: {
 
   // get-by-email -> update, else create with unsubscribed state
   const existing = await resend.contacts.get({ audienceId, email });
+  
+  // Si erreur ET ce n'est pas "not_found", retourner l'erreur
   if (existing.error) {
     if (existing.error.name !== "not_found") {
       return { ok: false as const, reason: "resend_error" as const, error: existing.error.message };
     }
+    // Si erreur "not_found", on continue pour créer le contact
   }
 
+  // Si le contact existe (pas d'erreur ou erreur "not_found" mais data existe quand même)
   if (existing.data?.id) {
     const upd = await resend.contacts.update({
       audienceId,
@@ -213,6 +222,7 @@ export async function setAudienceUnsubscribedFromMarketing(params: {
     return { ok: true as const };
   }
 
+  // Le contact n'existe pas, on le crée avec l'état unsubscribed
   const created = await resend.contacts.create({
     audienceId,
     email,
@@ -338,6 +348,42 @@ export async function sendInactivityEmailIfNeeded(params: {
       inactivity_sent_at: nowIso(),
       last_inactivity_for_activity_at: params.lastActivityAt,
     });
+    return { sent: true as const };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Unknown error";
+    await updateEmailLog({ dedupeKey, status: "error", error: message });
+    return { sent: false as const, reason: "exception" as const, error: message };
+  } finally {
+    await syncAudienceContactIfOptIn(params.userId).catch(() => null);
+  }
+}
+
+export async function sendImportReadyEmailIfNeeded(params: {
+  userId: string;
+  jobId: string;
+  title?: string;
+}) {
+  await ensureUserEmailStateRow(params.userId);
+  const email = await resolveEmailForUser(params.userId);
+  if (!email) return { sent: false as const, reason: "no_email" as const };
+
+  const dedupeKey = `import_ready:${params.userId}:${params.jobId}`;
+  const created = await tryCreateEmailLog({
+    userId: params.userId,
+    emailType: "import_ready",
+    dedupeKey,
+    metadata: { jobId: params.jobId, title: params.title },
+  });
+  if (!created.created) return { sent: false as const, reason: "duplicate" as const };
+
+  const tpl = importReadyEmail({ jobId: params.jobId, title: params.title });
+  try {
+    const res = await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text, emailType: "import_ready" });
+    if (res.error) {
+      await updateEmailLog({ dedupeKey, status: "error", error: res.error.message });
+      return { sent: false as const, reason: "resend_error" as const, error: res.error.message };
+    }
+    await updateEmailLog({ dedupeKey, status: "sent", resendId: res.data?.id ?? null });
     return { sent: true as const };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
