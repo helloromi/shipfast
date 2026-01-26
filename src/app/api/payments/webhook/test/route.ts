@@ -1,12 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { isAdmin } from "@/lib/utils/admin";
 
 /**
  * Endpoint de test pour vérifier la configuration du webhook Stripe
  * GET /api/payments/webhook/test
+ * 
+ * ⚠️ PROTÉGÉ: Accessible uniquement aux administrateurs
  */
 export async function GET(request: NextRequest) {
   try {
+    // Vérifier l'authentification admin
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const admin = await isAdmin(user.id);
+    if (!admin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     // Toucher le client Stripe suffit à valider la configuration (la variable n'a pas besoin d'être utilisée).
     void getStripe();
     void request;

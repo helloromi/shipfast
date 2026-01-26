@@ -52,6 +52,21 @@ export default async function RootLayout({
               <Header />
             </Suspense>
             <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">{children}</main>
+            <footer className="mx-auto mt-16 max-w-6xl border-t border-[#e7e1d9] px-4 py-8 text-sm text-[#524b5a] sm:px-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p>© {new Date().getFullYear()} Côté-Cour. Tous droits réservés.</p>
+                </div>
+                <nav className="flex flex-wrap gap-4">
+                  <a
+                    href="/confidentialite"
+                    className="hover:text-[#3b1f4a] transition underline-offset-4 hover:underline"
+                  >
+                    Politique de confidentialité
+                  </a>
+                </nav>
+              </div>
+            </footer>
           </div>
         </SupabaseProvider>
         <Analytics />
