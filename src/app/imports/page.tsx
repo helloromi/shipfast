@@ -11,6 +11,9 @@ type ImportJobRow = {
   draft_data: any;
   scene_id: string | null;
   error_message: string | null;
+  progress_percentage: number | null;
+  processing_stage: string | null;
+  status_message: string | null;
 };
 
 function getTitleAuthor(draftData: any): { title: string; author: string | null } {
@@ -45,7 +48,7 @@ export default async function ImportsPage() {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("import_jobs")
-    .select("id, status, created_at, updated_at, draft_data, scene_id, error_message")
+    .select("id, status, created_at, updated_at, draft_data, scene_id, error_message, progress_percentage, processing_stage, status_message")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(50)
@@ -121,6 +124,26 @@ export default async function ImportsPage() {
                   <p className="text-xs text-[#7a7184]">
                     Créé le {new Date(job.created_at).toLocaleString("fr-FR")}
                   </p>
+                )}
+
+                {/* Barre de progression pour les imports en cours */}
+                {(job.status === "processing" || job.status === "pending") && job.progress_percentage !== null && (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-[#7a7184]">
+                        {job.status_message || "Traitement en cours…"}
+                      </span>
+                      <span className="text-xs font-semibold text-[#3b1f4a]">
+                        {job.progress_percentage}%
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#e7e1d9]">
+                      <div
+                        className="h-full rounded-full bg-[#3b1f4a] transition-[width] duration-300"
+                        style={{ width: `${job.progress_percentage}%` }}
+                      />
+                    </div>
+                  </div>
                 )}
 
                 <p className="text-xs font-semibold text-[#3b1f4a] underline underline-offset-4">

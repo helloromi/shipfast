@@ -82,6 +82,8 @@ export function ImportForm() {
   const [draftTitle, setDraftTitle] = useState("");
   const [draftAuthor, setDraftAuthor] = useState("");
   const [consentToAI, setConsentToAI] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{ path: string; name: string; preview?: string }>>([]);
+  const [reorderingFiles, setReorderingFiles] = useState<Array<{ path: string; name: string; preview?: string }>>([]);
 
   const totalSizeMb = useMemo(
     () => files.reduce((acc, f) => acc + f.size, 0) / 1024 / 1024,
@@ -160,13 +162,13 @@ export function ImportForm() {
     try {
       setProcessing({ stage: "uploading", progress: 0.02, detail: "" });
 
-      // Étape 1 : Uploader les fichiers vers Supabase Storage
-      const uploads: string[] = [];
+      // Étape 1 : Uploader les fichiers vers Supabase Storage et créer des previews
+      const uploaded: Array<{ path: string; name: string; preview?: string }> = [];
       for (let i = 0; i < files.length; i++) {
         const f = files[i];
         setProcessing({
           stage: "uploading",
-          progress: (i / Math.max(1, files.length)) * 0.2,
+          progress: (i / Math.max(1, files.length)) * 0.9,
           detail: `Envoi de "${f.name}" (${i + 1}/${files.length})`,
         });
         const fileExt = f.name.split(".").pop();
@@ -180,10 +182,43 @@ export function ImportForm() {
         if (uploadError || !uploadData?.path) {
           throw new Error(`Erreur lors de l'upload : ${uploadError?.message || "inconnue"}`);
         }
-        uploads.push(uploadData.path);
+        
+        // Créer un preview pour les images
+        let preview: string | undefined;
+        if (f.type.startsWith("image/")) {
+          preview = URL.createObjectURL(f);
+        }
+        
+        uploaded.push({ path: uploadData.path, name: f.name, preview });
       }
 
-      // Étape 2 : Lancer l'import en arrière-plan
+      // Étape 2 : Afficher l'interface de réorganisation
+      setUploadedFiles(uploaded);
+      setReorderingFiles([...uploaded]);
+      setProcessing({ stage: "idle" });
+    } catch (error: any) {
+      console.error("Erreur lors de l'import:", error);
+      setProcessing({
+        stage: "error",
+        error: error.message || t.scenes.import.errors.generic,
+      });
+      setToast({
+        message: error.message || t.scenes.import.errors.generic,
+        variant: "error",
+      });
+    }
+  }, [files, session, supabase, router, consentToAI]);
+
+  const handleConfirmOrder = useCallback(async () => {
+    if (reorderingFiles.length === 0) return;
+
+    try {
+      setProcessing({ stage: "uploading", progress: 0.95, detail: "Lancement du traitement…" });
+
+      // Utiliser l'ordre choisi
+      const orderedPaths = reorderingFiles.map(f => f.path);
+
+      // Lancer l'import en arrière-plan
       const response = await fetch("/api/scenes/import", {
         method: "POST",
         headers: {
@@ -191,7 +226,7 @@ export function ImportForm() {
           "X-Import-Background": "1",
         },
         body: JSON.stringify({
-          filePaths: uploads,
+          filePaths: orderedPaths,
           action: "preview",
           consentToThirdPartyAI: true,
         }),
@@ -205,6 +240,11 @@ export function ImportForm() {
 
       const jobId: string | undefined = typeof data.jobId === "string" ? data.jobId : undefined;
 
+      // Nettoyer les previews
+      uploadedFiles.forEach(f => {
+        if (f.preview) URL.revokeObjectURL(f.preview);
+      });
+
       // Afficher un message de succès et réinitialiser
       setToast({
         message:
@@ -212,6 +252,8 @@ export function ImportForm() {
         variant: "success",
       });
       setFiles([]);
+      setUploadedFiles([]);
+      setReorderingFiles([]);
       setProcessing({ stage: "idle" });
 
       // Rediriger vers la page preview (elle attendra jusqu'à ce que le preview soit prêt).
@@ -229,7 +271,17 @@ export function ImportForm() {
         variant: "error",
       });
     }
-  }, [files, session, supabase, router, consentToAI]);
+  }, [reorderingFiles, uploadedFiles, router, consentToAI]);
+
+  const moveFile = useCallback((fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= reorderingFiles.length) return;
+    setReorderingFiles(prev => {
+      const next = [...prev];
+      const [item] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, item);
+      return next;
+    });
+  }, [reorderingFiles.length]);
 
   const handleReviewBack = useCallback(() => {
     setDraft(null);
@@ -322,6 +374,111 @@ export function ImportForm() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Étape de réorganisation des fichiers */}
+      {uploadedFiles.length > 0 && processing.stage === "idle" && (
+        <div className="rounded-2xl border border-[#e7e1d9] bg-white/90 p-6">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-1">
+                <p className="text-sm font-semibold text-[#1c1b1f]">Réorganiser l'ordre des fichiers</p>
+                <p className="text-xs text-[#7a7184]">
+                  L'ordre des fichiers détermine l'ordre d'extraction du texte. Glissez-déposez pour réorganiser.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  uploadedFiles.forEach(f => {
+                    if (f.preview) URL.revokeObjectURL(f.preview);
+                  });
+                  setUploadedFiles([]);
+                  setReorderingFiles([]);
+                  setFiles([]);
+                }}
+                className="rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33]"
+              >
+                Annuler
+              </button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {reorderingFiles.map((file, index) => (
+                <div
+                  key={file.path}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("text/plain", String(index));
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const fromIndex = parseInt(e.dataTransfer.getData("text/plain") || "0", 10);
+                    moveFile(fromIndex, index);
+                  }}
+                  className="group relative flex flex-col gap-2 rounded-xl border border-[#e7e1d9] bg-white p-3 transition hover:border-[#3b1f4a33] hover:shadow-sm"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-[#7a7184]">#{index + 1}</span>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => moveFile(index, index - 1)}
+                        disabled={index === 0}
+                        className="rounded border border-[#e7e1d9] bg-white px-2 py-1 text-xs font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Monter"
+                        title="Monter"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveFile(index, index + 1)}
+                        disabled={index === reorderingFiles.length - 1}
+                        className="rounded border border-[#e7e1d9] bg-white px-2 py-1 text-xs font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Descendre"
+                        title="Descendre"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {file.preview ? (
+                    <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-[#f9f7f3]">
+                      <img
+                        src={file.preview}
+                        alt={file.name}
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex aspect-video w-full items-center justify-center rounded-lg bg-[#f9f7f3]">
+                      <svg className="h-8 w-8 text-[#7a7184]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
+                  
+                  <p className="truncate text-xs font-medium text-[#1c1b1f]" title={file.name}>
+                    {file.name}
+                  </p>
+                  
+                  <div className="absolute inset-0 cursor-grab active:cursor-grabbing" />
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={handleConfirmOrder}
+              className="w-full rounded-full bg-[#3b1f4a] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#2d1638]"
+            >
+              Confirmer l'ordre et lancer l'import
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Étape de relecture / nettoyage */}
       {processing.stage === "review" && draft && (
         <div className="rounded-2xl border border-[#e7e1d9] bg-white/90 p-6">

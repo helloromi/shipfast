@@ -43,6 +43,9 @@ export default function ImportPreviewPage() {
   const [jobStatus, setJobStatus] = useState<ImportJobStatus | null>(null);
   const [jobError, setJobError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [progressPercentage, setProgressPercentage] = useState<number | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftAuthor, setDraftAuthor] = useState("");
   const [characters, setCharacters] = useState<EditorCharacter[]>([]);
@@ -83,6 +86,9 @@ export default function ImportPreviewPage() {
 
         const status = data.job.status as ImportJobStatus;
         setJobStatus(status);
+        setProgressPercentage(data.job.progress_percentage ?? null);
+        setStatusMessage(data.job.status_message ?? null);
+        if (data.job.created_at) setCreatedAt(data.job.created_at);
 
         if (status === "error") {
           setJobError(String(data.job.error_message || "L'import a échoué."));
@@ -310,12 +316,60 @@ export default function ImportPreviewPage() {
     }
   }, [characters, lines, draftTitle, draftAuthor, jobId, router, hasErrors]);
 
+  // Calculer le temps estimé restant
+  const estimatedTimeRemaining = useMemo(() => {
+    if (!createdAt || !progressPercentage || progressPercentage <= 0 || progressPercentage >= 100) {
+      return null;
+    }
+    const elapsed = Date.now() - new Date(createdAt).getTime();
+    const elapsedSeconds = elapsed / 1000;
+    const progressRatio = progressPercentage / 100;
+    if (progressRatio === 0) return null;
+    const totalEstimatedSeconds = elapsedSeconds / progressRatio;
+    const remainingSeconds = totalEstimatedSeconds - elapsedSeconds;
+    
+    if (remainingSeconds < 0) return null;
+    
+    const minutes = Math.floor(remainingSeconds / 60);
+    const seconds = Math.floor(remainingSeconds % 60);
+    
+    if (minutes > 0) {
+      return `${minutes} min${minutes > 1 ? "s" : ""}${seconds > 0 ? ` ${seconds}s` : ""}`;
+    }
+    return `${seconds}s`;
+  }, [createdAt, progressPercentage]);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-12">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#e7e1d9] border-t-[#3b1f4a]"></div>
         <p className="text-sm text-[#524b5a]">Import en cours…</p>
         {statusLabel ? <p className="text-xs text-[#7a7184]">{statusLabel}</p> : null}
+        {statusMessage && (
+          <p className="text-xs text-[#7a7184]">{statusMessage}</p>
+        )}
+        
+        {/* Barre de progression */}
+        {progressPercentage !== null && (
+          <div className="w-full max-w-md space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-[#7a7184]">Progression</span>
+              <span className="text-xs font-semibold text-[#3b1f4a]">{progressPercentage}%</span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-[#e7e1d9]">
+              <div
+                className="h-full rounded-full bg-[#3b1f4a] transition-[width] duration-300"
+                style={{ width: `${progressPercentage}%` }}
+              />
+            </div>
+            {estimatedTimeRemaining && (
+              <p className="text-center text-xs text-[#7a7184]">
+                Temps estimé restant : environ {estimatedTimeRemaining}
+              </p>
+            )}
+          </div>
+        )}
+        
         {(jobStatus === "pending" || jobStatus === "processing") && (
           <button
             onClick={handleRetry}

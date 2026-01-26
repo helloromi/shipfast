@@ -5,6 +5,7 @@ import { fetchUserProgressScenes, getSupabaseSessionUser } from "@/lib/queries/s
 import { fetchUserStatsSummary } from "@/lib/queries/stats";
 import { StatsSummaryCard } from "@/components/stats/stats-summary-card";
 import { SceneCard } from "@/components/home/scene-card";
+import { ActiveImportsSection } from "@/components/home/active-imports-section";
 import { t } from "@/locales/fr";
 import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
 
@@ -33,6 +34,8 @@ export default async function HomePage() {
       </div>
 
       <StatsSummaryCard stats={statsSummary} />
+
+      <ActiveImportsSection />
 
       {progresses.length === 0 && (
         <div className="rounded-2xl border border-dashed border-[#e7e1d9] bg-white/85 p-4 text-sm text-[#524b5a]">

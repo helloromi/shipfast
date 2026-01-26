@@ -21,14 +21,19 @@ async function setJobStage(
   supabase: any,
   jobId: string,
   stage: Stage,
-  statusMessage?: string
+  statusMessage?: string,
+  progressPercentage?: number
 ): Promise<void> {
+  const updateData: any = {
+    processing_stage: stage,
+    status_message: statusMessage ?? null,
+  };
+  if (progressPercentage !== undefined) {
+    updateData.progress_percentage = Math.max(0, Math.min(100, Math.round(progressPercentage)));
+  }
   await supabase
     .from("import_jobs")
-    .update({
-      processing_stage: stage,
-      status_message: statusMessage ?? null,
-    })
+    .update(updateData)
     .eq("id", jobId);
 }
 
@@ -65,6 +70,7 @@ export async function processImportJobPreview(
   }
 
   const allowThirdPartyAI = Boolean(job.consent_to_ai);
+  const totalFiles = filePaths.length;
 
   try {
     await supabase
@@ -73,12 +79,21 @@ export async function processImportJobPreview(
         status: "processing",
         error_message: null,
         last_attempt_at: new Date().toISOString(),
+        progress_percentage: 0,
       })
       .eq("id", jobId);
 
+    await setJobStage(supabase, jobId, "validating", "Validation des fichiers…", 5);
+
     let aggregatedText = "";
-    await setJobStage(supabase, jobId, "downloading", "Téléchargement des fichiers…");
-    for (const filePath of filePaths) {
+    await setJobStage(supabase, jobId, "downloading", "Téléchargement des fichiers…", 10);
+    
+    // Téléchargement : 10-30%
+    for (let i = 0; i < filePaths.length; i++) {
+      const filePath = filePaths[i];
+      const downloadProgress = 10 + (i / totalFiles) * 20;
+      await setJobStage(supabase, jobId, "downloading", `Téléchargement ${i + 1}/${totalFiles}…`, downloadProgress);
+      
       const { data: fileData, error: downloadError } = await supabase.storage
         .from("scene-imports")
         .download(filePath);
@@ -90,6 +105,7 @@ export async function processImportJobPreview(
             status: "error",
             processing_stage: "downloading",
             error_message: `Erreur lors du téléchargement: ${downloadError?.message || "inconnue"}`,
+            progress_percentage: downloadProgress,
           })
           .eq("id", jobId);
         return { ok: false, error: "Erreur lors du téléchargement." };
@@ -98,7 +114,10 @@ export async function processImportJobPreview(
       const fileName = filePath.split("/").pop() || "file";
       const file = new File([fileData], fileName, { type: fileData.type });
 
-      await setJobStage(supabase, jobId, "extracting", `Extraction du texte: ${fileName}`);
+      // Extraction : 30-70%
+      const extractProgress = 30 + (i / totalFiles) * 40;
+      await setJobStage(supabase, jobId, "extracting", `Extraction du texte: ${fileName} (${i + 1}/${totalFiles})`, extractProgress);
+      
       const extractionResult = await extractTextFromFile(file, undefined, { allowOpenAI: allowThirdPartyAI });
       if (!extractionResult.success) {
         await supabase
@@ -107,6 +126,7 @@ export async function processImportJobPreview(
             status: "error",
             processing_stage: "extracting",
             error_message: `Erreur lors de l'extraction: ${extractionResult.error}`,
+            progress_percentage: extractProgress,
           })
           .eq("id", jobId);
         return { ok: false, error: "Erreur lors de l'extraction." };
@@ -124,12 +144,14 @@ export async function processImportJobPreview(
           status: "error",
           processing_stage: "extracting",
           error_message: "Aucun texte n'a pu être extrait des fichiers",
+          progress_percentage: 70,
         })
         .eq("id", jobId);
       return { ok: false, error: "Aucun texte extrait." };
     }
 
-    await setJobStage(supabase, jobId, "parsing", "Parsing / structuration du texte…");
+    // Parsing : 70-95%
+    await setJobStage(supabase, jobId, "parsing", "Parsing / structuration du texte…", 75);
     const parseResult = await parseTextWithAI(aggregatedText, { allowThirdPartyAI });
     if (!parseResult.success || !parseResult.data) {
       await supabase
@@ -138,12 +160,14 @@ export async function processImportJobPreview(
           status: "error",
           processing_stage: "parsing",
           error_message: `Erreur lors du parsing: ${parseResult.error || "inconnue"}`,
+          progress_percentage: 90,
         })
         .eq("id", jobId);
       return { ok: false, error: "Erreur lors du parsing." };
     }
 
-    await setJobStage(supabase, jobId, "finalizing", "Finalisation du preview…");
+    // Finalisation : 95-100%
+    await setJobStage(supabase, jobId, "finalizing", "Finalisation du preview…", 95);
     await supabase
       .from("import_jobs")
       .update({
@@ -152,6 +176,7 @@ export async function processImportJobPreview(
         status_message: null,
         draft_data: parseResult.data as any,
         error_message: null,
+        progress_percentage: 100,
       })
       .eq("id", jobId);
 

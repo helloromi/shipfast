@@ -859,74 +859,142 @@ export function LearnSession(props: LearnSessionProps) {
             </div>
 
             <div className="mt-4 flex flex-col gap-4">
+              {/* 1. Choix du type d'exercice (flashcard ou vue d'ensemble) */}
               <div className="flex flex-col gap-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                  {t.learn.setup.limitLabel}
-                </div>
-                <div className="grid gap-2">
-                  <div
-                    className={`grid gap-2 ${
-                      limitCountPresets.length >= 3
-                        ? "grid-cols-3"
-                        : limitCountPresets.length === 2
-                          ? "grid-cols-2"
-                          : "grid-cols-1"
-                    }`}
-                  >
-                    {limitCountPresets.map((count) => {
-                      const computed = computeLimitFromCount(count);
-                      const disabled = remainingUserLinesCount === 0 || computed === 0;
-                      const isSelected = limitChoice.type === "count" && limitChoice.count === count;
-                      return (
-                        <button
-                          key={count}
-                          type="button"
-                          disabled={disabled}
-                          onClick={() => {
-                            setLimitChoice({ type: "count", count });
-                            setLimitCount(computed);
-                          }}
-                          className={`w-full rounded-full border px-3 py-1.5 text-center text-sm font-semibold transition disabled:opacity-50 ${
-                            isSelected
-                              ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
-                              : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
-                          }`}
-                        >
-                          <div className="inline-flex items-baseline justify-center gap-1.5">
-                            <span className="text-base">{computed}</span>
-                            <span className={`text-[11px] font-medium ${isSelected ? "text-white/70" : "text-[#7a7184]"}`}>
-                              {computed === 1 ? "réplique" : "répliques"}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                    {t.learn.setup.displayModeLabel}
                   </div>
+                  <div className="text-xs font-medium text-[#7a7184]">
+                    {userLinesAll.length} réplique{userLinesAll.length > 1 ? "s" : ""} disponible{userLinesAll.length > 1 ? "s" : ""}
+                  </div>
+                </div>
+                {userLinesAll.length <= 5 && (
+                  <div className="rounded-xl border border-[#f4c95d66] bg-[#f4c95d1f] p-3 text-sm text-[#3b1f4a]">
+                    {t.learn.setup.suggestionPeuRepliques.replace("{count}", String(userLinesAll.length))}
+                  </div>
+                )}
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <button
                     type="button"
-                    disabled={remainingUserLinesCount === 0}
                     onClick={() => {
-                      setLimitChoice({ type: "all" });
-                      setLimitCount(null);
+                      setMode("flashcard");
+                      if (inputMode === "write" && mode === "overview") {
+                        setInputMode("revealOnly");
+                      }
                     }}
-                    className={`w-full rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
-                      limitChoice.type === "all"
+                    className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
+                      mode === "flashcard"
                         ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
                         : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
                     }`}
                   >
-                    {t.learn.labels.toutes}
+                    {t.learn.modes.flashcard}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("overview");
+                      setInputMode("revealOnly");
+                      // En mode overview, on travaille toutes les répliques restantes
+                      setLimitChoice({ type: "all" });
+                      setLimitCount(null);
+                    }}
+                    className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
+                      mode === "overview"
+                        ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
+                        : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
+                    }`}
+                  >
+                    {t.learn.modes.overview}
                   </button>
                 </div>
+                <p className="text-xs text-[#7a7184]">
+                  {mode === "overview"
+                    ? t.learn.setup.overviewDesc
+                    : "Une réplique à la fois avec contexte."}
+                </p>
               </div>
 
+              {/* 2. Nombre de répliques (seulement si flashcard) */}
+              {mode === "flashcard" && (
+                <div className="flex flex-col gap-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                    {t.learn.setup.limitLabel}
+                  </div>
+                  <div className="grid gap-2">
+                    <div
+                      className={`grid gap-2 ${
+                        limitCountPresets.length >= 3
+                          ? "grid-cols-3"
+                          : limitCountPresets.length === 2
+                            ? "grid-cols-2"
+                            : "grid-cols-1"
+                      }`}
+                    >
+                      {limitCountPresets.map((count) => {
+                        const computed = computeLimitFromCount(count);
+                        const disabled = remainingUserLinesCount === 0 || computed === 0;
+                        const isSelected = limitChoice.type === "count" && limitChoice.count === count;
+                        return (
+                          <button
+                            key={count}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => {
+                              setLimitChoice({ type: "count", count });
+                              setLimitCount(computed);
+                            }}
+                            className={`w-full rounded-full border px-3 py-1.5 text-center text-sm font-semibold transition disabled:opacity-50 ${
+                              isSelected
+                                ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
+                                : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
+                            }`}
+                          >
+                            <div className="inline-flex items-baseline justify-center gap-1.5">
+                              <span className="text-base">{computed}</span>
+                              <span className={`text-[11px] font-medium ${isSelected ? "text-white/70" : "text-[#7a7184]"}`}>
+                                {computed === 1 ? "réplique" : "répliques"}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={remainingUserLinesCount === 0}
+                      onClick={() => {
+                        setLimitChoice({ type: "all" });
+                        setLimitCount(null);
+                      }}
+                      className={`w-full rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
+                        limitChoice.type === "all"
+                          ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
+                          : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
+                      }`}
+                    >
+                      {t.learn.labels.toutes}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. Quand commencer */}
               <div className="flex flex-col gap-2">
                 <button
                   type="button"
                   onClick={() => setShowAdvanced(!showAdvanced)}
                   className="flex items-center justify-between rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-left text-sm font-medium text-[#3b1f4a] transition hover:border-[#3b1f4a33] hover:bg-[#f9f7f3]"
                 >
-                  <span>Choisir quand commencer</span>
+                  <div className="flex flex-col gap-0.5">
+                    <span>Choisir quand commencer</span>
+                    {!showAdvanced && startIndex > 0 && userLinesAll[startIndex] && (
+                      <span className="text-xs font-normal text-[#7a7184]">
+                        À partir de la réplique #{userLinesAll[startIndex].order}
+                      </span>
+                    )}
+                  </div>
                   <span className="text-xs">{showAdvanced ? "▲" : "▼"}</span>
                 </button>
 
@@ -994,93 +1062,72 @@ export function LearnSession(props: LearnSessionProps) {
                 )}
               </div>
 
-              <div className="flex flex-col gap-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                  {t.learn.setup.modeLabel}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setInputMode("revealOnly")}
-                    disabled={mode === "overview"}
-                    className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
-                      inputMode === "revealOnly"
-                        ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
-                        : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
-                    } ${mode === "overview" ? "opacity-50 cursor-not-allowed" : ""}`}
-                  >
-                    {t.learn.setup.revealOnlyTitle}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setInputMode("write")}
-                    disabled={mode === "overview"}
-                    className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
-                      inputMode === "write"
-                        ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
-                        : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
-                    } ${mode === "overview" ? "opacity-50 cursor-not-allowed" : ""}`}
-                  >
-                    {t.learn.setup.writeTitle}
-                  </button>
-                </div>
-                <p className="text-xs text-[#7a7184]">
-                  {mode === "overview"
-                    ? "Le mode Vue d'ensemble utilise uniquement la révélation."
-                    : inputMode === "revealOnly"
+              {/* Mode d'input (seulement si flashcard) */}
+              {mode === "flashcard" && (
+                <div className="flex flex-col gap-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                    {t.learn.setup.modeLabel}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setInputMode("revealOnly")}
+                      className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
+                        inputMode === "revealOnly"
+                          ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
+                          : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
+                      }`}
+                    >
+                      {t.learn.setup.revealOnlyTitle}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInputMode("write")}
+                      className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
+                        inputMode === "write"
+                          ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
+                          : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
+                      }`}
+                    >
+                      {t.learn.setup.writeTitle}
+                    </button>
+                  </div>
+                  <p className="text-xs text-[#7a7184]">
+                    {inputMode === "revealOnly"
                       ? t.learn.setup.revealOnlyDesc
                       : t.learn.setup.writeDesc}
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-                  {t.learn.setup.displayModeLabel}
+                  </p>
                 </div>
-                {userLinesAll.length <= 5 && (
-                  <div className="rounded-xl border border-[#f4c95d66] bg-[#f4c95d1f] p-3 text-sm text-[#3b1f4a]">
-                    {t.learn.setup.suggestionPeuRepliques.replace("{count}", String(userLinesAll.length))}
-                  </div>
-                )}
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode("flashcard");
-                      if (inputMode === "write" && mode === "overview") {
-                        setInputMode("revealOnly");
-                      }
-                    }}
-                    className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
-                      mode === "flashcard"
-                        ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
-                        : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
-                    }`}
-                  >
-                    {t.learn.modes.flashcard}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode("overview");
-                      setInputMode("revealOnly");
-                    }}
-                    className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
-                      mode === "overview"
-                        ? "border-[#3b1f4a] bg-[#3b1f4a] text-white"
-                        : "border-[#e7e1d9] bg-white text-[#3b1f4a] hover:border-[#3b1f4a66]"
-                    }`}
-                  >
-                    {t.learn.modes.overview}
-                  </button>
-                </div>
-                <p className="text-xs text-[#7a7184]">
-                  {mode === "overview"
-                    ? t.learn.setup.overviewDesc
-                    : "Une réplique à la fois avec contexte."}
-                </p>
-              </div>
+              )}
             </div>
+
+            {/* Résumé de la session */}
+            {userLines.length > 0 && (
+              <div className="mt-4 rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                      Résumé de la session
+                    </div>
+                    <div className="text-sm font-medium text-[#1c1b1f]">
+                      {userLines.length === 1
+                        ? "1 réplique sera travaillée"
+                        : `${userLines.length} répliques seront travaillées`}
+                      {startIndex > 0 && (
+                        <span className="ml-1 text-xs font-normal text-[#7a7184]">
+                          (à partir de la réplique #{userLinesAll[startIndex]?.order ?? startIndex + 1})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs font-medium text-[#7a7184]">
+                      {userLinesAll.length} réplique{userLinesAll.length > 1 ? "s" : ""} au total
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button
@@ -1100,7 +1147,9 @@ export function LearnSession(props: LearnSessionProps) {
                 }}
                 className="w-full rounded-full bg-[#ff6b6b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a] disabled:opacity-50 sm:w-auto"
               >
-                {t.learn.setup.start}
+                {userLines.length > 0
+                  ? `${t.learn.setup.start} (${userLines.length} ${userLines.length === 1 ? "réplique" : "répliques"})`
+                  : t.learn.setup.start}
               </button>
             </div>
           </div>

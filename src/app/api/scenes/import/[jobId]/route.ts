@@ -54,6 +54,9 @@ export async function GET(
         error_message: job.error_message,
         created_at: job.created_at,
         updated_at: job.updated_at,
+        progress_percentage: job.progress_percentage ?? null,
+        status_message: job.status_message ?? null,
+        processing_stage: job.processing_stage ?? null,
       },
     });
   } catch (error: unknown) {
