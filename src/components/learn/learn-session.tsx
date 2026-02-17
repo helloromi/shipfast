@@ -224,8 +224,8 @@ export function LearnSession(props: LearnSessionProps) {
   }, [remainingUserLinesCount]);
   const limitCountPresets = useMemo(() => {
     const max = remainingUserLinesCount;
-    if (max <= 6) return [] as number[];
-    const desired = [5, 10, 15];
+    if (max <= 0) return [] as number[];
+    const desired = max <= 6 ? [5] : [5, 10, 15];
     const clamped = desired.map((n) => Math.min(n, max));
     const unique = [...new Set(clamped)];
     // Éviter de proposer un bouton équivalent à "Toutes" (n === max).
@@ -896,9 +896,8 @@ export function LearnSession(props: LearnSessionProps) {
                     onClick={() => {
                       setMode("overview");
                       setInputMode("revealOnly");
-                      // En mode overview, on travaille toutes les répliques restantes
-                      setLimitChoice({ type: "all" });
-                      setLimitCount(null);
+                      // Ne pas réinitialiser la limite : si l'utilisateur a choisi "5 répliques",
+                      // on garde ce choix pour éviter de faire toutes les répliques par erreur.
                     }}
                     className={`flex-1 rounded-full border px-4 py-2 text-center text-sm font-semibold transition ${
                       mode === "overview"
