@@ -47,11 +47,11 @@ export default async function RootLayout({
     <html lang="fr">
       <body className={`${inter.variable} ${playfair.variable} antialiased`}>
         <SupabaseProvider initialSession={session}>
-          <div className="min-h-screen bg-[radial-gradient(circle_at_20%_20%,#F4C95D22,transparent_25%),radial-gradient(circle_at_80%_10%,#FF6B6B22,transparent_22%),radial-gradient(circle_at_80%_80%,#3B1F4A18,transparent_28%),#F9F7F3] text-[#1C1B1F]">
+          <div className="flex min-h-screen flex-col bg-[radial-gradient(circle_at_20%_20%,#F4C95D22,transparent_25%),radial-gradient(circle_at_80%_10%,#FF6B6B22,transparent_22%),radial-gradient(circle_at_80%_80%,#3B1F4A18,transparent_28%),#F9F7F3] text-[#1C1B1F]">
             <Suspense fallback={null}>
               <Header />
             </Suspense>
-            <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">{children}</main>
+            <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6">{children}</main>
             <footer className="mx-auto mt-16 max-w-6xl border-t border-[#e7e1d9] px-4 py-8 text-sm text-[#524b5a] sm:px-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>

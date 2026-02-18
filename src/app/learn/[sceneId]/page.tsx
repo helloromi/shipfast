@@ -111,7 +111,7 @@ export default async function LearnPage({ params, searchParams }: Props) {
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">
             {t.learn.sectionLabel}
           </p>
-          {breadcrumb && (
+          {breadcrumbParts.length > 1 && (
             <p className="text-xs font-semibold text-[#7a7184]">
               {breadcrumb}
             </p>

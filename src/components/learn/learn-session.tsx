@@ -96,7 +96,6 @@ export function LearnSession(props: LearnSessionProps) {
   const [limitCount, setLimitCount] = useState<number | null>(null); // null => toutes
   const [startIndex, setStartIndex] = useState(0); // Index de départ dans userLinesAll
   const [inputMode, setInputMode] = useState<InputMode>("revealOnly");
-  const [showStageDirections, setShowStageDirections] = useState(true);
   const [limitChoice, setLimitChoice] = useState<LimitChoice>({ type: "all" });
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -263,10 +262,7 @@ export function LearnSession(props: LearnSessionProps) {
     return lines.filter((l) => l.order <= lastUserLine.order);
   }, [lines, limitCount, userLines, startIndex, userLinesAll]);
 
-  const visibleLines = useMemo(() => {
-    if (showStageDirections) return displayLines;
-    return displayLines.filter((l) => !isLikelyStageDirection(l));
-  }, [displayLines, showStageDirections]);
+  const visibleLines = useMemo(() => displayLines, [displayLines]);
 
   const cueLineIds = useMemo(() => {
     // Pour chaque réplique utilisateur, identifier la réplique (non didascalie) immédiatement précédente
@@ -827,22 +823,15 @@ export function LearnSession(props: LearnSessionProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2">
+      <div className="fixed bottom-4 right-4 z-40">
         <button
           type="button"
           onClick={() => void quitSession()}
-          className="rounded-full border border-[#e7e1d9] bg-white/90 px-4 py-2 text-xs font-semibold text-[#3b1f4a] shadow-sm backdrop-blur transition hover:border-[#3b1f4a33]"
+          className="rounded-full border border-[#3b1f4a33] bg-white px-4 py-2 text-xs font-semibold text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a]"
           aria-label={t.learn.buttons.quitterSession}
           title={t.learn.buttons.quitterSession}
         >
           {t.learn.buttons.quitterSession}
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowStageDirections((v) => !v)}
-          className="rounded-full border border-[#e7e1d9] bg-white/90 px-4 py-2 text-xs font-semibold text-[#3b1f4a] shadow-sm backdrop-blur transition hover:border-[#3b1f4a33]"
-        >
-          {t.learn.labels.didascalies} : {showStageDirections ? t.learn.labels.affichees : t.learn.labels.masquees}
         </button>
       </div>
 
