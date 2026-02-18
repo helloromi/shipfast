@@ -85,6 +85,7 @@ export const learn = {
     suggestionPeuRepliques: "Tu as peu de répliques ({count}). Pour mieux comprendre le contexte, nous recommandons le mode Vue d'ensemble.",
     cancel: "Annuler",
     start: "Commencer",
+    advancedOptions: "Options avancées",
   },
   messages: {
     feedbackEnregistre: "Retour enregistré pour cette réplique.",
