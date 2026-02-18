@@ -516,7 +516,7 @@ export function LearnSession(props: LearnSessionProps) {
     }
   };
 
-  const resetLocalState = (resetStartIndex = false) => {
+  const resetLocalState = (resetStartIndex = false, preserveLimit = false) => {
     setLineState(
       lines.reduce(
         (acc, line) => ({
@@ -550,8 +550,10 @@ export function LearnSession(props: LearnSessionProps) {
     if (resetStartIndex) {
       setStartIndex(0);
     }
-    setLimitChoice({ type: "all" });
-    setLimitCount(null);
+    if (!preserveLimit) {
+      setLimitChoice({ type: "all" });
+      setLimitCount(null);
+    }
     setElapsedTime(0);
     if (timeInterval.current) {
       clearInterval(timeInterval.current);
@@ -1140,7 +1142,7 @@ export function LearnSession(props: LearnSessionProps) {
                 type="button"
                 disabled={userLines.length === 0}
                 onClick={() => {
-                  resetLocalState();
+                  resetLocalState(false, true);
                   setShowSetupModal(false);
                   void startTrackingSession(userLines.length);
                 }}
