@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { extractTextFromFile, type ExtractionProgressEventV2 } from "@/lib/utils/text-extraction";
 import { parseTextWithAI, type ParsedScene } from "@/lib/utils/text-parser";
@@ -119,14 +119,16 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // IMPORTANT: en environnement serverless, exécuter après la réponse n'est pas fiable.
-      // On tente quand même, mais un cron (ou un retry) doit pouvoir reprendre le job.
+      // after() maintient la fonction serverless vivante après l'envoi de la réponse
+      // via waitUntil de Vercel, garantissant que le traitement s'exécute jusqu'au bout.
       const admin = createSupabaseAdminClient();
-      processImportJobPreview(
-        { id: job.id, user_id: user.id, file_paths: filePaths, consent_to_ai: allowThirdPartyAI },
-        admin
-      ).catch((error) => {
-        console.error(`[Import Job ${job.id}] Erreur lors du traitement:`, error);
+      after(async () => {
+        await processImportJobPreview(
+          { id: job.id, user_id: user.id, file_paths: filePaths, consent_to_ai: allowThirdPartyAI },
+          admin
+        ).catch((error) => {
+          console.error(`[Import Job ${job.id}] Erreur lors du traitement:`, error);
+        });
       });
 
       // Retourner immédiatement le job_id
