@@ -78,7 +78,7 @@ export function LineMasteryChart({ data }: LineMasteryChartProps) {
   return (
     <div className="w-full">
       <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+        <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e7e1d9" />
           <XAxis
             dataKey="label"
@@ -86,8 +86,7 @@ export function LineMasteryChart({ data }: LineMasteryChartProps) {
             fontSize={12}
             tickLine={false}
             axisLine={false}
-            interval="preserveStartEnd"
-            tickFormatter={(_, idx) => (chartData[idx] ? `${chartData[idx].label} ${chartData[idx].short}` : "")}
+            tickFormatter={(_, idx) => chartData[idx]?.label ?? ""}
           />
           <YAxis
             domain={[0, 10]}
