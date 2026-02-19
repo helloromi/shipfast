@@ -27,7 +27,11 @@ export function Toast({ message, variant = "success", onClose, duration = 3500 }
   const iconColor = variant === "success" ? "text-emerald-600" : "text-red-600";
 
   return (
-    <div className={`${base} ${styles}`} role="status" aria-live="polite">
+    <div
+      className={`${base} ${styles}`}
+      role={variant === "error" ? "alert" : "status"}
+      aria-live={variant === "error" ? "assertive" : "polite"}
+    >
       <span className={`mt-0.5 inline-flex h-5 w-5 flex-none items-center justify-center ${iconColor}`}>
         {variant === "success" ? (
           <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">

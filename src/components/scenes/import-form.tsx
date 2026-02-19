@@ -464,7 +464,6 @@ export function ImportForm() {
                     {file.name}
                   </p>
                   
-                  <div className="absolute inset-0 cursor-grab active:cursor-grabbing" />
                 </div>
               ))}
             </div>

@@ -56,16 +56,18 @@ export function MagicLinkForm() {
         onSubmit={onSubmit}
         className="flex w-full flex-col gap-3 rounded-2xl border border-[#e7e1d9] bg-white/90 p-4 shadow-sm shadow-[#3b1f4a0f]"
       >
-        <label className="text-sm font-semibold text-[#3b1f4a]">
+        <label htmlFor="email-input" className="text-sm font-semibold text-[#3b1f4a]">
           {t.login.form.label}
         </label>
         <input
+          id="email-input"
           required
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full rounded-lg border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
           placeholder={t.login.form.placeholder}
+          aria-describedby={error ? "email-error" : undefined}
         />
         <button
           type="submit"
@@ -75,12 +77,12 @@ export function MagicLinkForm() {
           {status === "loading" ? t.login.form.button.envoi : t.login.form.button.envoyer}
         </button>
         {status === "sent" && (
-          <p className="text-sm text-[#2cb67d]">
+          <p className="text-sm text-[#2cb67d]" role="status" aria-live="polite">
             {t.login.form.success.message} à {email}.
           </p>
         )}
         {error && (
-          <p className="text-sm text-[#e11d48]">
+          <p id="email-error" className="text-sm text-[#e11d48]" role="alert" aria-live="assertive">
             {error}
           </p>
         )}

@@ -5,6 +5,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { t } from "@/locales/fr";
 import { SceneProgress } from "@/lib/queries/scenes";
+import { Toast } from "@/components/ui/toast";
+
+type ToastState = {
+  message: string;
+  variant: "success" | "error";
+};
 
 type SceneCardProps = {
   scene: SceneProgress;
@@ -27,6 +33,7 @@ export function SceneCard({ scene }: SceneCardProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
   const handleDelete = async () => {
     if (!showConfirm) {
@@ -50,13 +57,14 @@ export function SceneCard({ scene }: SceneCardProps) {
       console.error("Error deleting scene:", error);
       setIsDeleting(false);
       setShowConfirm(false);
-      alert("Erreur lors de la suppression. Veuillez réessayer.");
+      setToast({ message: "Erreur lors de la suppression. Veuillez réessayer.", variant: "error" });
     }
   };
 
   const progress = progressForAverage(scene.average);
 
   return (
+    <>
     <div className="flex h-full flex-col gap-3 rounded-2xl border border-[#e7e1d9] bg-white/92 p-5 shadow-md shadow-[#3b1f4a14]">
       <div className="flex items-center justify-between gap-2">
         <h2 className="font-display text-xl font-semibold text-[#3b1f4a]">
@@ -95,21 +103,24 @@ export function SceneCard({ scene }: SceneCardProps) {
               : `/scenes/${scene.sceneId}`
           }
           className="inline-flex flex-1 items-center justify-center rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-3 py-2 text-sm font-semibold text-white shadow-md shadow-[#ff6b6b33] hover:-translate-y-[1px]"
+          aria-label={`Continuer à apprendre ${scene.title}`}
         >
           {t.home.buttons.continuer}
         </Link>
         <Link
           href={`/scenes/${scene.sceneId}`}
           className="inline-flex items-center justify-center rounded-full border border-[#e7e1d9] bg-white px-3 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm hover:border-[#3b1f4a66]"
+          aria-label={`Voir les détails de ${scene.title}`}
         >
           {t.home.buttons.details}
         </Link>
         {showConfirm ? (
-          <div className="flex gap-1">
+          <div className="flex gap-1" role="group" aria-label="Confirmer la suppression">
             <button
               onClick={handleDelete}
               disabled={isDeleting}
               className="inline-flex items-center justify-center rounded-full bg-[#e11d48] px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#c4153c] disabled:opacity-50"
+              aria-label={isDeleting ? "Suppression en cours…" : "Confirmer la suppression"}
             >
               {isDeleting ? "..." : "✓"}
             </button>
@@ -117,6 +128,7 @@ export function SceneCard({ scene }: SceneCardProps) {
               onClick={() => setShowConfirm(false)}
               disabled={isDeleting}
               className="inline-flex items-center justify-center rounded-full border border-[#e7e1d9] bg-white px-3 py-2 text-xs font-semibold text-[#3b1f4a] shadow-sm hover:border-[#3b1f4a66] disabled:opacity-50"
+              aria-label="Annuler la suppression"
             >
               ✕
             </button>
@@ -126,9 +138,10 @@ export function SceneCard({ scene }: SceneCardProps) {
             onClick={handleDelete}
             disabled={isDeleting}
             className="inline-flex items-center justify-center rounded-full border border-[#e7e1d9] bg-white px-2 py-2 text-xs font-semibold text-[#7a7184] shadow-sm hover:border-[#e11d48] hover:text-[#e11d48] disabled:opacity-50"
+            aria-label={t.home.buttons.supprimer}
             title={t.home.buttons.supprimer}
           >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -140,6 +153,10 @@ export function SceneCard({ scene }: SceneCardProps) {
         )}
       </div>
     </div>
+    {toast && (
+      <Toast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />
+    )}
+  </>
   );
 }
 

@@ -86,7 +86,9 @@ export function Header() {
               <button
                 onClick={() => setMobileMenuOpen((v) => !v)}
                 className="rounded-full border border-[#e7e1d9] bg-white p-2 text-[#3b1f4a] shadow-sm hover:border-[#3b1f4a33] sm:hidden"
-                aria-label="Menu"
+                aria-label={mobileMenuOpen ? "Fermer le menu" : "Ouvrir le menu"}
+                aria-expanded={mobileMenuOpen}
+                aria-controls="mobile-menu"
               >
                 <svg
                   className="h-5 w-5"
@@ -112,7 +114,7 @@ export function Header() {
                 </svg>
               </button>
               {mobileMenuOpen && (
-                <div className="absolute right-0 top-12 z-[90] w-56 rounded-2xl border border-[#e7e1d9] bg-white/95 shadow-lg sm:hidden">
+                <div id="mobile-menu" className="absolute right-0 top-12 z-[90] w-56 rounded-2xl border border-[#e7e1d9] bg-white/95 shadow-lg sm:hidden" role="menu">
                   <nav className="flex flex-col gap-1 p-2">
                     {navItems.map((item) => (
                       <Link
@@ -153,11 +155,14 @@ export function Header() {
                 <button
                   onClick={() => setMenuOpen((v) => !v)}
                   className="rounded-full border border-[#e7e1d9] bg-white px-3 py-1 text-sm font-semibold text-[#3b1f4a] shadow-sm hover:border-[#3b1f4a33] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff6b6b]"
+                  aria-expanded={menuOpen}
+                  aria-haspopup="true"
+                  aria-controls="desktop-menu"
                 >
                   {session.user.email ?? t.common.header.monCompte}
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 top-12 z-[90] w-56 rounded-2xl border border-[#e7e1d9] bg-white/95 shadow-lg">
+                  <div id="desktop-menu" className="absolute right-0 top-12 z-[90] w-56 rounded-2xl border border-[#e7e1d9] bg-white/95 shadow-lg" role="menu">
                     <div className="px-4 py-3 text-xs text-[#524b5a]">{t.common.header.connecte}</div>
                     <div className="border-t border-[#e7e1d9]" />
                     <Link

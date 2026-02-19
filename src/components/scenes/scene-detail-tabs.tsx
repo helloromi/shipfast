@@ -6,10 +6,16 @@ import Link from "next/link";
 import { Tabs } from "@/components/ui/tabs";
 import { SceneStatsDetail } from "@/components/stats/scene-stats-detail";
 import { LineHighlightsEditor } from "@/components/scenes/line-highlights-editor";
+import { Toast } from "@/components/ui/toast";
 import { SceneWithRelations } from "@/types/scenes";
 import { SceneStats, LineMasteryPoint } from "@/types/stats";
 import { HighlightsByLineId } from "@/lib/queries/notes";
 import { t } from "@/locales/fr";
+
+type ToastState = {
+  message: string;
+  variant: "success" | "error";
+};
 
 type SceneDetailTabsProps = {
   scene: SceneWithRelations;
@@ -43,6 +49,7 @@ export function SceneDetailTabs({
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
   const canEdit = user && scene.is_private && scene.owner_user_id === user.id;
   const deleteLabel = canEdit ? t.scenes.detail.reglages.supprimerScene : t.scenes.detail.reglages.reinitialiserProgression;
@@ -74,7 +81,7 @@ export function SceneDetailTabs({
       console.error("Error deleting scene:", error);
       setIsDeleting(false);
       setShowConfirmDelete(false);
-      alert("Erreur lors de la suppression. Veuillez réessayer.");
+      setToast({ message: "Erreur lors de la suppression. Veuillez réessayer.", variant: "error" });
     }
   };
 
@@ -257,5 +264,12 @@ export function SceneDetailTabs({
     },
   ];
 
-  return <Tabs tabs={tabs} defaultTab="apercu" />;
+  return (
+    <>
+      <Tabs tabs={tabs} defaultTab="apercu" />
+      {toast && (
+        <Toast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />
+      )}
+    </>
+  );
 }

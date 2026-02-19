@@ -190,17 +190,20 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, 
         <h2 className="font-display text-xl font-semibold text-[#3b1f4a]">Informations de la scène</h2>
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-2">
-            <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">Titre</div>
+            <label htmlFor="scene-title" className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">Titre</label>
             <input
+              id="scene-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
               placeholder="Titre de la scène"
+              aria-required="true"
             />
           </div>
           <div className="flex flex-col gap-2">
-            <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">Description</div>
+            <label htmlFor="scene-summary" className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">Description</label>
             <textarea
+              id="scene-summary"
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
               rows={3}
@@ -219,6 +222,7 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, 
               type="button"
               onClick={() => void save()}
               disabled={saving || hasErrors}
+              aria-busy={saving}
               className="rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-[#ff6b6b33] transition hover:-translate-y-[1px] disabled:opacity-50"
             >
               {saving ? "Enregistrement…" : "Enregistrer"}
@@ -226,6 +230,7 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, 
             <button
               type="button"
               onClick={addCharacter}
+              aria-label="Ajouter un personnage"
               className="rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a66]"
             >
               + Ajouter
@@ -240,22 +245,25 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, 
             {characters.map((c) => (
               <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-[#e7e1d9] bg-white p-3">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">Nom</div>
+                  <label htmlFor={`character-name-${c.id}`} className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">Nom</label>
                   <button
                     type="button"
                     onClick={() => deleteCharacter(c.id)}
+                    aria-label={`Supprimer le personnage ${c.name || "sans nom"}`}
                     className="text-sm font-semibold text-[#b42318] underline underline-offset-4"
                   >
                     Supprimer
                   </button>
                 </div>
                 <input
+                  id={`character-name-${c.id}`}
                   value={c.name}
                   onChange={(e) =>
                     setCharacters((prev) => prev.map((x) => (x.id === c.id ? { ...x, name: e.target.value } : x)))
                   }
                   className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
                   placeholder="Nom du personnage"
+                  aria-required="true"
                 />
               </div>
             ))}
@@ -316,7 +324,7 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, 
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="cursor-grab select-none rounded-lg border border-[#e7e1d9] bg-[#f9f7f3] px-2 py-1 text-xs font-semibold text-[#7a7184]">
+                    <div aria-hidden="true" className="cursor-grab select-none rounded-lg border border-[#e7e1d9] bg-[#f9f7f3] px-2 py-1 text-xs font-semibold text-[#7a7184]">
                       ↕
                     </div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
@@ -347,6 +355,7 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, 
                     <button
                       type="button"
                       onClick={() => deleteLine(l.id)}
+                      aria-label={`Supprimer la réplique ${idx + 1}`}
                       className="text-sm font-semibold text-[#b42318] underline underline-offset-4"
                     >
                       Supprimer
@@ -356,14 +365,16 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, 
 
                 <div className="mt-3 grid gap-3 md:grid-cols-3">
                   <div className="flex flex-col gap-2 md:col-span-1">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">Personnage</div>
+                    <label htmlFor={`line-character-${l.id}`} className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">Personnage</label>
                     <select
+                      id={`line-character-${l.id}`}
                       value={l.characterId}
                       onChange={(e) =>
                         setLines((prev) =>
                           prev.map((x) => (x.id === l.id ? { ...x, characterId: e.target.value } : x))
                         )
                       }
+                      aria-label={`Personnage de la réplique ${idx + 1}`}
                       className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
                     >
                       {characterOptions.map((c) => (
@@ -375,8 +386,9 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, 
                   </div>
 
                   <div className="flex flex-col gap-2 md:col-span-2">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">Texte</div>
+                    <label htmlFor={`line-text-${l.id}`} className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">Texte</label>
                     <textarea
+                      id={`line-text-${l.id}`}
                       value={l.text}
                       onChange={(e) =>
                         setLines((prev) => prev.map((x) => (x.id === l.id ? { ...x, text: e.target.value } : x)))
@@ -384,6 +396,8 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, 
                       rows={3}
                       className="w-full rounded-xl border border-[#e7e1d9] bg-white px-3 py-2 text-sm text-[#1c1b1f] shadow-inner focus:border-[#3b1f4a]"
                       placeholder="Texte de la réplique"
+                      aria-label={`Texte de la réplique ${idx + 1}`}
+                      aria-required="true"
                     />
                   </div>
                 </div>
@@ -401,6 +415,7 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, 
             type="button"
             onClick={() => void save()}
             disabled={saving || hasErrors}
+            aria-busy={saving}
             className="rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-5 py-2 text-sm font-semibold text-white shadow-md shadow-[#ff6b6b33] transition hover:-translate-y-[1px] disabled:opacity-50"
           >
             {saving ? "Enregistrement…" : "Enregistrer"}

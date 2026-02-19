@@ -32,7 +32,7 @@ export function PricingSection() {
         <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
           {/* Plan Mensuel */}
           <div className="rounded-2xl border border-[#e7e1d9] bg-white/90 p-6 shadow-sm transition hover:shadow-md">
-            <div className="flex flex-col gap-4">
+            <div className="flex h-full flex-col gap-4">
               <h3 className="text-xl font-semibold text-[#3b1f4a]">
                 {t.pricing.plans.monthly.name}
               </h3>
@@ -44,12 +44,18 @@ export function PricingSection() {
                   {t.pricing.plans.monthly.period}
                 </span>
               </div>
+              <Link
+                href="/login"
+                className="mt-auto inline-flex w-full items-center justify-center rounded-full border border-[#3b1f4a] bg-white px-6 py-3 text-sm font-semibold text-[#3b1f4a] transition hover:-translate-y-[1px] hover:bg-[#3b1f4a] hover:text-white"
+              >
+                {t.pricing.cta}
+              </Link>
             </div>
           </div>
 
           {/* Plan Trimestriel */}
           <div className="rounded-2xl border border-[#e7e1d9] bg-white/90 p-6 shadow-sm transition hover:shadow-md">
-            <div className="flex flex-col gap-4">
+            <div className="flex h-full flex-col gap-4">
               <h3 className="text-xl font-semibold text-[#3b1f4a]">
                 {t.pricing.plans.quarterly.name}
               </h3>
@@ -62,17 +68,23 @@ export function PricingSection() {
                 </span>
               </div>
               <p className="text-sm font-semibold text-green-600">
-                💰 {t.pricing.plans.quarterly.savings}
+                <span aria-hidden="true">💰</span> {t.pricing.plans.quarterly.savings}
               </p>
+              <Link
+                href="/login"
+                className="mt-auto inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#3b1f4a] to-[#5a3d6b] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]"
+              >
+                {t.pricing.cta}
+              </Link>
             </div>
           </div>
 
           {/* Plan Annuel */}
           <div className="relative rounded-2xl border-2 border-[#ff6b6b] bg-white/90 p-6 shadow-md transition hover:shadow-lg">
-            <div className="absolute -top-2 right-4 rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-3 py-0.5 text-xs font-semibold text-white shadow">
+            <div className="absolute -top-2 right-4 rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-3 py-0.5 text-xs font-semibold text-white shadow" aria-label="Plan le plus populaire">
               Populaire
             </div>
-            <div className="flex flex-col gap-4">
+            <div className="flex h-full flex-col gap-4">
               <h3 className="text-xl font-semibold text-[#3b1f4a]">
                 {t.pricing.plans.yearly.name}
               </h3>
@@ -85,8 +97,14 @@ export function PricingSection() {
                 </span>
               </div>
               <p className="text-sm font-semibold text-green-600">
-                💰 {t.pricing.plans.yearly.savings}
+                <span aria-hidden="true">💰</span> {t.pricing.plans.yearly.savings}
               </p>
+              <Link
+                href="/login"
+                className="mt-auto inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]"
+              >
+                {t.pricing.cta}
+              </Link>
             </div>
           </div>
         </div>
