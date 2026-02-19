@@ -140,6 +140,7 @@ export function SceneDetailTabs({
           lastCharacterId={lastCharacterId}
           lastCharacterName={lastCharacterName}
           hasCharacters={scene.characters.length > 0}
+          totalSceneLines={sortedLines.length}
         />
       ) : (
         <div className="rounded-2xl border border-dashed border-[#e7e1d9] bg-white/85 p-6 text-center">

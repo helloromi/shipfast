@@ -193,7 +193,15 @@ export async function fetchSceneStats(userId: string, sceneId: string): Promise<
   const totalTimeMinutes = Math.round(
     sessions.reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0) / 60
   );
-  const totalLinesLearned = sessions.reduce((acc, s) => acc + (s.completed_lines ?? 0), 0);
+
+  // Compter les répliques uniques effectivement travaillées (pas la somme cumulée des sessions)
+  const { data: feedbackLines } = await supabase
+    .from("user_line_feedback")
+    .select("line_id, lines!inner(scene_id)")
+    .eq("user_id", userId)
+    .eq("lines.scene_id", sceneId);
+  const totalLinesLearned = new Set((feedbackLines ?? []).map((f: any) => f.line_id as string)).size;
+
   const averageScore = weightedAverageScoreByRecency(sessions as any, 14);
 
   // Évolution des scores (agrégée par jour pour éviter plusieurs points avec la même date)

@@ -11,6 +11,7 @@ type SceneStatsDetailProps = {
   lastCharacterId: string | null;
   lastCharacterName: string | null;
   hasCharacters: boolean;
+  totalSceneLines?: number;
 };
 
 export function SceneStatsDetail({
@@ -20,6 +21,7 @@ export function SceneStatsDetail({
   lastCharacterId,
   lastCharacterName,
   hasCharacters,
+  totalSceneLines,
 }: SceneStatsDetailProps) {
   const formatTime = (minutes: number) => {
     if (minutes < 60) {
@@ -91,6 +93,11 @@ export function SceneStatsDetail({
               <div className="mt-1 text-2xl font-semibold text-[#3b1f4a]">
                 {stats.averageScore.toFixed(2)}/10
               </div>
+              {totalSceneLines != null && totalSceneLines > 0 && (
+                <div className="mt-1 text-xs text-[#7a7184]">
+                  {stats.totalLinesLearned}/{totalSceneLines} répliques travaillées
+                </div>
+              )}
             </div>
           </div>
 
