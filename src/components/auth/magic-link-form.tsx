@@ -25,12 +25,6 @@ export function MagicLinkForm() {
     setError(null);
 
     const redirectUrl = `${getSiteUrl()}/auth/callback?next=/onboarding`;
-    // Log pour déboguer en production
-    if (process.env.NODE_ENV === "production") {
-      console.log("[MagicLink] emailRedirectTo:", redirectUrl);
-      console.log("[MagicLink] NEXT_PUBLIC_SITE_URL:", process.env.NEXT_PUBLIC_SITE_URL);
-      console.log("[MagicLink] window.location.origin:", typeof window !== "undefined" ? window.location.origin : "N/A");
-    }
 
     const { error: signInError } = await supabase.auth.signInWithOtp({
       email,

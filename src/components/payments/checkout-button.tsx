@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Toast } from "@/components/ui/toast";
 
 type CheckoutButtonProps = {
   className?: string;
@@ -14,9 +15,11 @@ export function CheckoutButton({
   plan,
 }: CheckoutButtonProps) {
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleCheckout = async () => {
     setLoading(true);
+    setErrorMessage(null);
 
     try {
       const response = await fetch("/api/payments/create-checkout", {
@@ -30,28 +33,37 @@ export function CheckoutButton({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create checkout session");
+        throw new Error(data.error || "Impossible de créer la session de paiement.");
       }
 
       if (data.url) {
         window.location.href = data.url;
       }
     } catch (error: unknown) {
-      console.error("Checkout error:", error);
-      const message = error instanceof Error ? error.message : "Erreur inconnue";
-      alert(`Erreur: ${message}`);
+      const message = error instanceof Error ? error.message : "Erreur inconnue. Veuillez réessayer.";
+      setErrorMessage(message);
       setLoading(false);
     }
   };
 
   return (
-    <button
-      onClick={handleCheckout}
-      disabled={loading}
-      className={className}
-    >
-      {loading ? "Chargement..." : children}
-    </button>
+    <>
+      <button
+        onClick={handleCheckout}
+        disabled={loading}
+        aria-busy={loading}
+        className={className}
+      >
+        {loading ? "Chargement…" : children}
+      </button>
+      {errorMessage && (
+        <Toast
+          message={errorMessage}
+          variant="error"
+          onClose={() => setErrorMessage(null)}
+        />
+      )}
+    </>
   );
 }
 

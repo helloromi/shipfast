@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { t } from "@/locales/fr";
 import { LineRangeSelector } from "@/components/scenes/line-range-selector";
+import { Toast } from "@/components/ui/toast";
 import { Scene } from "@/types/scenes";
 
 type SceneWithStats = Scene & {
@@ -32,6 +33,7 @@ export function WorkDetailClient({ work }: WorkDetailClientProps) {
     new Map()
   );
   const [rangeSelectorOpen, setRangeSelectorOpen] = useState<string | null>(null);
+  const [multiSceneWarning, setMultiSceneWarning] = useState(false);
 
   const toggleSceneSelection = (sceneId: string) => {
     setSelectedScenes((prev) => {
@@ -72,9 +74,8 @@ export function WorkDetailClient({ work }: WorkDetailClientProps) {
         router.push(`/scenes/${sceneId}`);
       }
     } else {
-      // Plusieurs scènes : créer des sessions séparées
-      // Pour l'instant, on redirige vers la première scène
-      // TODO: Implémenter un workflow pour plusieurs scènes
+      // Plusieurs scènes : avertir l'utilisateur et ouvrir la première
+      setMultiSceneWarning(true);
       const firstSceneId = Array.from(selectedScenes)[0];
       router.push(`/scenes/${firstSceneId}`);
     }
@@ -266,6 +267,15 @@ export function WorkDetailClient({ work }: WorkDetailClientProps) {
             });
             setRangeSelectorOpen(null);
           }}
+        />
+      )}
+
+      {multiSceneWarning && (
+        <Toast
+          message="L'apprentissage simultané de plusieurs scènes n'est pas encore disponible. Tu es redirigé vers la première scène sélectionnée."
+          variant="error"
+          onClose={() => setMultiSceneWarning(false)}
+          duration={6000}
         />
       )}
     </div>
