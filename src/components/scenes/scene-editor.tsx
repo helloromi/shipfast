@@ -113,7 +113,6 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, 
 
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
   const [recentlyMovedId, setRecentlyMovedId] = useState<string | null>(null);
 
   // Mode texte brut
@@ -501,29 +500,6 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, 
                 {lines.map((l, idx) => (
                   <div key={l.id}>
                     <div
-                      draggable
-                      onDragStart={(e) => {
-                        setDraggingId(l.id);
-                        try { e.dataTransfer.setData("text/plain", l.id); } catch { /* ignore */ }
-                      }}
-                      onDragEnd={() => setDraggingId(null)}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        const dragged = (() => {
-                          try { return e.dataTransfer.getData("text/plain") || draggingId; }
-                          catch { return draggingId; }
-                        })();
-                        if (!dragged) return;
-                        const from = lines.findIndex((x) => x.id === dragged);
-                        const to = idx;
-                        if (from < 0 || from === to) return;
-                        const movedId = lines[from].id;
-                        setLines((prev) => move(prev, from, to));
-                        setRecentlyMovedId(movedId);
-                        setTimeout(() => setRecentlyMovedId(null), 600);
-                        setDraggingId(null);
-                      }}
                       className={`rounded-2xl border p-4 shadow-sm transition-all duration-300 ${
                         recentlyMovedId === l.id
                           ? "border-[#ff6b6b] bg-[#fff5f3] shadow-[#ff6b6b22]"
@@ -532,9 +508,6 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, 
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <div aria-hidden="true" className="cursor-grab select-none rounded-lg border border-[#e7e1d9] bg-[#f9f7f3] px-2 py-1 text-xs font-semibold text-[#7a7184]">
-                            ↕
-                          </div>
                           <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
                             #{idx + 1}
                           </div>
