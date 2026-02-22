@@ -1,23 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { isAdmin } from "@/lib/utils/admin";
+import { requireAuth } from "@/lib/utils/api-auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Vérifier que l'utilisateur est admin
-    const admin = await isAdmin(user.id);
-    if (!admin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const auth = await requireAuth(request, null, { skipCsrf: true, requireAdmin: true });
+    if (!auth.ok) return auth.response;
 
     const searchParams = request.nextUrl.searchParams;
     const email = searchParams.get("email");

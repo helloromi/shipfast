@@ -1,76 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getStripe } from "@/lib/stripe/client";
+import { getOrCreateStripeCustomer } from "@/lib/stripe/customer";
 import { getSiteUrl } from "@/lib/url";
-import { assertSameOrigin } from "@/lib/utils/csrf";
-import { checkRateLimit } from "@/lib/utils/rate-limit";
+import { requireAuth } from "@/lib/utils/api-auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const csrf = assertSameOrigin(request);
-    if (!csrf.ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const auth = await requireAuth(request, { key: (id) => `portal:${id}`, max: 10 });
+    if (!auth.ok) return auth.response;
+    const { user, supabase } = auth;
 
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const customerResult = await getOrCreateStripeCustomer(supabase, user.id, user.email ?? undefined);
+    if ("error" in customerResult) {
+      return NextResponse.json({ error: customerResult.error }, { status: customerResult.status });
     }
-
-    const rl = checkRateLimit(`portal:${user.id}`, { windowMs: 60_000, max: 10 });
-    if (!rl.ok) {
-      return NextResponse.json(
-        { error: "Too many requests" },
-        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
-      );
-    }
-
-    // 1) Find existing Stripe customer id
-    const { data: existingCustomer, error: customerReadError } = await supabase
-      .from("billing_customers")
-      .select("stripe_customer_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (customerReadError) {
-      return NextResponse.json(
-        { error: "Failed to load billing customer" },
-        { status: 500 }
-      );
-    }
+    const { stripeCustomerId } = customerResult;
 
     const stripe = getStripe();
-    let stripeCustomerId = existingCustomer?.stripe_customer_id ?? null;
 
-    // 2) Create Stripe customer if missing
-    if (!stripeCustomerId) {
-      const customer = await stripe.customers.create({
-        email: user.email ?? undefined,
-        metadata: {
-          supabase_user_id: user.id,
-        },
-      });
-
-      stripeCustomerId = customer.id;
-
-      const { error: customerWriteError } = await supabase
-        .from("billing_customers")
-        .upsert(
-          { user_id: user.id, stripe_customer_id: stripeCustomerId },
-          { onConflict: "user_id" }
-        );
-
-      if (customerWriteError) {
-        return NextResponse.json(
-          { error: "Failed to save billing customer" },
-          { status: 500 }
-        );
-      }
-    }
-
-    // 3) Create portal session
+    // Create portal session
     const siteUrl = getSiteUrl();
     const returnUrl = `${siteUrl}/compte`;
 

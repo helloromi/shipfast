@@ -1,27 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { assertSameOrigin } from "@/lib/utils/csrf";
-import { checkRateLimit } from "@/lib/utils/rate-limit";
+import { requireAuth } from "@/lib/utils/api-auth";
 
 export async function GET(request: NextRequest) {
   try {
-    void request;
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-    }
-
-    const rl = checkRateLimit(`import_status_get:${user.id}`, { windowMs: 60_000, max: 120 });
-    if (!rl.ok) {
-      return NextResponse.json(
-        { error: "Trop de requêtes" },
-        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
-      );
-    }
+    const auth = await requireAuth(
+      request,
+      { key: (id) => `import_status_get:${id}`, max: 120 },
+      { skipCsrf: true }
+    );
+    if (!auth.ok) return auth.response;
+    const { user, supabase } = auth;
 
     // Récupérer les imports "non terminés" / actionnables pour cet utilisateur
     const { data: jobs, error } = await supabase
@@ -59,34 +47,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const csrf = assertSameOrigin(request);
-    if (!csrf.ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-    }
-
-    const rl = checkRateLimit(`import_status_post:${user.id}`, { windowMs: 60_000, max: 60 });
-    if (!rl.ok) {
-      return NextResponse.json(
-        { error: "Trop de requêtes" },
-        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
-      );
-    }
-
-    const body = await request.json().catch(() => null);
-    const markAsSeen =
-      typeof body === "object" && body !== null && "markAsSeen" in body ? (body as { markAsSeen?: unknown }).markAsSeen : undefined;
-
-    // Si markAsSeen est true, on peut marquer les imports comme vus
-    // Pour l'instant, on ne fait rien car le badge disparaît automatiquement
-    // quand l'utilisateur visite la bibliothèque
-    void markAsSeen;
+    const auth = await requireAuth(request, { key: (id) => `import_status_post:${id}`, max: 60 });
+    if (!auth.ok) return auth.response;
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

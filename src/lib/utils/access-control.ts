@@ -38,7 +38,6 @@ export async function checkAccess(
     };
   }
 
-  void sceneId;
   return {
     hasAccess: false,
     accessType: "none",

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { assertSameOrigin } from "@/lib/utils/csrf";
-import { checkRateLimit } from "@/lib/utils/rate-limit";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { requireAuth } from "@/lib/utils/api-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { processImportJobPreview, type ImportJobForProcessing } from "@/lib/imports/process-import-job";
 
@@ -18,25 +16,9 @@ type ImportJobRow = {
 };
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
-  const csrf = assertSameOrigin(request);
-  if (!csrf.ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
-  const rl = checkRateLimit(`import_retry:${user.id}`, { windowMs: 60_000, max: 10 });
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: "Trop de requêtes" },
-      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
-    );
-  }
+  const auth = await requireAuth(request, { key: (id) => `import_retry:${id}`, max: 10 });
+  if (!auth.ok) return auth.response;
+  const { user, supabase } = auth;
 
   const { jobId } = await params;
 

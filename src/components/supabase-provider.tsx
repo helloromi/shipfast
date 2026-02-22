@@ -3,8 +3,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import type { ReactNode } from "react";
-import { useRouter } from "next/navigation";
-
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type SupabaseProviderProps = {
@@ -22,8 +20,6 @@ const SupabaseContext = createContext<SupabaseContextValue | undefined>(undefine
 export function SupabaseProvider({ children, initialSession }: SupabaseProviderProps) {
   const [supabase] = useState(() => createSupabaseBrowserClient());
   const [session, setSession] = useState<Session | null>(initialSession);
-  const router = useRouter();
-  void router;
 
   useEffect(() => {
     // Hydrate user via getUser (authentifié par Supabase)

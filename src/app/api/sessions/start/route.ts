@@ -1,26 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { trackSessionStart } from "@/lib/queries/stats";
-import { getSupabaseSessionUser } from "@/lib/queries/scenes";
-import { assertSameOrigin } from "@/lib/utils/csrf";
-import { checkRateLimit } from "@/lib/utils/rate-limit";
+import { requireAuth } from "@/lib/utils/api-auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const csrf = assertSameOrigin(request);
-    if (!csrf.ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-    const user = await getSupabaseSessionUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const rl = checkRateLimit(`session_start:${user.id}`, { windowMs: 60_000, max: 120 });
-    if (!rl.ok) {
-      return NextResponse.json(
-        { error: "Too many requests" },
-        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
-      );
-    }
+    const auth = await requireAuth(request, { key: (id) => `session_start:${id}`, max: 120 });
+    if (!auth.ok) return auth.response;
+    const { user } = auth;
 
     const body = await request.json();
     const { sceneId, characterId, totalLines } = body;

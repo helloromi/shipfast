@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { isAdmin } from "@/lib/utils/admin";
-import { assertSameOrigin } from "@/lib/utils/csrf";
-import { checkRateLimit } from "@/lib/utils/rate-limit";
+import { requireAuth } from "@/lib/utils/api-auth";
 
 type EditorCharacter = {
   id: string;
@@ -26,25 +24,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: "Scene ID is required" }, { status: 400 });
   }
 
-  const csrf = assertSameOrigin(request);
-  if (!csrf.ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const rl = checkRateLimit(`scene_editor:${user.id}:${sceneId}`, { windowMs: 60_000, max: 30 });
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: "Too many requests" },
-      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
-    );
-  }
+  const auth = await requireAuth(request, {
+    key: (id) => `scene_editor:${id}:${sceneId}`,
+    max: 30,
+  });
+  if (!auth.ok) return auth.response;
+  const { user, supabase } = auth;
 
   let body: any;
   try {

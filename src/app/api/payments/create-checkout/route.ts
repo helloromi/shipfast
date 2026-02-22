@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getStripe } from "@/lib/stripe/client";
+import { getOrCreateStripeCustomer } from "@/lib/stripe/customer";
 import { getSiteUrl } from "@/lib/url";
-import { assertSameOrigin } from "@/lib/utils/csrf";
-import { checkRateLimit } from "@/lib/utils/rate-limit";
+import { requireAuth } from "@/lib/utils/api-auth";
 
 function getSubscriptionPriceId(plan: "monthly" | "quarterly" | "yearly"): string {
   const envKey = plan === "monthly" 
@@ -21,26 +20,11 @@ function getSubscriptionPriceId(plan: "monthly" | "quarterly" | "yearly"): strin
 
 export async function POST(request: NextRequest) {
   try {
-    const csrf = assertSameOrigin(request);
-    if (!csrf.ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const auth = await requireAuth(request, { key: (id) => `checkout:${id}`, max: 5 });
+    if (!auth.ok) return auth.response;
+    const { user, supabase } = auth;
 
     const stripe = getStripe();
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const rl = checkRateLimit(`checkout:${user.id}`, { windowMs: 60_000, max: 5 });
-    if (!rl.ok) {
-      return NextResponse.json(
-        { error: "Too many requests" },
-        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
-      );
-    }
 
     // Parse request body to get the plan
     const body = await request.json();
@@ -54,46 +38,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
 
-    // Reuse billing_customers mapping to attach the Checkout session to a Stripe customer.
-    const { data: existingCustomer, error: customerReadError } = await supabase
-      .from("billing_customers")
-      .select("stripe_customer_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (customerReadError) {
-      return NextResponse.json(
-        { error: "Failed to load billing customer" },
-        { status: 500 }
-      );
+    const customerResult = await getOrCreateStripeCustomer(supabase, user.id, user.email ?? undefined);
+    if ("error" in customerResult) {
+      return NextResponse.json({ error: customerResult.error }, { status: customerResult.status });
     }
-
-    let stripeCustomerId = existingCustomer?.stripe_customer_id ?? null;
-
-    if (!stripeCustomerId) {
-      const customer = await stripe.customers.create({
-        email: user.email ?? undefined,
-        metadata: {
-          supabase_user_id: user.id,
-        },
-      });
-
-      stripeCustomerId = customer.id;
-
-      const { error: customerWriteError } = await supabase
-        .from("billing_customers")
-        .upsert(
-          { user_id: user.id, stripe_customer_id: stripeCustomerId },
-          { onConflict: "user_id" }
-        );
-
-      if (customerWriteError) {
-        return NextResponse.json(
-          { error: "Failed to save billing customer" },
-          { status: 500 }
-        );
-      }
-    }
+    const { stripeCustomerId } = customerResult;
 
     const siteUrl = getSiteUrl();
     const successUrl = `${siteUrl}/api/payments/success?session_id={CHECKOUT_SESSION_ID}`;

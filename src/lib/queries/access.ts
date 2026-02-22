@@ -223,8 +223,8 @@ export async function createFreeSlotAccess(
 
 export async function hasAccess(
   userId: string,
-  workId?: string,
-  sceneId?: string
+  _workId?: string,
+  _sceneId?: string
 ): Promise<boolean> {
   if (!userId) return false;
 
@@ -232,9 +232,7 @@ export async function hasAccess(
   const admin = await isAdmin(userId);
   if (admin) return true;
 
-  // Nouveau modèle: accès global via abonnement
-  void workId;
-  void sceneId;
+  // Nouveau modèle: accès global via abonnement (workId/sceneId non utilisés)
   return await hasActiveSubscription(userId);
 }
 

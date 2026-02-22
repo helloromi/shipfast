@@ -9,7 +9,7 @@ import { isAdmin } from "@/lib/utils/admin";
  * 
  * ⚠️ PROTÉGÉ: Accessible uniquement aux administrateurs
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Vérifier l'authentification admin
     const supabase = await createSupabaseServerClient();
@@ -25,10 +25,9 @@ export async function GET(request: NextRequest) {
     if (!admin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    // Toucher le client Stripe suffit à valider la configuration (la variable n'a pas besoin d'être utilisée).
+    // Toucher le client Stripe suffit à valider la configuration.
     void getStripe();
-    void request;
-    
+
     // Vérifier que la clé Stripe est configurée
     const hasStripeKey = !!process.env.STRIPE_SECRET_KEY;
     const hasWebhookSecret = !!process.env.STRIPE_WEBHOOK_SECRET;

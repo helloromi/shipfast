@@ -1,32 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { getStripe } from "@/lib/stripe/client";
 import { setAudienceUnsubscribedFromMarketing } from "@/lib/resend/automation";
-import { assertSameOrigin } from "@/lib/utils/csrf";
-import { checkRateLimit } from "@/lib/utils/rate-limit";
+import { requireAuth } from "@/lib/utils/api-auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const csrf = assertSameOrigin(request);
-    if (!csrf.ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const rl = checkRateLimit(`account_delete:${user.id}`, { windowMs: 60_000, max: 3 });
-    if (!rl.ok) {
-      return NextResponse.json(
-        { error: "Too many requests" },
-        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
-      );
-    }
+    const auth = await requireAuth(request, { key: (id) => `account_delete:${id}`, max: 3 });
+    if (!auth.ok) return auth.response;
+    const { user, supabase } = auth;
 
     // Load Stripe customer id (if any)
     const { data: billingCustomer, error: billingCustomerError } = await supabase

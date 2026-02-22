@@ -1,29 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { assertSameOrigin } from "@/lib/utils/csrf";
-import { checkRateLimit } from "@/lib/utils/rate-limit";
+import { requireAuth } from "@/lib/utils/api-auth";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-    }
-
-    const rl = checkRateLimit(`import_job_get:${user.id}`, { windowMs: 60_000, max: 120 });
-    if (!rl.ok) {
-      return NextResponse.json(
-        { error: "Trop de requêtes" },
-        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
-      );
-    }
+    const auth = await requireAuth(
+      request,
+      { key: (id) => `import_job_get:${id}`, max: 120 },
+      { skipCsrf: true }
+    );
+    if (!auth.ok) return auth.response;
+    const { user, supabase } = auth;
 
     const { jobId } = await params;
 
@@ -77,25 +66,9 @@ export async function PATCH(
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
-    const csrf = assertSameOrigin(request);
-    if (!csrf.ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-    }
-
-    const rl = checkRateLimit(`import_job_patch:${user.id}`, { windowMs: 60_000, max: 60 });
-    if (!rl.ok) {
-      return NextResponse.json(
-        { error: "Trop de requêtes" },
-        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
-      );
-    }
+    const auth = await requireAuth(request, { key: (id) => `import_job_patch:${id}`, max: 60 });
+    if (!auth.ok) return auth.response;
+    const { user, supabase } = auth;
 
     const { jobId } = await params;
     const body = await request.json().catch(() => null);

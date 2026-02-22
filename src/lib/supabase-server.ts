@@ -2,19 +2,7 @@
 
 import { createServerClient, type CookieOptions } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
-
-function getSupabaseEnv() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !anonKey) {
-    throw new Error(
-      "Supabase env vars manquants. Ajoute NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY."
-    );
-  }
-
-  return { url, anonKey };
-}
+import { getSupabaseEnv } from "@/lib/supabase-env";
 
 export async function createSupabaseServerClient() {
   const { url, anonKey } = getSupabaseEnv();

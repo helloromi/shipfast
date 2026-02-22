@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { getSupabaseSessionUser } from "@/lib/queries/scenes";
-import { assertSameOrigin } from "@/lib/utils/csrf";
-import { checkRateLimit } from "@/lib/utils/rate-limit";
+import { requireAuth } from "@/lib/utils/api-auth";
 
 export async function DELETE(
   request: NextRequest,
@@ -14,23 +11,12 @@ export async function DELETE(
     return NextResponse.json({ error: "Scene ID is required" }, { status: 400 });
   }
 
-  const csrf = assertSameOrigin(request);
-  if (!csrf.ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-  const user = await getSupabaseSessionUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const rl = checkRateLimit(`scene_remove:${user.id}:${sceneId}`, { windowMs: 60_000, max: 20 });
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: "Too many requests" },
-      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
-    );
-  }
-
-  const supabase = await createSupabaseServerClient();
+  const auth = await requireAuth(request, {
+    key: (id) => `scene_remove:${id}:${sceneId}`,
+    max: 20,
+  });
+  if (!auth.ok) return auth.response;
+  const { user, supabase } = auth;
 
   try {
     // Charger la scène pour décider si on supprime réellement ou si on réinitialise la progression.

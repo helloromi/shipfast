@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { setAudienceUnsubscribedFromMarketing, syncAudienceContactIfOptIn } from "@/lib/resend/automation";
-import { assertSameOrigin } from "@/lib/utils/csrf";
+import { requireAuth } from "@/lib/utils/api-auth";
 
 export async function POST(request: NextRequest) {
-  const csrf = assertSameOrigin(request);
-  if (!csrf.ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireAuth(request, null);
+  if (!auth.ok) return auth.response;
+  const { user } = auth;
 
   const body = await request.json().catch(() => ({} as unknown));
   const action =

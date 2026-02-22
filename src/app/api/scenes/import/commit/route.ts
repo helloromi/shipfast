@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
 import type { ParsedScene } from "@/lib/utils/text-parser";
-import { assertSameOrigin } from "@/lib/utils/csrf";
-import { checkRateLimit } from "@/lib/utils/rate-limit";
+import { requireAuth } from "@/lib/utils/api-auth";
 
 export const runtime = "nodejs";
 
@@ -20,25 +18,9 @@ function uniqStrings(values: string[]) {
 
 export async function POST(request: NextRequest) {
   try {
-    const csrf = assertSameOrigin(request);
-    if (!csrf.ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-    }
-
-    const rl = checkRateLimit(`import_commit:${user.id}`, { windowMs: 60_000, max: 20 });
-    if (!rl.ok) {
-      return NextResponse.json(
-        { error: "Trop de requêtes" },
-        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
-      );
-    }
+    const auth = await requireAuth(request, { key: (id) => `import_commit:${id}`, max: 20 });
+    if (!auth.ok) return auth.response;
+    const { user, supabase } = auth;
 
     const body = (await request.json()) as CommitBody;
     const draft = body?.draft;
