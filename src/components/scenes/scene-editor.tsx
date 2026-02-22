@@ -110,10 +110,17 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, 
   );
 
   const persistedLineIdsRef = useRef<Set<string>>(new Set((initialLines ?? []).map((l) => l.id)));
+  const recentlyMovedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [recentlyMovedId, setRecentlyMovedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (recentlyMovedTimerRef.current) clearTimeout(recentlyMovedTimerRef.current);
+    };
+  }, []);
 
   // Mode texte brut
   const [textMode, setTextMode] = useState(false);
@@ -314,7 +321,11 @@ export function SceneEditor({ sceneId, userId, initialCharacters, initialLines, 
     const movedId = lines[fromIdx].id;
     setLines((prev) => move(prev, fromIdx, toIdx));
     setRecentlyMovedId(movedId);
-    setTimeout(() => setRecentlyMovedId(null), 600);
+    if (recentlyMovedTimerRef.current) clearTimeout(recentlyMovedTimerRef.current);
+    recentlyMovedTimerRef.current = setTimeout(() => {
+      setRecentlyMovedId(null);
+      recentlyMovedTimerRef.current = null;
+    }, 600);
   };
 
   return (

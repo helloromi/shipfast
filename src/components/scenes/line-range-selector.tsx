@@ -28,10 +28,14 @@ export function LineRangeSelector({
   const [endLine, setEndLine] = useState<number>(1);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const loadLines = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/scenes/${sceneId}/lines`);
+        const response = await fetch(`/api/scenes/${sceneId}/lines`, {
+          signal: controller.signal,
+        });
         if (response.ok) {
           const data = await response.json();
           const sortedLines = [...data.lines].sort((a: Line, b: Line) => a.order - b.order);
@@ -44,6 +48,7 @@ export function LineRangeSelector({
           }
         }
       } catch (error) {
+        if ((error as Error).name === "AbortError") return;
         console.error(error);
       } finally {
         setLoading(false);
@@ -51,6 +56,7 @@ export function LineRangeSelector({
     };
 
     loadLines();
+    return () => controller.abort();
   }, [sceneId]);
 
   const handleValidate = () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Character = {
@@ -18,6 +18,13 @@ export function CreateSceneForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+    };
+  }, []);
 
   const [formData, setFormData] = useState({
     ownerEmail: "",
@@ -66,8 +73,10 @@ export function CreateSceneForm() {
       }
 
       setSuccess(true);
-      setTimeout(() => {
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = setTimeout(() => {
         router.push("/scenes");
+        redirectTimerRef.current = null;
       }, 2000);
     } catch (err: any) {
       setError(err.message || "Une erreur est survenue");

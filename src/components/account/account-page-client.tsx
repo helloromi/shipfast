@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/components/supabase-provider";
 
@@ -26,7 +26,7 @@ export function AccountPageClient({ userEmail }: AccountPageClientProps) {
 
   const canDelete = useMemo(() => confirmText.trim().toUpperCase() === "SUPPRIMER", [confirmText]);
 
-  const loadConsent = async () => {
+  const loadConsent = useCallback(async () => {
     try {
       const { data } = await supabase.auth.getUser();
       const user = data.user;
@@ -51,13 +51,12 @@ export function AccountPageClient({ userEmail }: AccountPageClientProps) {
     } catch {
       // ignore
     }
-  };
+  }, [supabase]);
 
   useEffect(() => {
     if (consentLoaded) return;
     void loadConsent();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [consentLoaded]);
+  }, [consentLoaded, loadConsent]);
 
   const toggleConsent = async (next: boolean) => {
     setConsentLoading(true);

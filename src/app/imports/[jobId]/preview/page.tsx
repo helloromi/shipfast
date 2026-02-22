@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Toast } from "@/components/ui/toast";
@@ -53,6 +53,13 @@ export default function ImportPreviewPage() {
   const [saving, setSaving] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+    };
+  }, []);
 
   const statusLabel = useMemo(() => {
     switch (jobStatus) {
@@ -304,10 +311,11 @@ export default function ImportPreviewPage() {
       }
 
       setToast({ message: t.scenes.import.success.message, variant: "success" });
-      
-      // Rediriger vers la scène créée après un court délai
-      setTimeout(() => {
+
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = setTimeout(() => {
         router.push(`/scenes/${data.sceneId}`);
+        redirectTimerRef.current = null;
       }, 1500);
     } catch (e: any) {
       setToast({ message: e?.message || t.scenes.import.errors.generic, variant: "error" });

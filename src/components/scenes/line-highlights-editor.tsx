@@ -148,8 +148,7 @@ export function LineHighlightsEditor(props: Props) {
     setHighlights(
       [...(initialHighlights ?? [])].sort((a, b) => a.startOffset - b.startOffset || a.endOffset - b.endOffset)
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lineId]);
+  }, [lineId, initialHighlights]);
 
   useEffect(() => {
     return () => {

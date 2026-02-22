@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Toast } from "@/components/ui/toast";
 import { useSupabase } from "@/components/supabase-provider";
 import { t } from "@/locales/fr";
@@ -84,6 +84,13 @@ export function ImportForm() {
   const [consentToAI, setConsentToAI] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ path: string; name: string; preview?: string }>>([]);
   const [reorderingFiles, setReorderingFiles] = useState<Array<{ path: string; name: string; preview?: string }>>([]);
+  const previewUrlsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    return () => {
+      previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
 
   const totalSizeMb = useMemo(
     () => files.reduce((acc, f) => acc + f.size, 0) / 1024 / 1024,
@@ -187,6 +194,7 @@ export function ImportForm() {
         let preview: string | undefined;
         if (f.type.startsWith("image/")) {
           preview = URL.createObjectURL(f);
+          previewUrlsRef.current.push(preview);
         }
         
         uploaded.push({ path: uploadData.path, name: f.name, preview });

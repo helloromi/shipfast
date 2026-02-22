@@ -216,73 +216,91 @@ export async function fetchWorkWithScenesAndStats(
 
   const scenes = workData.scenes ?? [];
 
-  // Récupérer les statistiques pour chaque scène
-  const scenesWithStats = await Promise.all(
-    scenes.map(async (scene: any) => {
-      // Compter les personnages
-      const { count: charactersCount } = await supabase
-        .from("characters")
-        .select("*", { count: "exact", head: true })
-        .eq("scene_id", scene.id);
+  if (scenes.length === 0) {
+    return {
+      id: workData.id,
+      title: workData.title,
+      author: workData.author,
+      summary: workData.summary,
+      scenes: [],
+    };
+  }
 
-      // Compter les répliques
-      const { count: linesCount } = await supabase
-        .from("lines")
-        .select("*", { count: "exact", head: true })
-        .eq("scene_id", scene.id);
+  type SessionRow = {
+    scene_id: string;
+    started_at: string;
+    average_score: number | null;
+    ended_at: string | null;
+    completed_lines: number | null;
+    characters: { id: string; name: string } | null;
+  };
 
-      // Calculer la moyenne et récupérer le dernier personnage si l'utilisateur est connecté
-      let average: number | undefined;
-      let lastCharacterId: string | null = null;
-      let lastCharacterName: string | null = null;
-      if (userId) {
-        // Sessions terminées: même métrique que "Score moyen" (pondérée par récence)
-        const { data: sessions } = await supabase
+  const sceneIds = scenes.map((s: any) => s.id as string);
+
+  // 3 requêtes batch au lieu de 2N–3N requêtes individuelles
+  const [charsRes, linesRes, sessionsRes] = await Promise.all([
+    supabase.from("characters").select("scene_id").in("scene_id", sceneIds),
+    supabase.from("lines").select("scene_id").in("scene_id", sceneIds),
+    userId
+      ? supabase
           .from("user_learning_sessions")
-          .select("started_at, average_score, ended_at, completed_lines, characters(id, name)")
+          .select("scene_id, started_at, average_score, ended_at, completed_lines, characters(id, name)")
           .eq("user_id", userId)
-          .eq("scene_id", scene.id)
+          .in("scene_id", sceneIds)
           .not("ended_at", "is", null)
           .gt("completed_lines", 0)
           .order("started_at", { ascending: false })
-          .returns<
-            {
-              started_at: string;
-              average_score: number | null;
-              ended_at: string | null;
-              completed_lines: number | null;
-              characters: { id: string; name: string } | null;
-            }[]
-          >();
+          .returns<SessionRow[]>()
+      : Promise.resolve({ data: [] as SessionRow[], error: null }),
+  ]);
 
-        if (sessions && sessions.length > 0) {
-          const avg = weightedAverageScoreByRecency(
-            sessions.map((s) => ({ started_at: s.started_at, average_score: s.average_score })),
-            14
-          );
-          average = Math.round(avg * 100) / 100;
+  const charCountByScene = (charsRes.data ?? []).reduce<Record<string, number>>((acc, c) => {
+    acc[c.scene_id] = (acc[c.scene_id] ?? 0) + 1;
+    return acc;
+  }, {});
 
-          const last = sessions[0]?.characters;
-          lastCharacterId = last?.id ?? null;
-          lastCharacterName = last?.name ?? null;
-        }
-      }
+  const lineCountByScene = (linesRes.data ?? []).reduce<Record<string, number>>((acc, l) => {
+    acc[l.scene_id] = (acc[l.scene_id] ?? 0) + 1;
+    return acc;
+  }, {});
 
-      return {
-        id: scene.id,
-        work_id: scene.work_id,
-        title: scene.title,
-        author: scene.author,
-        summary: scene.summary,
-        chapter: scene.chapter,
-        average,
-        charactersCount: charactersCount ?? 0,
-        linesCount: linesCount ?? 0,
-        lastCharacterId,
-        lastCharacterName,
-      };
-    })
-  );
+  const sessionsByScene = (sessionsRes.data ?? []).reduce<Record<string, SessionRow[]>>((acc, s) => {
+    if (!acc[s.scene_id]) acc[s.scene_id] = [];
+    acc[s.scene_id].push(s);
+    return acc;
+  }, {});
+
+  const scenesWithStats = scenes.map((scene: any) => {
+    const sessions = sessionsByScene[scene.id] ?? [];
+    let average: number | undefined;
+    let lastCharacterId: string | null = null;
+    let lastCharacterName: string | null = null;
+
+    if (sessions.length > 0) {
+      const avg = weightedAverageScoreByRecency(
+        sessions.map((s) => ({ started_at: s.started_at, average_score: s.average_score })),
+        14
+      );
+      average = Math.round(avg * 100) / 100;
+      const last = sessions[0]?.characters;
+      lastCharacterId = last?.id ?? null;
+      lastCharacterName = last?.name ?? null;
+    }
+
+    return {
+      id: scene.id,
+      work_id: scene.work_id,
+      title: scene.title,
+      author: scene.author,
+      summary: scene.summary,
+      chapter: scene.chapter,
+      average,
+      charactersCount: charCountByScene[scene.id] ?? 0,
+      linesCount: lineCountByScene[scene.id] ?? 0,
+      lastCharacterId,
+      lastCharacterName,
+    };
+  });
 
   return {
     id: workData.id,

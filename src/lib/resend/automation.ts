@@ -117,15 +117,13 @@ export function getFromAddress(emailType?: EmailType): string {
 
   switch (emailType) {
     case "welcome":
-      return "paul@cote-cour.studio";
+      return process.env.RESEND_FROM_WELCOME ?? defaultFrom;
     case "payment_thanks":
-      return "compta@cote-cour.studio";
+      return process.env.RESEND_FROM_BILLING ?? defaultFrom;
     case "inactivity":
-      return "abonnement@cote-cour.studio";
     case "unpaid_reminder_1":
-      return "abonnement@cote-cour.studio";
     case "import_ready":
-      return "abonnement@cote-cour.studio";
+      return process.env.RESEND_FROM_SUBSCRIPTION ?? defaultFrom;
     default:
       return defaultFrom;
   }

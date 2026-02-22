@@ -46,15 +46,24 @@ export function ActiveImportsSection() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
     const fetchImports = async () => {
       try {
         const response = await fetch("/api/scenes/import/status", { cache: "no-store" });
         if (!response.ok) return;
         const data = await response.json();
         if (data.success && Array.isArray(data.jobs)) {
-          setImports(data.jobs.filter((job: ImportJob) => 
+          const active = data.jobs.filter((job: ImportJob) =>
             job.status === "pending" || job.status === "processing" || job.status === "preview_ready"
-          ));
+          );
+          setImports(active);
+
+          // Arrêter le polling dès qu'il n'y a plus d'imports en cours ou en attente
+          if (active.every((job: ImportJob) => job.status === "preview_ready") && intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
         }
       } catch (error) {
         console.error("Erreur lors de la récupération des imports:", error);
@@ -64,13 +73,15 @@ export function ActiveImportsSection() {
     };
 
     void fetchImports();
-    
+
     // Polling toutes les 3 secondes pour les imports en cours
-    const interval = setInterval(() => {
+    intervalId = setInterval(() => {
       void fetchImports();
     }, 3000);
 
-    return () => clearInterval(interval);
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
   if (loading) {

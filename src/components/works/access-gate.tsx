@@ -26,12 +26,11 @@ export function AccessGate({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const check = async () => {
       if (!user) {
-        setAccessCheck({
-          hasAccess: false,
-          accessType: "none",
-        });
+        setAccessCheck({ hasAccess: false, accessType: "none" });
         setLoading(false);
         return;
       }
@@ -39,30 +38,26 @@ export function AccessGate({
       try {
         const response = await fetch("/api/access/check", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sceneId, workId }),
+          signal: controller.signal,
         });
 
-        if (!response.ok) {
-          throw new Error("Failed to check access");
-        }
+        if (!response.ok) throw new Error("Failed to check access");
 
         const result = await response.json();
         setAccessCheck(result);
       } catch (error) {
+        if ((error as Error).name === "AbortError") return;
         console.error("Error checking access:", error);
-        setAccessCheck({
-          hasAccess: false,
-          accessType: "none",
-        });
+        setAccessCheck({ hasAccess: false, accessType: "none" });
       } finally {
         setLoading(false);
       }
     };
 
     check();
+    return () => controller.abort();
   }, [user, sceneId, workId]);
 
   if (loading) {
