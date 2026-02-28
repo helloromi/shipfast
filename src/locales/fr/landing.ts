@@ -1,8 +1,8 @@
 export const landing = {
-  badge: "Pour étudiants en théâtre",
-  title: "Maîtrise tes textes 3x plus vite",
+  badge: "Pour étudiant•es en théâtre",
+  title: "Maîtrise tes textes bien plus vite",
   description:
-    "Importe tes scènes, choisis ton mode d'apprentissage préféré, suis ton évolution..",
+    "Importe tes scènes, choisis ton mode d'apprentissage préféré, suis ton évolution.",
   cta: {
     commencer: "Commencer maintenant",
     commencerSubtext: "Disponible dès 5 euros par mois.",
@@ -49,15 +49,15 @@ export const landing = {
   },
   howItWorks: {
     title: "Comment ça marche",
-    subtitle: "Simple comme 1-2-3-4",
+    subtitle: "Simple comme tout",
     steps: {
       step1: {
         title: "Importe ta scène",
-        desc: "Choisis une scène de la bibliothèque ou importe la tienne.",
+        desc: "Prends une photo de ton texte et importe-le en un clic.",
       },
       step2: {
         title: "Apprends facilement",
-        desc: "Tes répliques sont masquées. Tape pour révéler et tester ta mémoire.",
+        desc: "Plusieurs modes d'apprentissage, qui te permettront de bien maîtriser tes textes.",
       },
       step3: {
         title: "Juge ta mémoire",
@@ -82,7 +82,7 @@ export const landing = {
       },
       q3: {
         question: "Puis-je utiliser mes propres textes ?",
-        answer: "Oui ! Tu peux importer tes propres scènes ou utiliser celles de la bibliothèque.",
+        answer: "Oui ! Tu peux importer tes propres scènes, la bibliothèque de base n'est pas encore très fournie.",
       },
       q4: {
         question: "Ça fonctionne sur mobile ?",
@@ -90,7 +90,7 @@ export const landing = {
       },
       q5: {
         question: "Des fonctionnalités en plus ?",
-        answer: "En plus de te permettre d'apprendre, tu peux aussi annoter tes scènes pour te donner des indications de jeu, de sous-texte ou d'intonation.",
+        answer: "En plus de te permettre d'apprendre, tu peux aussi annoter tes scènes pour te donner des indications de jeu, de sous-texte ou d'intonation. Idéal pour les auditions ! ",
       },
       q6: {
         question: "Est-ce que Côté-Cour va évoluer ?",

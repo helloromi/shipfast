@@ -24,6 +24,14 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: "Côté-Cour - Maîtrise tes textes 3x plus vite",
   description: "Importe ta scène, révèle tes répliques au fur et à mesure, et reçois un feedback instantané. Simple, efficace, sans configuration.",
+  icons: {
+    icon: [
+      { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
+      { url: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  manifest: "/site.webmanifest",
 };
 
 export default async function RootLayout({

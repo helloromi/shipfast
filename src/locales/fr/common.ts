@@ -13,7 +13,7 @@ export const common = {
   },
   labels: {
     personnage: "Personnage",
-    auteurInconnu: "Auteur inconnu",
+    auteurInconnu: "Auteur non renseigné",
     chapitre: "Chapitre",
     personnageEnCours: "Personnage en cours",
     maitrise: "Maîtrise",

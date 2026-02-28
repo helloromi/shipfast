@@ -138,11 +138,13 @@ async function sendEmail(params: {
   emailType?: EmailType;
 }) {
   const resend = createResendClient();
+  const { replyTo } = getResendEnv();
   // Utilise l'adresse fournie, ou celle du type d'email, ou celle par défaut
   const from = params.from ?? getFromAddress(params.emailType);
   const res = await resend.emails.send({
     from,
     to: [params.to],
+    reply_to: replyTo ?? undefined,
     subject: params.subject,
     html: params.html,
     text: params.text,
