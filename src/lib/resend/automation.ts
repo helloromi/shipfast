@@ -144,7 +144,7 @@ async function sendEmail(params: {
   const res = await resend.emails.send({
     from,
     to: [params.to],
-    reply_to: replyTo ?? undefined,
+    replyTo: replyTo ?? undefined,
     subject: params.subject,
     html: params.html,
     text: params.text,

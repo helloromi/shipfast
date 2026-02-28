@@ -43,6 +43,11 @@ Pour que les magic links fonctionnent correctement en production :
    - `https://votre-domaine.com/**` (pour toutes les routes)
    - Ou spécifiquement : `https://votre-domaine.com/scenes` (route de redirection après connexion)
 
+### Sécurité (conseils Supabase)
+
+- **Fonctions SQL (search_path)** : la migration `supabase/migrations/20260228194500_fix_function_search_path.sql` fixe le `search_path` des fonctions pour éviter les abus. Applique-la si le rapport de sécurité Supabase signale "Function Search Path Mutable".
+- **Mots de passe compromis (Leaked Password Protection)** : dans le dashboard Supabase → **Authentication** → **Providers** (ou **Settings** selon l’interface), active la protection "Leaked password protection" pour refuser les mots de passe connus dans les fuites (API HaveIBeenPwned). *Disponible sur les plans Pro et au-dessus.*
+
 ## Schéma Supabase
 - Applique le SQL `supabase/schema.sql` dans le SQL Editor Supabase.
   - Tables : `scenes`, `characters`, `lines`, `user_line_feedback`
