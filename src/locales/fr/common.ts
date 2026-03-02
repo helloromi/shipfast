@@ -1,7 +1,7 @@
 export const common = {
   nav: {
-    bibliotheque: "Bibliothèque",
-    accueil: "Accueil",
+    bibliotheque: "Mes scènes",
+    accueil: "Apprendre",
     importer: "Importer",
   },
   header: {
@@ -28,7 +28,7 @@ export const common = {
     continuer: "Continuer",
     details: "Gérer",
     retour: "Retour",
-    retourBibliotheque: "Retour à la bibliothèque",
+    retourBibliotheque: "Retour à mes scènes",
     retourAccueil: "Retour à l'accueil"
   },
   empty: {

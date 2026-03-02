@@ -73,10 +73,10 @@ export const scenes = {
   },
   works: {
     bibliotheque: {
-      sectionLabel: "Bibliothèque",
-      title: "Œuvres disponibles",
-      description: "Choisis une œuvre pour voir ses scènes et commencer l'apprentissage.",
-      empty: "Aucune œuvre pour le moment.",
+      sectionLabel: "Mes scènes",
+      title: "Mes scènes importées",
+      description: "Importez vos propres scènes pour les travailler. Bientôt, vous pourrez aussi les partager avec d'autres utilisateurs.",
+      empty: "Vous n'avez pas encore importé de scène.",
       scenesCount: "scène",
       scenesCountPlural: "scènes",
     },

@@ -1005,7 +1005,7 @@ export function LearnSession(props: LearnSessionProps) {
                       <p className="text-xs text-[#7a7184]">
                         {mode === "overview"
                           ? t.learn.setup.overviewDesc
-                          : "Une réplique à la fois avec contexte."}
+                          : "Une réplique à la fois."}
                       </p>
                     </div>
 
