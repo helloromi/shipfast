@@ -365,7 +365,7 @@ export async function fetchScenesSharedWithUser(userId: string): Promise<Scene[]
 
   return (data ?? [])
     .map((row) => row.scenes)
-    .filter((s): s is Scene => !!s);
+    .filter((s): s is Scene => !!s && s.owner_user_id !== userId);
 }
 
 export async function fetchActiveSceneIds(userId: string): Promise<Set<string>> {
