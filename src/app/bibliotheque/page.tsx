@@ -25,12 +25,16 @@ export default async function MesScenesPage({ searchParams }: Props) {
   }
   await requireSubscriptionOrRedirect(user);
 
-  const [privateScenes, sharedScenes, pendingImports, activeSceneIds] = await Promise.all([
+  const [privateScenes, sharedScenesRaw, pendingImports, activeSceneIds] = await Promise.all([
     fetchUserPrivateScenes(user.id),
     fetchScenesSharedWithUser(user.id),
     fetchPendingImports(user.id),
     fetchActiveSceneIds(user.id),
   ]);
+
+  // Exclure des scènes partagées tout ID déjà présent dans les scènes privées (évite les doublons)
+  const privateSceneIds = new Set(privateScenes.map((s) => s.id));
+  const sharedScenes = sharedScenesRaw.filter((s) => !privateSceneIds.has(s.id));
 
   const filteredPrivateScenes = query
     ? privateScenes.filter(
