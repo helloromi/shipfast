@@ -35,8 +35,19 @@ export function SupabaseProvider({ children, initialSession }: SupabaseProviderP
       setSession(newSession);
     });
 
+    // Quand le téléphone se réveille (ou que l'onglet redevient actif), forcer un
+    // refresh du token Supabase. Sans ça, le timer interne du SDK était gelé pendant
+    // la veille et le token peut être périmé au réveil, cassant tous les appels API.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        supabase.auth.refreshSession();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
       subscription.unsubscribe();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [supabase]);
 
