@@ -50,6 +50,8 @@ export function SceneDetailTabs({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [shareEmail, setShareEmail] = useState("");
+  const [isSharing, setIsSharing] = useState(false);
 
   const canEdit = user && scene.is_private && scene.owner_user_id === user.id;
   const deleteLabel = canEdit ? t.scenes.detail.reglages.supprimerScene : t.scenes.detail.reglages.reinitialiserProgression;
@@ -82,6 +84,32 @@ export function SceneDetailTabs({
       setIsDeleting(false);
       setShowConfirmDelete(false);
       setToast({ message: "Erreur lors de la suppression. Veuillez réessayer.", variant: "error" });
+    }
+  };
+
+  const handleShare = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shareEmail.trim() || isSharing) return;
+    setIsSharing(true);
+    const emailToShare = shareEmail.trim();
+    try {
+      await fetch(`/api/scenes/${sceneId}/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailToShare }),
+      });
+      setShareEmail("");
+      setToast({
+        message: `${t.scenes.detail.reglages.partagerConfirmation} ${emailToShare}`,
+        variant: "success",
+      });
+    } catch {
+      setToast({
+        message: "Erreur lors du partage. Veuillez réessayer.",
+        variant: "error",
+      });
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -209,6 +237,42 @@ export function SceneDetailTabs({
               ))}
             </div>
           </div>
+
+          {/* Partager la scène */}
+          {canEdit && (
+            <div className="flex flex-col gap-3">
+              <h3 className="font-display text-lg font-semibold text-[#3b1f4a]">
+                {t.scenes.detail.reglages.partager}
+              </h3>
+              <p className="text-sm text-[#524b5a]">
+                {t.scenes.detail.reglages.partagerDescription}
+              </p>
+              <form onSubmit={handleShare} className="flex gap-2">
+                <input
+                  type="email"
+                  value={shareEmail}
+                  onChange={(e) => setShareEmail(e.target.value)}
+                  placeholder={t.scenes.detail.reglages.partagerPlaceholder}
+                  disabled={isSharing}
+                  className="flex-1 rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm text-[#1c1b1f] placeholder-[#7a7184] shadow-sm outline-none focus:border-[#3b1f4a66] focus:ring-2 focus:ring-[#3b1f4a1a] disabled:opacity-50"
+                />
+                <button
+                  type="submit"
+                  disabled={isSharing || !shareEmail.trim()}
+                  className="inline-flex items-center gap-2 rounded-full bg-[#3b1f4a] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2d1638] disabled:opacity-50"
+                >
+                  {isSharing ? (
+                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    t.scenes.detail.reglages.partagerBouton
+                  )}
+                </button>
+              </form>
+            </div>
+          )}
 
           {/* Supprimer la scène */}
           {user && (

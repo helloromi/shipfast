@@ -346,6 +346,28 @@ export async function fetchPendingImports(userId: string): Promise<PendingImport
 /**
  * Récupère les IDs des scènes actives (en cours de travail) pour un utilisateur
  */
+export async function fetchScenesSharedWithUser(userId: string): Promise<Scene[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("user_work_access")
+    .select(
+      `scene_id, scenes!inner ( id, work_id, title, author, summary, chapter, is_private, owner_user_id, source_scene_id )`
+    )
+    .eq("user_id", userId)
+    .eq("access_type", "private")
+    .not("scene_id", "is", null)
+    .returns<{ scene_id: string; scenes: Scene }[]>();
+
+  if (error) {
+    console.error(error);
+    return [];
+  }
+
+  return (data ?? [])
+    .map((row) => row.scenes)
+    .filter((s): s is Scene => !!s);
+}
+
 export async function fetchActiveSceneIds(userId: string): Promise<Set<string>> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase

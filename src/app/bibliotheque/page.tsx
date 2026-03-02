@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import {
   getSupabaseSessionUser,
   fetchUserPrivateScenes,
+  fetchScenesSharedWithUser,
   fetchPendingImports,
   fetchActiveSceneIds,
 } from "@/lib/queries/scenes";
@@ -24,8 +25,9 @@ export default async function MesScenesPage({ searchParams }: Props) {
   }
   await requireSubscriptionOrRedirect(user);
 
-  const [privateScenes, pendingImports, activeSceneIds] = await Promise.all([
+  const [privateScenes, sharedScenes, pendingImports, activeSceneIds] = await Promise.all([
     fetchUserPrivateScenes(user.id),
+    fetchScenesSharedWithUser(user.id),
     fetchPendingImports(user.id),
     fetchActiveSceneIds(user.id),
   ]);
@@ -38,6 +40,14 @@ export default async function MesScenesPage({ searchParams }: Props) {
       )
     : privateScenes;
 
+  const filteredSharedScenes = query
+    ? sharedScenes.filter(
+        (scene) =>
+          scene.title.toLowerCase().includes(query.toLowerCase()) ||
+          (scene.author && scene.author.toLowerCase().includes(query.toLowerCase()))
+      )
+    : sharedScenes;
+
   const filteredPendingImports = query
     ? pendingImports.filter(
         (pending) =>
@@ -46,8 +56,11 @@ export default async function MesScenesPage({ searchParams }: Props) {
       )
     : pendingImports;
 
-  const hasContent = filteredPrivateScenes.length > 0 || filteredPendingImports.length > 0;
-  const hasAnyScene = privateScenes.length > 0 || pendingImports.length > 0;
+  const hasContent =
+    filteredPrivateScenes.length > 0 ||
+    filteredSharedScenes.length > 0 ||
+    filteredPendingImports.length > 0;
+  const hasAnyScene = privateScenes.length > 0 || sharedScenes.length > 0 || pendingImports.length > 0;
 
   return (
     <div className="flex flex-col gap-8">
@@ -132,6 +145,41 @@ export default async function MesScenesPage({ searchParams }: Props) {
                       )}
                       <span className="rounded-full bg-[#f4c95d33] px-2 py-1 text-xs font-semibold text-[#3b1f4a]">
                         {t.scenes.works.privateScenes.badge}
+                      </span>
+                    </div>
+                  </div>
+                  {scene.author && (
+                    <p className="text-sm text-[#524b5a]">
+                      {t.common.labels.par} {scene.author}
+                    </p>
+                  )}
+                  {scene.summary && (
+                    <p className="text-sm text-[#1c1b1f] leading-relaxed line-clamp-2">{scene.summary}</p>
+                  )}
+                </Link>
+              </div>
+            );
+          })}
+
+          {/* Scènes partagées par un autre utilisateur */}
+          {filteredSharedScenes.map((scene) => {
+            const isActive = activeSceneIds.has(scene.id);
+            return (
+              <div
+                key={scene.id}
+                className="group flex h-full flex-col gap-3 rounded-2xl border border-[#e7e1d9] bg-white/92 p-5 shadow-sm shadow-[#3b1f4a14] transition hover:-translate-y-[1px] hover:border-[#3b1f4a33] hover:shadow-lg"
+              >
+                <Link href={`/scenes/${scene.id}`} className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-display text-lg font-semibold text-[#3b1f4a]">{scene.title}</h3>
+                    <div className="flex items-center gap-2">
+                      {isActive && (
+                        <span className="rounded-full bg-[#f4c95d33] px-2 py-1 text-xs font-semibold text-[#3b1f4a]">
+                          En cours
+                        </span>
+                      )}
+                      <span className="rounded-full bg-[#dbeafe] px-2 py-1 text-xs font-semibold text-[#1e40af]">
+                        {t.scenes.works.privateScenes.sharedBadge}
                       </span>
                     </div>
                   </div>

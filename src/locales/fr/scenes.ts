@@ -69,6 +69,11 @@ export const scenes = {
         "Êtes-vous sûr de vouloir réinitialiser votre progression sur cette scène ? Cela supprimera vos notes, surlignages et statistiques associées.",
       confirmer: "Confirmer",
       annuler: "Annuler",
+      partager: "Partager",
+      partagerDescription: "Saisissez l'adresse e-mail d'un autre utilisateur Côté-Cour pour lui donner accès à cette scène.",
+      partagerPlaceholder: "adresse@email.com",
+      partagerBouton: "Envoyer",
+      partagerConfirmation: "Invitation envoyée à",
     },
   },
   works: {
@@ -131,6 +136,7 @@ export const scenes = {
       title: "Mes scènes privées",
       description: "Scènes créées spécialement pour vous",
       badge: "Privée",
+      sharedBadge: "Partagée",
     },
   },
   import: {
