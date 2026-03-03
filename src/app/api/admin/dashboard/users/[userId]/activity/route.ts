@@ -77,12 +77,22 @@ export async function GET(
       }
     }
 
+    const getCharacterName = (c: unknown): string => {
+      if (c && typeof c === "object" && "name" in c && typeof (c as { name: unknown }).name === "string") {
+        return (c as { name: string }).name;
+      }
+      if (Array.isArray(c) && c[0] && typeof c[0] === "object" && "name" in c[0]) {
+        return String((c[0] as { name: unknown }).name ?? "—");
+      }
+      return "—";
+    };
+
     const recentSessions = sessionsList.slice(0, 20).map((s) => ({
       id: s.id,
       date: s.started_at,
       durationMinutes: Math.round((s.duration_seconds ?? 0) / 60),
       score: s.average_score ?? 0,
-      characterName: (s.characters as { name: string } | null)?.name ?? "—",
+      characterName: getCharacterName(s.characters),
     }));
 
     const { data: sub } = await admin
