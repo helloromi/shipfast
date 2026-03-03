@@ -18,25 +18,47 @@ function getSubscriptionPriceId(plan: "monthly" | "quarterly" | "yearly"): strin
   return priceId;
 }
 
+function checkCheckoutEnv(plan: "monthly" | "quarterly" | "yearly"): { error?: string } {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return { error: "STRIPE_SECRET_KEY is not set" };
+  }
+  const priceIdKey =
+    plan === "monthly"
+      ? "STRIPE_SUBSCRIPTION_PRICE_ID_MONTHLY"
+      : plan === "quarterly"
+        ? "STRIPE_SUBSCRIPTION_PRICE_ID_QUARTERLY"
+        : "STRIPE_SUBSCRIPTION_PRICE_ID_YEARLY";
+  if (!process.env[priceIdKey]) {
+    return { error: `${priceIdKey} is not set` };
+  }
+  return {};
+}
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth(request, { key: (id) => `checkout:${id}`, max: 5 });
     if (!auth.ok) return auth.response;
     const { user, supabase } = auth;
 
-    const stripe = getStripe();
-
     // Parse request body to get the plan
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     const plan = body.plan as "monthly" | "quarterly" | "yearly" | undefined;
-    
-    // Default to monthly if no plan specified (backward compatibility)
     const selectedPlan = plan || "monthly";
-    
-    // Validate plan
+
     if (!["monthly", "quarterly", "yearly"].includes(selectedPlan)) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
+
+    const envCheck = checkCheckoutEnv(selectedPlan);
+    if (envCheck.error) {
+      console.error("Create checkout env missing:", envCheck.error);
+      return NextResponse.json(
+        { error: "Configuration paiement manquante. Vérifiez les variables d'environnement Stripe." },
+        { status: 503 }
+      );
+    }
+
+    const stripe = getStripe();
 
     const customerResult = await getOrCreateStripeCustomer(supabase, user.id, user.email ?? undefined);
     if ("error" in customerResult) {
