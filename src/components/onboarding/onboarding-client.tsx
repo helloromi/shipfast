@@ -10,7 +10,7 @@ const STEPS = [
   {
     id: 1,
     title: "Apprends tes textes simplement",
-    body: "Commence avec un texte test, choisis ton personnage, puis révèle tes répliques au bon rythme pour apprendre sans stress.",
+    body: "Plein de modes d'apprentissage pour toi : révèler, écrire ses répliques, voir l'ensemble du texte....",
     visual: "interactive",
   },
   {
