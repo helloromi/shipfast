@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { getSupabaseSessionUser, countPublicScenes } from "@/lib/queries/scenes";
+import { getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { t } from "@/locales/fr";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { FAQSection } from "@/components/landing/faq-section";
@@ -12,8 +12,6 @@ export default async function LandingPage() {
   if (user) {
     redirect("/home");
   }
-
-  const scenesCount = await countPublicScenes();
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-12 py-12">
@@ -43,22 +41,20 @@ export default async function LandingPage() {
                   {t.landing.cta.commencer}
                 </Link>
                 <Link
-                  href="/bibliotheque"
+                  href="#comment-ca-marche"
                   className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-[#e7e1d9] bg-white px-5 py-3 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a33] hover:text-[#3b1f4a] active:scale-95"
                 >
-                  {t.landing.cta.voirBibliotheque}
+                  {t.landing.cta.commentImporter}
                 </Link>
               </div>
               <p className="text-xs text-[#524b5a] sm:text-sm">{t.landing.cta.commencerSubtext}</p>
             </div>
             {/* Trust Signals */}
-            {scenesCount > 0 && (
-              <div className="flex flex-wrap items-center gap-4 text-sm text-[#524b5a]">
-                <span className="font-semibold text-[#3b1f4a]">
-                  {scenesCount} {t.landing.trustSignals.scenesAvailable}
-                </span>
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-4 text-sm text-[#524b5a]">
+              <span className="font-semibold text-[#3b1f4a]">
+                {t.landing.trustSignals.importFocused}
+              </span>
+            </div>
             <div className="flex flex-wrap gap-3 text-xs font-semibold text-[#524b5a]">
               <span className="rounded-full bg-white/80 px-3 py-1 shadow-sm">{t.landing.features.flashcardsScene}</span>
               <span className="rounded-full bg-white/80 px-3 py-1 shadow-sm">{t.landing.features.rappelsAuditions}</span>
@@ -66,27 +62,38 @@ export default async function LandingPage() {
             </div>
           </div>
           <div className="flex flex-1 flex-col gap-3 rounded-2xl border border-[#e7e1d9] bg-white/90 p-4 shadow-lg lg:max-w-md">
-            {/* TODO: Remplacer par screenshots réels ou GIFs du produit */}
             {[
-              t.landing.demoCards.casting,
-              t.landing.demoCards.selftape,
-              t.landing.demoCards.replique,
-            ].map((item) => (
+              t.landing.importSteps.step1,
+              t.landing.importSteps.step2,
+              t.landing.importSteps.step3,
+            ].map((step, index) => (
               <div
-                key={item.title}
-                className="flex items-start justify-between gap-3 rounded-xl border border-[#e7e1d9] bg-white/90 px-3 py-3 shadow-sm"
+                key={step.title}
+                className="flex items-center gap-3 rounded-xl border border-[#e7e1d9] bg-white/90 px-3 py-3 shadow-sm"
               >
-                <div>
-                  <div className="text-sm font-semibold text-[#3b1f4a]">{item.title}</div>
-                  <div className="text-xs text-[#524b5a]">{item.meta}</div>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f4c95d33] text-sm font-bold text-[#3b1f4a]">
+                  {index + 1}
                 </div>
-                <span className="rounded-full bg-[#f4c95d33] px-3 py-1 text-[11px] font-semibold text-[#3b1f4a]">
-                  {item.badge}
-                </span>
+                <div>
+                  <div className="text-sm font-semibold text-[#3b1f4a]">{step.title}</div>
+                  <div className="text-xs text-[#524b5a]">{step.desc}</div>
+                </div>
               </div>
             ))}
           </div>
         </div>
+      </section>
+
+      {/* Problem Section (Agiter la douleur) */}
+      <section className="rounded-3xl border border-[#e7e1d9] bg-[#524b5a08] px-8 py-10 text-center shadow-lg">
+        <h2 className="font-display text-2xl font-semibold text-[#1c1b1f] sm:text-3xl">
+          {t.landing.problemSection.title}
+        </h2>
+        {t.landing.problemSection.subtitle && (
+          <p className="mx-auto mt-3 max-w-2xl text-lg text-[#524b5a]">
+            {t.landing.problemSection.subtitle}
+          </p>
+        )}
       </section>
 
       {/* Benefits Section */}

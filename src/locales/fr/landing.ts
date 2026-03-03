@@ -2,36 +2,28 @@ export const landing = {
   badge: "Pour étudiant•es en théâtre",
   title: "Maîtrise tes textes bien plus vite",
   description:
-    "Importe tes scènes, choisis ton mode d'apprentissage préféré, suis ton évolution.",
+    "L'application qui transforme ton téléphone en partenaire de répétition. Gagne des heures de travail et arrive sereine à tes auditions.",
   cta: {
     commencer: "Commencer maintenant",
     commencerSubtext: "Disponible dès 5 euros par mois.",
-    voirBibliotheque: "Voir la bibliothèque",
+    commentImporter: "Comment importer ?",
   },
   trustSignals: {
-    scenesAvailable: "scènes disponibles + toutes celles que tu importeras.",
+    importFocused: "Importe n'importe quel texte — pièce, extrait, audition — et commence à répéter.",
   },
   features: {
-    flashcardsScene: "Flashcards",
+    flashcardsScene: "Révèle tes répliques au fur et à mesure",
     rappelsAuditions: "Pratique pour les auditions",
-    feedbackRapide: "Feedback rapide",
+    feedbackRapide: "Identifie tes points faibles instantanément",
   },
-  demoCards: {
-    casting: {
-      title: "En attendant Godot",
-      meta: "Acte II, scène 3",
-      badge: "Niveau : 8/10",
-    },
-    selftape: {
-      title: "Roméo & Juliette",
-      meta: "Acte I, scène 1",
-      badge: "Niveau : 3,4/10",
-    },
-    replique: {
-      title: "Hamlet",
-      meta: "Acte III, scène 2",
-      badge: "À apprendre",
-    },
+  importSteps: {
+    step1: { title: "Photo de ton texte", desc: "Prends une photo ou scanne ta scène." },
+    step2: { title: "Import en un clic", desc: "On extrait ton rôle automatiquement." },
+    step3: { title: "Scène prête à répéter", desc: "Lance une session dès que c'est prêt." },
+  },
+  problemSection: {
+    title: "Marre de perdre du temps avec tes surligneurs ?",
+    subtitle: "Le stress du trou de mémoire en plein milieu d'une scène ? Côté-Cour t'aide à maîtriser ton texte sans y passer des nuits.",
   },
   sections: {
     masquage: {
@@ -39,12 +31,12 @@ export const landing = {
       desc: "Tes répliques sont masquées. Révèle-les une fois récitées pour vérifier ta mémoire.",
     },
     progression: {
-      title: "Sois conscient de ton évolution",
-      desc: "Suis ta progression en temps réel et maîtrise tes textes.",
+      title: "Identifie tes points faibles",
+      desc: "Identifie instantanément tes points faibles pour ne plus jamais bégayer. Suis ta progression en temps réel et cible les répliques à travailler.",
     },
     mobile: {
-      title: "Apprends n'importe où",
-      desc: "Optimisé mobile : apprends dans les transports, en marchant, ou en faisant tes courses au Franprix.",
+      title: "Répète entre deux cours ou dans le métro",
+      desc: "Optimisé mobile : apprends dans les transports, en marchant, ou entre deux répétitions. Ta scène toujours à portée de main.",
     },
   },
   howItWorks: {
@@ -60,17 +52,24 @@ export const landing = {
         desc: "Plusieurs modes d'apprentissage, qui te permettront de bien maîtriser tes textes.",
       },
       step3: {
-        title: "Juge ta mémoire",
-        desc: "Évalue chaque réplique pour voir ta progression.",
-      },
-      step4: {
-        title: "Va plus loin dans ton apprentissage",
-        desc: "Choisis où commencer tes sessions pour te concentrer sur ce que tu as besoin d'améliorer.",
+        title: "Progrès & Statistiques",
+        desc: "Évalue chaque réplique, vois ta progression et choisis où commencer tes sessions pour te concentrer sur ce que tu dois améliorer.",
       },
     },
   },
   faq: {
     title: "Questions fréquentes",
+    order: [
+      "q1",
+      "q2",
+      "q3",
+      "qConfidentialite",
+      "qOffline",
+      "qVsPdf",
+      "q4",
+      "q5",
+      "q6",
+    ],
     items: {
       q1: {
         question: "C'est compliqué à utiliser ?",
@@ -82,7 +81,19 @@ export const landing = {
       },
       q3: {
         question: "Puis-je utiliser mes propres textes ?",
-        answer: "Oui ! Tu peux importer tes propres scènes, la bibliothèque de base n'est pas encore très fournie.",
+        answer: "Oui ! Tout repose sur tes textes : tu importes tes œuvres (photo, PDF, extrait de pièce ou scène d'audition). Pas de catalogue prêt à l'emploi — tu amènes ce que tu travailles.",
+      },
+      qConfidentialite: {
+        question: "Mes textes restent-ils privés ?",
+        answer: "Oui. Tes textes sont stockés de façon sécurisée et ne sont pas partagés. Ils te sont réservés pour ton travail personnel.",
+      },
+      qOffline: {
+        question: "Ça marche sans internet ?",
+        answer: "Une fois ta scène importée, tu peux répéter sans connexion. L'import et la synchronisation nécessitent internet.",
+      },
+      qVsPdf: {
+        question: "Quelle différence avec un simple PDF ?",
+        answer: "Un PDF ne masque pas tes répliques, ne te donne pas de feedback par ligne ni de suivi de progression. Côté-Cour te fait réciter, évalue ta mémoire et te dit où reprendre — comme un partenaire de répétition.",
       },
       q4: {
         question: "Ça fonctionne sur mobile ?",
@@ -99,8 +110,8 @@ export const landing = {
     },
   },
   ctaBottom: {
-    title: "Prêt à maîtriser tes textes ?",
+    title: "Maîtrise ton texte maintenant",
     subtitle: "Rejoins les étudiants qui sont côté-cour.",
-    button: "Commencer maintenant",
+    button: "Je commence à mémoriser mes scènes gratuitement",
   },
 };

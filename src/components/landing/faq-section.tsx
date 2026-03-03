@@ -6,14 +6,9 @@ import { t } from "@/locales/fr";
 export function FAQSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
-  const faqItems = [
-    t.landing.faq.items.q1,
-    t.landing.faq.items.q2,
-    t.landing.faq.items.q3,
-    t.landing.faq.items.q4,
-    t.landing.faq.items.q5,
-    t.landing.faq.items.q6,
-  ];
+  const faqItems = t.landing.faq.order.map(
+    (key) => t.landing.faq.items[key as keyof typeof t.landing.faq.items]
+  );
 
   return (
     <section className="rounded-3xl border border-[#e7e1d9] bg-white/80 px-8 py-12 shadow-xl">
