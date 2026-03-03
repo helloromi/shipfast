@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 import { ScoreEvolutionChart } from "@/components/stats/score-evolution-chart";
 import { Toast } from "@/components/ui/toast";
@@ -217,7 +218,25 @@ function Step1Interactive() {
             );
           }
 
-          // isCurrent
+          // isCurrent : masqué → révélé → noté (✓ Notée)
+          if (isCurrent && revealed && score !== null) {
+            return (
+              <div
+                key={i}
+                className="rounded-xl border border-[#d9f2e4] bg-[#d9f2e418] px-4 py-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-[#1c6b4f]">
+                    {line.character} — Ta réplique
+                  </span>
+                  <span className="text-xs font-medium text-[#1c6b4f]">✓ Notée</span>
+                </div>
+                <p className="mt-1 text-sm text-[#1c1b1f]">« {line.text} »</p>
+              </div>
+            );
+          }
+
+          // isCurrent : masqué ou révélé pas encore noté
           return (
             <div
               key={i}
@@ -273,14 +292,17 @@ function Step1Interactive() {
         })}
       </div>
       )}
-      {toast && (
-        <Toast
-          message={toast.message}
-          variant={toast.variant}
-          duration={1600}
-          onClose={() => setToast(null)}
-        />
-      )}
+      {typeof document !== "undefined" &&
+        toast &&
+        createPortal(
+          <Toast
+            message={toast.message}
+            variant={toast.variant}
+            duration={2000}
+            onClose={() => setToast(null)}
+          />,
+          document.body
+        )}
     </div>
   );
 }
