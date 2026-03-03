@@ -7,11 +7,11 @@ type UserRow = {
   id: string;
   email?: string;
   createdAt: string;
-  lastSignInAt?: string;
+  lastActivityAt?: string;
   sessionCount?: number;
 };
 
-type SortKey = "email" | "createdAt" | "lastSignInAt" | "sessionCount";
+type SortKey = "email" | "createdAt" | "lastActivityAt" | "sessionCount";
 
 type UsersResponse = {
   users: UserRow[];
@@ -46,9 +46,9 @@ function sortUsers(rows: UserRow[], sortBy: SortKey, order: "asc" | "desc"): Use
       case "createdAt":
         cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         break;
-      case "lastSignInAt":
+      case "lastActivityAt":
         cmp =
-          new Date(a.lastSignInAt ?? 0).getTime() - new Date(b.lastSignInAt ?? 0).getTime();
+          new Date(a.lastActivityAt ?? 0).getTime() - new Date(b.lastActivityAt ?? 0).getTime();
         break;
       case "sessionCount":
         cmp = (a.sessionCount ?? 0) - (b.sessionCount ?? 0);
@@ -156,11 +156,11 @@ export function AdminUsersTable() {
               <th className="px-3 py-2 font-semibold text-[#3b1f4a]">
                 <button
                   type="button"
-                  onClick={() => handleSort("lastSignInAt")}
+                  onClick={() => handleSort("lastActivityAt")}
                   className="flex items-center hover:underline focus:outline-none focus:underline"
                 >
-                  Dernière connexion
-                  <SortIcon column="lastSignInAt" />
+                  Dernière activité
+                  <SortIcon column="lastActivityAt" />
                 </button>
               </th>
               <th className="px-3 py-2 font-semibold text-[#3b1f4a]">
@@ -197,7 +197,7 @@ export function AdminUsersTable() {
                   {formatDate(u.createdAt)}
                 </td>
                 <td className="px-3 py-2 text-[#524b5a]">
-                  {formatDate(u.lastSignInAt)}
+                  {formatDate(u.lastActivityAt)}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums text-[#524b5a]">
                   {u.sessionCount ?? 0}

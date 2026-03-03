@@ -33,27 +33,43 @@ export async function GET(request: NextRequest) {
     const userIds = authUsers.map((u) => u.id);
 
     const sessionCounts = new Map<string, number>();
+    const lastActivityByUser = new Map<string, string>();
     if (userIds.length > 0) {
-      const counts = await Promise.all(
-        userIds.map(async (uid) => {
-          const { count, error: countError } = await admin
-            .from("user_learning_sessions")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", uid)
-            .not("ended_at", "is", null)
-            .gt("completed_lines", 0);
-          if (countError) return { uid, count: 0 };
-          return { uid, count: count ?? 0 };
-        })
-      );
-      counts.forEach(({ uid, count }) => sessionCounts.set(uid, count));
+      const [countsResult, activityResult] = await Promise.all([
+        Promise.all(
+          userIds.map(async (uid) => {
+            const { count, error: countError } = await admin
+              .from("user_learning_sessions")
+              .select("id", { count: "exact", head: true })
+              .eq("user_id", uid)
+              .not("ended_at", "is", null)
+              .gt("completed_lines", 0);
+            if (countError) return { uid, count: 0 };
+            return { uid, count: count ?? 0 };
+          })
+        ),
+        admin
+          .from("user_learning_sessions")
+          .select("user_id, started_at")
+          .in("user_id", userIds)
+          .not("ended_at", "is", null)
+          .gt("completed_lines", 0)
+          .order("started_at", { ascending: false }),
+      ]);
+      countsResult.forEach(({ uid, count }) => sessionCounts.set(uid, count));
+      const activityRows = activityResult.data ?? [];
+      activityRows.forEach((row: { user_id: string; started_at: string }) => {
+        if (!lastActivityByUser.has(row.user_id)) {
+          lastActivityByUser.set(row.user_id, row.started_at);
+        }
+      });
     }
 
     const users = authUsers.map((u) => ({
       id: u.id,
       email: u.email ?? undefined,
       createdAt: u.created_at,
-      lastSignInAt: u.last_sign_in_at ?? undefined,
+      lastActivityAt: lastActivityByUser.get(u.id) ?? undefined,
       sessionCount: sessionCounts.get(u.id) ?? 0,
     }));
 
