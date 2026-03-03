@@ -1,8 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+
+import { ScoreEvolutionChart } from "@/components/stats/score-evolution-chart";
+import { t } from "@/locales/fr";
 
 const STEPS = [
   {
@@ -16,71 +18,152 @@ const STEPS = [
     title: "Suis ta progression",
     body: "La page Statistiques te montre ton avancement, tes séances et ton évolution pour ne rien perdre.",
     visual: "stats",
-    img: "/globe.svg",
-    alt: "Aperçu statistiques",
-    color: "bg-[#6b9fff15]",
   },
   {
     id: 3,
     title: "Importe n'importe quel texte",
     body: "Prends une photo de ton script ou uploade un PDF : on s'occupe du reste pour créer ta scène.",
     visual: "import",
-    img: "/file.svg",
-    alt: "Aperçu import",
-    color: "bg-[#f4c95d25]",
   },
 ] as const;
 
+// Court extrait de dialogue pour la démo étape 1
+const DEMO_LINES = [
+  { character: "Marie", text: "Tu as passé une bonne soirée ?" },
+  { character: "Paul", text: "Oui, merci. Et toi, ce projet de pièce avance ?" },
+  { character: "Marie", text: "On répète la scène 2 demain. Tu pourrais me faire répéter ?" },
+  { character: "Paul", text: "Avec plaisir. On commence par tes répliques ?" },
+] as const;
+
+const SCORE_OPTIONS = [
+  { value: 0, emoji: t.learn.scores.rate.emoji, label: t.learn.scores.rate.label, color: "bg-[#e11d48] text-white hover:bg-[#c4153c]" },
+  { value: 3, emoji: t.learn.scores.hesitant.emoji, label: t.learn.scores.hesitant.label, color: "bg-[#f59e0b] text-white hover:bg-[#d88405]" },
+  { value: 7, emoji: t.learn.scores.bon.emoji, label: t.learn.scores.bon.label, color: "bg-[#f4c95d] text-[#1c1b1f] hover:bg-[#e6b947]" },
+  { value: 10, emoji: t.learn.scores.parfait.emoji, label: t.learn.scores.parfait.label, color: "bg-[#2cb67d] text-white hover:bg-[#239b6a]" },
+] as const;
+
 function Step1Interactive() {
-  const [selectedCharacter, setSelectedCharacter] = useState<"A" | "B" | null>(null);
+  const [selectedCharacter, setSelectedCharacter] = useState<"Marie" | "Paul" | null>(null);
   const [revealed, setRevealed] = useState(false);
+  const [score, setScore] = useState<number | null>(null);
+
+  const userLines = DEMO_LINES.filter((l) => l.character === selectedCharacter);
+  const currentLine = userLines[0];
+
+  const handleSelectCharacter = (c: "Marie" | "Paul") => {
+    setSelectedCharacter(c);
+    setRevealed(false);
+    setScore(null);
+  };
 
   return (
     <div className="rounded-3xl border border-[#e7e1d9] bg-white/90 p-6 shadow-sm">
       <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#7a7184]">Texte test</p>
-      <div className="mb-4 flex gap-2">
-        {(["A", "B"] as const).map((c) => (
+      <div className="mb-4 flex flex-wrap gap-2">
+        {(["Marie", "Paul"] as const).map((c) => (
           <button
             key={c}
             type="button"
-            onClick={() => {
-              setSelectedCharacter(c);
-              setRevealed(false);
-            }}
+            onClick={() => handleSelectCharacter(c)}
             className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
               selectedCharacter === c
                 ? "bg-[#ff6b6b] text-white"
                 : "bg-[#e7e1d9] text-[#524b5a] hover:bg-[#ddd6cc]"
             }`}
           >
-            Personnage {c}
+            {c}
           </button>
         ))}
       </div>
-      <div className="rounded-xl bg-[#f8f6f3] p-4 text-sm text-[#524b5a]">
-        {!selectedCharacter && (
-          <p className="italic">Choisis un personnage pour voir ta réplique.</p>
-        )}
-        {selectedCharacter && !revealed && (
-          <div className="flex flex-col gap-2">
-            <p className="text-[#7a7184]">Réplique masquée…</p>
+
+      {/* Aperçu du dialogue */}
+      <div className="mb-4 rounded-xl bg-[#f8f6f3] p-3 text-sm">
+        {DEMO_LINES.map((line, i) => (
+          <p key={i} className={line.character === selectedCharacter ? "font-medium text-[#1c1b1f]" : "text-[#7a7184]"}>
+            <span className="text-[#3b1f4a]">{line.character}</span> — {line.character === selectedCharacter && !revealed ? "••••••••" : `« ${line.text} »`}
+          </p>
+        ))}
+      </div>
+
+      {selectedCharacter && (
+        <>
+          {!revealed ? (
             <button
               type="button"
               onClick={() => setRevealed(true)}
-              className="self-start rounded-lg bg-[#3b1f4a] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#2a1638]"
+              className="rounded-lg bg-[#3b1f4a] px-3 py-2 text-sm font-semibold text-white hover:bg-[#2a1638]"
             >
               Révéler ma réplique
             </button>
-          </div>
-        )}
-        {selectedCharacter && revealed && (
-          <p className="font-medium text-[#1c1b1f]">
-            {selectedCharacter === "A"
-              ? "« Bonjour ! Ravi de te rencontrer. »"
-              : "« Moi de même. Par où commençons-nous ? »"}
-          </p>
-        )}
+          ) : (
+            <div className="flex flex-col gap-3 rounded-xl border border-[#e7e1d9] bg-white p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#7a7184]">Noter ta réplique</p>
+              <p className="text-sm font-medium text-[#1c1b1f]">« {currentLine?.text} »</p>
+              <div className="flex flex-wrap gap-2">
+                {SCORE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setScore(opt.value)}
+                    className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${opt.color} ${
+                      score === opt.value ? "ring-2 ring-[#3b1f4a] ring-offset-2" : ""
+                    }`}
+                  >
+                    {opt.emoji} {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+const FAKE_STATS_DATA = [
+  { date: "2025-01-01", value: 4.2, label: "Lun" },
+  { date: "2025-01-02", value: 5.5, label: "Mar" },
+  { date: "2025-01-03", value: 6, label: "Mer" },
+  { date: "2025-01-04", value: 7.2, label: "Jeu" },
+  { date: "2025-01-05", value: 7.8, label: "Ven" },
+  { date: "2025-01-06", value: 8.5, label: "Sam" },
+  { date: "2025-01-07", value: 8.2, label: "Dim" },
+];
+
+function Step2StatsVisual() {
+  return (
+    <div className="rounded-3xl border border-[#e7e1d9] bg-white/92 p-5 shadow-sm">
+      <h3 className="mb-4 font-display text-lg font-semibold text-[#3b1f4a]">
+        Évolution de ta note
+      </h3>
+      <ScoreEvolutionChart data={FAKE_STATS_DATA} />
+    </div>
+  );
+}
+
+function ImportPicto() {
+  return (
+    <div className="flex flex-col items-center gap-4 rounded-3xl border border-[#e7e1d9] bg-white/90 p-8 shadow-sm">
+      <div className="rounded-full bg-[#f4c95d33] p-5">
+        <svg
+          className="h-10 w-10 text-[#3b1f4a]"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+          />
+        </svg>
       </div>
+      <p className="text-center text-sm text-[#524b5a]">
+        Glisse une photo ou un PDF ici — la scène est créée automatiquement.
+      </p>
     </div>
   );
 }
@@ -119,24 +202,10 @@ export default function OnboardingPageClient() {
           ))}
         </div>
 
-        {/* Visual: step 1 = interactive, 2 & 3 = image + placeholder */}
+        {/* Visual: step 1 = interactive, 2 = fake graph, 3 = picto import */}
         {current.visual === "interactive" && <Step1Interactive />}
-        {current.visual !== "interactive" && current.img && (
-          <div
-            className={`flex flex-col gap-4 rounded-3xl border border-[#e7e1d9] bg-white/90 p-6 shadow-sm`}
-          >
-            <div
-              className={`flex h-24 w-24 flex-shrink-0 items-center justify-center self-center rounded-2xl ${current.color}`}
-            >
-              <Image src={current.img} alt={current.alt} width={48} height={48} />
-            </div>
-            <p className="text-center text-sm text-[#524b5a]">
-              {current.visual === "stats"
-                ? "Vue d’ensemble de tes séances et de ta progression."
-                : "Photo ou PDF → scène prête à travailler."}
-            </p>
-          </div>
-        )}
+        {current.visual === "stats" && <Step2StatsVisual />}
+        {current.visual === "import" && <ImportPicto />}
 
         {/* Navigation */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
