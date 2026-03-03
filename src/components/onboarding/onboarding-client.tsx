@@ -44,21 +44,56 @@ const SCORE_OPTIONS = [
 
 function Step1Interactive() {
   const [selectedCharacter, setSelectedCharacter] = useState<"Marie" | "Paul" | null>(null);
+  const [lineIndex, setLineIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [score, setScore] = useState<number | null>(null);
 
-  const userLines = DEMO_LINES.filter((l) => l.character === selectedCharacter);
-  const currentLine = userLines[0];
+  const userLines = selectedCharacter
+    ? DEMO_LINES.filter((l) => l.character === selectedCharacter)
+    : [];
+  const currentLine = userLines[lineIndex] ?? null;
+  const hasNextLine = lineIndex < userLines.length - 1;
 
   const handleSelectCharacter = (c: "Marie" | "Paul") => {
     setSelectedCharacter(c);
+    setLineIndex(0);
     setRevealed(false);
     setScore(null);
   };
 
+  const goToNextLine = () => {
+    setLineIndex((i) => i + 1);
+    setRevealed(false);
+    setScore(null);
+  };
+
+  if (!selectedCharacter) {
+    return (
+      <div className="rounded-3xl border border-[#e7e1d9] bg-white/90 p-6 shadow-sm">
+        <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#7a7184]">
+          Choisis ton personnage
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {(["Marie", "Paul"] as const).map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => handleSelectCharacter(c)}
+              className="rounded-full px-4 py-2 text-sm font-semibold transition bg-[#e7e1d9] text-[#524b5a] hover:bg-[#ddd6cc]"
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-3xl border border-[#e7e1d9] bg-white/90 p-6 shadow-sm">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#7a7184]">Texte test</p>
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#7a7184]">
+        Choisis ton personnage
+      </p>
       <div className="mb-4 flex flex-wrap gap-2">
         {(["Marie", "Paul"] as const).map((c) => (
           <button
@@ -76,18 +111,14 @@ function Step1Interactive() {
         ))}
       </div>
 
-      {/* Aperçu du dialogue */}
-      <div className="mb-4 rounded-xl bg-[#f8f6f3] p-3 text-sm">
-        {DEMO_LINES.map((line, i) => (
-          <p key={i} className={line.character === selectedCharacter ? "font-medium text-[#1c1b1f]" : "text-[#7a7184]"}>
-            <span className="text-[#3b1f4a]">{line.character}</span> — {line.character === selectedCharacter && !revealed ? "••••••••" : `« ${line.text} »`}
-          </p>
-        ))}
-      </div>
-
-      {selectedCharacter && (
-        <>
-          {!revealed ? (
+      {/* Une réplique à la fois, comme dans l'app */}
+      <div className="rounded-xl border border-[#e7e1d9] bg-[#f8f6f3] p-4">
+        <p className="mb-1 text-xs font-semibold text-[#7a7184]">
+          Ta réplique {userLines.length > 1 ? `${lineIndex + 1}/${userLines.length}` : ""}
+        </p>
+        {!revealed ? (
+          <>
+            <p className="mb-4 text-sm text-[#524b5a]">••••••••</p>
             <button
               type="button"
               onClick={() => setRevealed(true)}
@@ -95,28 +126,39 @@ function Step1Interactive() {
             >
               Révéler ma réplique
             </button>
-          ) : (
-            <div className="flex flex-col gap-3 rounded-xl border border-[#e7e1d9] bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-[#7a7184]">Noter ta réplique</p>
-              <p className="text-sm font-medium text-[#1c1b1f]">« {currentLine?.text} »</p>
-              <div className="flex flex-wrap gap-2">
-                {SCORE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setScore(opt.value)}
-                    className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${opt.color} ${
-                      score === opt.value ? "ring-2 ring-[#3b1f4a] ring-offset-2" : ""
-                    }`}
-                  >
-                    {opt.emoji} {opt.label}
-                  </button>
-                ))}
-              </div>
+          </>
+        ) : (
+          <>
+            <p className="mb-4 text-sm font-medium text-[#1c1b1f]">« {currentLine?.text} »</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#7a7184]">
+              Noter ta réplique
+            </p>
+            <div className="mb-4 flex flex-wrap gap-2">
+              {SCORE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setScore(opt.value)}
+                  className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${opt.color} ${
+                    score === opt.value ? "ring-2 ring-[#3b1f4a] ring-offset-2" : ""
+                  }`}
+                >
+                  {opt.emoji} {opt.label}
+                </button>
+              ))}
             </div>
-          )}
-        </>
-      )}
+            {hasNextLine ? (
+              <button
+                type="button"
+                onClick={goToNextLine}
+                className="text-sm font-semibold text-[#3b1f4a] hover:underline"
+              >
+                Réplique suivante →
+              </button>
+            ) : null}
+          </>
+        )}
+      </div>
     </div>
   );
 }
