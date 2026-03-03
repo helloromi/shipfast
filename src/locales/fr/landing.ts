@@ -110,6 +110,23 @@ export const landing = {
       },
     },
   },
+  useCases: {
+    title: "Cas d'usage",
+    items: {
+      firstShow: {
+        title: "Préparer sa première représentation de théâtre",
+        desc: "Premier spectacle : le stress et l'enjeu sont là. Avec Côté-Cour, tu arrives prêt : répliques masquées, feedback immédiat et repérage des trous de mémoire avant le jour J.",
+      },
+      associativeCourse: {
+        title: "Répéter ses scènes pour un petit cours de théâtre associatif",
+        desc: "Peu de répétitions collectives, temps limité ? Travaille ta scène en autonomie entre deux cours : importe le texte du cours et arrive en répétition déjà à l'aise.",
+      },
+      transports: {
+        title: "Mémoriser ses répliques dans les transports",
+        desc: "Métro, bus, temps morts : utilise ton mobile pour réviser. Ta scène sous la main, des sessions courtes, sans feuilles à trimballer.",
+      },
+    },
+  },
   ctaBottom: {
     title: "Maîtrise ton texte maintenant",
     subtitle: "Rejoins les étudiants qui sont côté-cour.",

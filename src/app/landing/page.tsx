@@ -120,6 +120,28 @@ export default async function LandingPage() {
       {/* FAQ Section */}
       <FAQSection />
 
+      {/* Cas d'usage */}
+      <section>
+        <h2 className="mb-6 font-display text-2xl font-semibold text-[#1c1b1f] sm:text-3xl">
+          {t.landing.useCases.title}
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[
+            t.landing.useCases.items.firstShow,
+            t.landing.useCases.items.associativeCourse,
+            t.landing.useCases.items.transports,
+          ].map((item) => (
+            <div
+              key={item.title}
+              className="rounded-2xl border border-[#e7e1d9] bg-white/85 p-5 shadow-sm shadow-[#3b1f4a0d] transition hover:-translate-y-[1px] hover:shadow-lg"
+            >
+              <h3 className="font-display text-xl font-semibold text-[#3b1f4a]">{item.title}</h3>
+              <p className="mt-2 text-sm text-[#524b5a]">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Bottom CTA */}
       <section className="rounded-3xl border border-[#e7e1d9] bg-gradient-to-br from-[#f4c95d22] to-[#ff6b6b22] px-8 py-12 text-center shadow-xl">
         <h2 className="font-display text-3xl font-semibold text-[#1c1b1f] sm:text-4xl">
