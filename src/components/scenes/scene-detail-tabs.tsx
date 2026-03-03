@@ -238,6 +238,34 @@ export function SceneDetailTabs({
             </div>
           </div>
 
+          {/* Exporter mes notes */}
+          {user && (
+            <div className="flex flex-col gap-3">
+              <h3 className="font-display text-lg font-semibold text-[#3b1f4a]">
+                {t.scenes.detail.reglages.exportNotesTitle}
+              </h3>
+              <p className="text-sm text-[#524b5a]">
+                {t.scenes.detail.reglages.exportNotesDescription}
+              </p>
+              <a
+                href={`/scenes/${sceneId}/export`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-fit items-center gap-2 rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:-translate-y-[1px] hover:border-[#3b1f4a66]"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2h-2m-4 0H5a2 2 0 00-2 2v4a2 2 0 002 2h2m-8 0V5a2 2 0 012-2h2a2 2 0 012 2v14m-4 0v4m0 0v-4m0 4h4"
+                  />
+                </svg>
+                {t.scenes.detail.reglages.exportNotes}
+              </a>
+            </div>
+          )}
+
           {/* Partager la scène */}
           {canEdit && (
             <div className="flex flex-col gap-3">

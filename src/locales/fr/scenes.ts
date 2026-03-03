@@ -74,6 +74,10 @@ export const scenes = {
       partagerPlaceholder: "adresse@email.com",
       partagerBouton: "Envoyer",
       partagerConfirmation: "Invitation envoyée à",
+      exportNotesTitle: "Exporter mes notes",
+      exportNotes: "Exporter / Imprimer mes notes en PDF",
+      exportNotesDescription:
+        "Ouvre une vue imprimable de la scène avec toutes tes notes. Utilise « Enregistrer en PDF » dans la boîte d'impression pour obtenir un fichier PDF.",
     },
   },
   works: {
