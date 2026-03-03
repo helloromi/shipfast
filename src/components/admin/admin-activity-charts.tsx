@@ -98,7 +98,7 @@ export function AdminActivityCharts() {
                   borderRadius: "8px",
                   padding: "8px 12px",
                 }}
-                formatter={(value: number) => [value, "Actifs"]}
+                formatter={(value: number | undefined) => [value ?? 0, "Actifs"]}
                 labelFormatter={(_, payload) =>
                   payload?.[0]?.payload?.date ? `Date: ${payload[0].payload.date}` : ""
                 }
@@ -137,7 +137,7 @@ export function AdminActivityCharts() {
                   borderRadius: "8px",
                   padding: "8px 12px",
                 }}
-                formatter={(value: number) => [value, "Actifs"]}
+                formatter={(value: number | undefined) => [value ?? 0, "Actifs"]}
                 labelFormatter={(_, payload) =>
                   payload?.[0]?.payload?.period
                     ? `Semaine du ${payload[0].payload.period}`
