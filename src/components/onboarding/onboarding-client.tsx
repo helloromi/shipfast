@@ -50,6 +50,7 @@ const USER_LINE_INDICES: Record<"Marie" | "Paul", number[]> = {
 
 function Step1Interactive() {
   const [selectedCharacter, setSelectedCharacter] = useState<"Marie" | "Paul" | null>(null);
+  const [practiceStarted, setPracticeStarted] = useState(false);
   const [lineIndex, setLineIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [score, setScore] = useState<number | null>(null);
@@ -61,6 +62,7 @@ function Step1Interactive() {
 
   const handleSelectCharacter = (c: "Marie" | "Paul") => {
     setSelectedCharacter(c);
+    setPracticeStarted(false);
     setLineIndex(0);
     setRevealed(false);
     setScore(null);
@@ -116,7 +118,39 @@ function Step1Interactive() {
         ))}
       </div>
 
-      {/* Dialogue complet : répliques de l'autre toujours visibles, les tiennes masquées puis révélées une par une */}
+      {/* Phase 1 : texte complet visible, puis "Commencer" */}
+      {!practiceStarted && (
+        <>
+          <div className="flex flex-col gap-2">
+            {DEMO_LINES.map((line, i) => {
+              const isMyLine = line.character === selectedCharacter;
+              return (
+                <div
+                  key={i}
+                  className={`rounded-xl border px-4 py-3 ${
+                    isMyLine ? "border-[#f4c95d66] bg-[#f4c95d1f]" : "border-[#e7e1d9] bg-white/90"
+                  }`}
+                >
+                  <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+                    {line.character}{isMyLine ? " — Ta réplique" : ""}
+                  </div>
+                  <p className="mt-1 text-sm text-[#1c1b1f]">« {line.text} »</p>
+                </div>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => setPracticeStarted(true)}
+            className="mt-4 w-full rounded-full bg-[#ff6b6b] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#e75a5a]"
+          >
+            Commencer l’exercice
+          </button>
+        </>
+      )}
+
+      {/* Phase 2 : répliques de l'autre visibles, les tiennes masquées puis révélées une par une */}
+      {practiceStarted && (
       <div className="flex flex-col gap-2">
         {DEMO_LINES.map((line, i) => {
           const isMyLine = line.character === selectedCharacter;
@@ -225,6 +259,7 @@ function Step1Interactive() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }
