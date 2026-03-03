@@ -8,7 +8,10 @@ type UserRow = {
   email?: string;
   createdAt: string;
   lastSignInAt?: string;
+  sessionCount?: number;
 };
+
+type SortKey = "email" | "createdAt" | "lastSignInAt" | "sessionCount";
 
 type UsersResponse = {
   users: UserRow[];
@@ -33,6 +36,30 @@ function formatDate(iso: string | undefined): string {
   }
 }
 
+function sortUsers(rows: UserRow[], sortBy: SortKey, order: "asc" | "desc"): UserRow[] {
+  return [...rows].sort((a, b) => {
+    let cmp = 0;
+    switch (sortBy) {
+      case "email":
+        cmp = (a.email ?? "").localeCompare(b.email ?? "");
+        break;
+      case "createdAt":
+        cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        break;
+      case "lastSignInAt":
+        cmp =
+          new Date(a.lastSignInAt ?? 0).getTime() - new Date(b.lastSignInAt ?? 0).getTime();
+        break;
+      case "sessionCount":
+        cmp = (a.sessionCount ?? 0) - (b.sessionCount ?? 0);
+        break;
+      default:
+        return 0;
+    }
+    return order === "asc" ? cmp : -cmp;
+  });
+}
+
 export function AdminUsersTable() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [page, setPage] = useState(1);
@@ -40,6 +67,8 @@ export function AdminUsersTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<{ id: string; email?: string } | null>(null);
+  const [sortBy, setSortBy] = useState<SortKey>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const fetchPage = useCallback(async (pageNum: number) => {
     setLoading(true);
@@ -72,6 +101,23 @@ export function AdminUsersTable() {
     if (!loading && hasMore) fetchPage(page + 1);
   };
 
+  const handleSort = (key: SortKey) => {
+    if (sortBy === key) {
+      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder(key === "email" ? "asc" : "desc");
+    }
+  };
+
+  const sortedUsers = sortUsers(users, sortBy, sortOrder);
+  const SortIcon = ({ column }: { column: SortKey }) =>
+    sortBy === column ? (
+      <span className="ml-1 text-[#3b1f4a]" aria-hidden>
+        {sortOrder === "asc" ? "↑" : "↓"}
+      </span>
+    ) : null;
+
   return (
     <div className="flex flex-col gap-4">
       <AdminUserActivityDrawer
@@ -84,16 +130,53 @@ export function AdminUsersTable() {
         <div className="text-sm text-red-600">{error}</div>
       )}
       <div className="overflow-x-auto rounded-xl border border-[#e7e1d9]">
-        <table className="w-full min-w-[500px] text-left text-sm">
+        <table className="w-full min-w-[560px] text-left text-sm">
           <thead>
             <tr className="border-b border-[#e7e1d9] bg-[#f9f7f3]">
-            <th className="px-3 py-2 font-semibold text-[#3b1f4a]">Email</th>
-              <th className="px-3 py-2 font-semibold text-[#3b1f4a]">Inscription</th>
-              <th className="px-3 py-2 font-semibold text-[#3b1f4a]">Dernière connexion</th>
+              <th className="px-3 py-2 font-semibold text-[#3b1f4a]">
+                <button
+                  type="button"
+                  onClick={() => handleSort("email")}
+                  className="flex items-center hover:underline focus:outline-none focus:underline"
+                >
+                  Email
+                  <SortIcon column="email" />
+                </button>
+              </th>
+              <th className="px-3 py-2 font-semibold text-[#3b1f4a]">
+                <button
+                  type="button"
+                  onClick={() => handleSort("createdAt")}
+                  className="flex items-center hover:underline focus:outline-none focus:underline"
+                >
+                  Inscription
+                  <SortIcon column="createdAt" />
+                </button>
+              </th>
+              <th className="px-3 py-2 font-semibold text-[#3b1f4a]">
+                <button
+                  type="button"
+                  onClick={() => handleSort("lastSignInAt")}
+                  className="flex items-center hover:underline focus:outline-none focus:underline"
+                >
+                  Dernière connexion
+                  <SortIcon column="lastSignInAt" />
+                </button>
+              </th>
+              <th className="px-3 py-2 font-semibold text-[#3b1f4a]">
+                <button
+                  type="button"
+                  onClick={() => handleSort("sessionCount")}
+                  className="flex items-center hover:underline focus:outline-none focus:underline"
+                >
+                  Sessions
+                  <SortIcon column="sessionCount" />
+                </button>
+              </th>
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {sortedUsers.map((u) => (
               <tr
                 key={u.id}
                 role="button"
@@ -115,6 +198,9 @@ export function AdminUsersTable() {
                 </td>
                 <td className="px-3 py-2 text-[#524b5a]">
                   {formatDate(u.lastSignInAt)}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-[#524b5a]">
+                  {u.sessionCount ?? 0}
                 </td>
               </tr>
             ))}

@@ -29,11 +29,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const users = (listData?.users ?? []).map((u) => ({
+    const authUsers = listData?.users ?? [];
+    const userIds = authUsers.map((u) => u.id);
+
+    const sessionCounts = new Map<string, number>();
+    if (userIds.length > 0) {
+      const counts = await Promise.all(
+        userIds.map(async (uid) => {
+          const { count, error: countError } = await admin
+            .from("user_learning_sessions")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", uid);
+          if (countError) return { uid, count: 0 };
+          return { uid, count: count ?? 0 };
+        })
+      );
+      counts.forEach(({ uid, count }) => sessionCounts.set(uid, count));
+    }
+
+    const users = authUsers.map((u) => ({
       id: u.id,
       email: u.email ?? undefined,
       createdAt: u.created_at,
       lastSignInAt: u.last_sign_in_at ?? undefined,
+      sessionCount: sessionCounts.get(u.id) ?? 0,
     }));
 
     return NextResponse.json({
