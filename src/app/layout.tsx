@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { Suspense } from "react";
 
 import { Header } from "@/components/header";
+import { JsonLdSoftwareApplication } from "@/components/seo/json-ld-software-application";
 import { SupabaseProvider } from "@/components/supabase-provider";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import "./globals.css";
@@ -22,8 +23,17 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Côté-Cour - Maîtrise tes textes 3x plus vite",
-  description: "Importe ta scène, révèle tes répliques au fur et à mesure, et reçois un feedback instantané. Simple, efficace, sans configuration.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://cote-cour.fr"),
+  title: "Apprendre son texte de théâtre – Mémorisation répliques | Côté-Cour",
+  description:
+    "Application pour comédiens : apprends ton texte de théâtre et mémorise tes répliques 3x plus vite. Importe ta scène, révèle tes répliques, reçois un feedback instantané.",
+  openGraph: {
+    title: "Apprendre son texte de théâtre – Mémorisation répliques | Côté-Cour",
+    description:
+      "Application pour comédiens : apprends ton texte de théâtre et mémorise tes répliques 3x plus vite. Importe ta scène, révèle tes répliques, reçois un feedback instantané.",
+    type: "website",
+    locale: "fr_FR",
+  },
   icons: {
     icon: [
       { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
@@ -54,6 +64,7 @@ export default async function RootLayout({
   return (
     <html lang="fr">
       <body className={`${inter.variable} ${playfair.variable} antialiased`}>
+        <JsonLdSoftwareApplication />
         <SupabaseProvider initialSession={session}>
           <div className="flex min-h-screen flex-col bg-[radial-gradient(circle_at_20%_20%,#F4C95D22,transparent_25%),radial-gradient(circle_at_80%_10%,#FF6B6B22,transparent_22%),radial-gradient(circle_at_80%_80%,#3B1F4A18,transparent_28%),#F9F7F3] text-[#1C1B1F]">
             <Suspense fallback={null}>

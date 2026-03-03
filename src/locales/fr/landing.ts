@@ -1,8 +1,8 @@
 export const landing = {
   badge: "Pour étudiant•es en théâtre",
-  title: "Maîtrise tes textes bien plus vite",
+  title: "Côté-Cour : apprendre ses textes de théâtre plus vite",
   description:
-    "L'application qui transforme ton téléphone en partenaire de répétition. Gagne des heures de travail et arrive sereine à tes auditions.",
+    "L'application qui transforme ton téléphone en partenaire de répétition. Sollicite ta mémoire visuelle, gagne des heures de travail et arrive sereine à tes auditions.",
   cta: {
     commencer: "Commencer maintenant",
     commencerSubtext: "Disponible dès 5 euros par mois.",
@@ -23,20 +23,21 @@ export const landing = {
   },
   problemSection: {
     title: "Marre de perdre du temps avec tes surligneurs ?",
-    subtitle: "Le stress du trou de mémoire en plein milieu d'une scène ? Côté-Cour t'aide à maîtriser ton texte sans y passer des nuits.",
+    subtitle:
+      "Le stress du trou de mémoire en répétition ou à l'audition ? Côté-Cour t'aide à maîtriser ton texte sans y passer des nuits.",
   },
   sections: {
     masquage: {
       title: "Apprends facilement",
-      desc: "Tes répliques sont masquées. Révèle-les une fois récitées pour vérifier ta mémoire.",
+      desc: "Tes répliques sont masquées : révèle-les une à une pour solliciter ta mémoire visuelle et vérifier que tu les connais.",
     },
     progression: {
       title: "Identifie tes points faibles",
-      desc: "Identifie instantanément tes points faibles pour ne plus jamais bégayer. Suis ta progression en temps réel et cible les répliques à travailler.",
+      desc: "Identifie tes points faibles à chaque répétition pour ne plus jamais bégayer en scène ou à l'audition. Suis ta progression en temps réel et cible les répliques à travailler.",
     },
     mobile: {
       title: "Répète entre deux cours ou dans le métro",
-      desc: "Optimisé mobile : apprends dans les transports, en marchant, ou entre deux répétitions. Ta scène toujours à portée de main.",
+      desc: "Optimisé mobile : apprends dans les transports, en marchant, entre deux répétitions ou avant une audition. Ta scène toujours à portée de main.",
     },
   },
   howItWorks: {
@@ -49,7 +50,7 @@ export const landing = {
       },
       step2: {
         title: "Apprends facilement",
-        desc: "Plusieurs modes d'apprentissage, qui te permettront de bien maîtriser tes textes.",
+        desc: "Plusieurs modes d'apprentissage pour maîtriser tes textes : idéal pour tes répétitions comme pour préparer une audition.",
       },
       step3: {
         title: "Progrès & Statistiques",
@@ -93,7 +94,7 @@ export const landing = {
       },
       qVsPdf: {
         question: "Quelle différence avec un simple PDF ?",
-        answer: "Un PDF ne masque pas tes répliques, ne te donne pas de feedback par ligne ni de suivi de progression. Côté-Cour te fait réciter, évalue ta mémoire et te dit où reprendre — comme un partenaire de répétition.",
+        answer: "Un PDF ne masque pas tes répliques, ne sollicite pas ta mémoire visuelle ni ne te donne de feedback par ligne. Côté-Cour te fait réciter, évalue ta mémorisation et te dit où reprendre — comme un partenaire de répétition.",
       },
       q4: {
         question: "Ça fonctionne sur mobile ?",

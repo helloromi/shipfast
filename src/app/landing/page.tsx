@@ -84,24 +84,17 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Problem Section (Agiter la douleur) */}
-      <section className="rounded-3xl border border-[#e7e1d9] bg-[#524b5a08] px-8 py-10 text-center shadow-lg">
+      {/* Pourquoi choisir Côté-Cour (problème + bénéfices) */}
+      <section className="rounded-3xl border border-[#e7e1d9] bg-[#524b5a08] px-8 py-10 shadow-lg">
         <h2 className="font-display text-2xl font-semibold text-[#1c1b1f] sm:text-3xl">
-          {t.landing.problemSection.title}
+          Pourquoi choisir Côté-Cour ?
         </h2>
         {t.landing.problemSection.subtitle && (
           <p className="mx-auto mt-3 max-w-2xl text-lg text-[#524b5a]">
             {t.landing.problemSection.subtitle}
           </p>
         )}
-      </section>
-
-      {/* Benefits Section */}
-      <section>
-        <h2 className="mb-6 font-display text-2xl font-semibold text-[#1c1b1f] sm:text-3xl">
-          Pourquoi choisir Côté-Cour ?
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
           {[
             t.landing.sections.masquage,
             t.landing.sections.progression,
