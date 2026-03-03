@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
-import { fetchSceneWithRelations, getSupabaseSessionUser } from "@/lib/queries/scenes";
+import { fetchSceneWithRelations, fetchUserProgressScenes, getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { fetchUserLineNotes, fetchUserLineHighlights } from "@/lib/queries/notes";
 import { hasAccess } from "@/lib/queries/access";
 import { ensurePersonalSceneForCurrentUser } from "@/lib/utils/personal-scene";
@@ -42,10 +42,12 @@ export default async function SceneExportPage({ params }: Props) {
   const sortedLines = [...scene.lines].sort((a, b) => a.order - b.order);
   const lineIds = sortedLines.map((l) => l.id);
 
-  const [notesByLineId, highlightsByLineId] = await Promise.all([
+  const [userProgress, notesByLineId, highlightsByLineId] = await Promise.all([
+    fetchUserProgressScenes(user.id).then((p) => p.find((p) => p.sceneId === id)),
     fetchUserLineNotes(user.id, lineIds),
     fetchUserLineHighlights(user.id, lineIds),
   ]);
+  const lastCharacterId = userProgress?.lastCharacterId ?? null;
 
   const printStyles = `
     @media print {
@@ -54,6 +56,8 @@ export default async function SceneExportPage({ params }: Props) {
       .export-print-view { position: absolute; left: 0; top: 0; width: 100%; padding: 0; }
     }
     .print-line-block { break-inside: avoid; page-break-inside: avoid; }
+    .export-my-line { font-weight: 700; background-color: rgba(244, 201, 93, 0.25); }
+    @media print { .export-my-line { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
   `;
 
   return (
@@ -75,27 +79,37 @@ export default async function SceneExportPage({ params }: Props) {
           )}
         </header>
 
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-5">
           {sortedLines.map((line) => {
             const lineNote = notesByLineId[line.id]?.trim();
             const highlights = highlightsByLineId[line.id] ?? [];
+            const isMyCharacter = lastCharacterId != null && line.character_id === lastCharacterId;
 
             return (
-              <section key={line.id} className="print-line-block border-b border-[#e7e1d9] pb-4">
-                <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+              <section
+                key={line.id}
+                className={`print-line-block ${isMyCharacter ? "export-my-line rounded px-2 py-1 -mx-2" : ""}`}
+              >
+                <div
+                  className={`text-xs font-semibold uppercase tracking-wide ${isMyCharacter ? "text-[#3b1f4a]" : "text-[#7a7184]"}`}
+                >
                   {line.characters?.name ?? t.common.labels.personnage}
                 </div>
-                <p className="mt-0.5 text-sm text-[#1c1b1f]">{line.text}</p>
+                <p
+                  className={`mt-0.5 text-sm leading-relaxed ${isMyCharacter ? "font-bold text-[#1c1b1f]" : "text-[#1c1b1f]"}`}
+                >
+                  {line.text}
+                </p>
 
                 {lineNote && (
-                  <div className="mt-2 text-sm text-[#524b5a]">
-                    <span className="font-semibold">{t.scenes.detail.notes.notePerso} : </span>
+                  <p className="mt-1.5 pl-3 text-xs text-[#524b5a] border-l-2 border-[#e7e1d9]">
+                    <span className="font-medium">{t.scenes.detail.notes.notePerso} — </span>
                     {lineNote}
-                  </div>
+                  </p>
                 )}
 
                 {highlights.length > 0 && (
-                  <ul className="mt-2 list-none space-y-2 pl-0">
+                  <div className="mt-1.5 space-y-1.5">
                     {highlights.map((h, i) => {
                       const parts: string[] = [];
                       if (h.noteFree?.trim()) parts.push(`${t.scenes.detail.highlights.labels.free}: ${h.noteFree.trim()}`);
@@ -103,19 +117,16 @@ export default async function SceneExportPage({ params }: Props) {
                       if (h.noteIntonation?.trim()) parts.push(`${t.scenes.detail.highlights.labels.intonation}: ${h.noteIntonation.trim()}`);
                       if (h.notePlay?.trim()) parts.push(`${t.scenes.detail.highlights.labels.play}: ${h.notePlay.trim()}`);
                       return (
-                        <li key={i} className="rounded border border-[#e7e1d9] bg-[#f9f7f3] p-2 text-sm">
+                        <p key={i} className="pl-3 text-xs text-[#524b5a] border-l-2 border-[#e7e1d9]">
                           {h.selectedText && (
-                            <p className="font-medium text-[#3b1f4a]">
-                              « {h.selectedText} »
-                            </p>
+                            <span className="italic text-[#3b1f4a]">« {h.selectedText} »</span>
                           )}
-                          {parts.length > 0 && (
-                            <p className="mt-1 text-[#524b5a]">{parts.join(" — ")}</p>
-                          )}
-                        </li>
+                          {h.selectedText && parts.length > 0 && " — "}
+                          {parts.length > 0 && parts.join(" · ")}
+                        </p>
                       );
                     })}
-                  </ul>
+                  </div>
                 )}
               </section>
             );
