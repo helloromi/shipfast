@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { fetchSceneWithRelations, fetchUserProgressScenes, getSupabaseSessionUser } from "@/lib/queries/scenes";
@@ -53,17 +54,34 @@ export default async function SceneExportPage({ params }: Props) {
     @media print {
       body * { visibility: hidden; }
       .export-print-view, .export-print-view * { visibility: visible; }
-      .export-print-view { position: absolute; left: 0; top: 0; width: 100%; padding: 0; }
+      .export-print-view {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 2cm;
+        box-sizing: border-box;
+      }
     }
     .print-line-block { break-inside: avoid; page-break-inside: avoid; }
     .export-my-line { font-weight: 700; background-color: rgba(244, 201, 93, 0.25); }
     @media print { .export-my-line { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    @media print { .export-screen-only { display: none !important; } }
   `;
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
       <div className="export-print-view print-only max-w-3xl mx-auto px-4 py-6 sm:px-6">
+        <div className="export-screen-only mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] px-4 py-3 text-sm">
+          <p className="text-[#524b5a]">{t.scenes.detail.reglages.exportScreenMessage}</p>
+          <Link
+            href={`/scenes/${id}`}
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#3b1f4a] px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-[#2d1638]"
+          >
+            {t.scenes.detail.reglages.exportBackToScene}
+          </Link>
+        </div>
         <ExportPrintTrigger />
         <header className="mb-8">
           <h1 className="font-display text-2xl font-semibold text-[#1c1b1f]">{scene.title}</h1>

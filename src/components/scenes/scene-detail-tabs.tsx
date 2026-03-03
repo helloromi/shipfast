@@ -247,10 +247,8 @@ export function SceneDetailTabs({
               <p className="text-sm text-[#524b5a]">
                 {t.scenes.detail.reglages.exportNotesDescription}
               </p>
-              <a
+              <Link
                 href={`/scenes/${sceneId}/export`}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="inline-flex w-fit items-center gap-2 rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:-translate-y-[1px] hover:border-[#3b1f4a66]"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -262,7 +260,7 @@ export function SceneDetailTabs({
                   />
                 </svg>
                 {t.scenes.detail.reglages.exportNotes}
-              </a>
+              </Link>
             </div>
           )}
 
