@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { ScoreEvolutionChart } from "@/components/stats/score-evolution-chart";
+import { Toast } from "@/components/ui/toast";
 import { t } from "@/locales/fr";
 
 const STEPS = [
@@ -48,12 +49,16 @@ const USER_LINE_INDICES: Record<"Marie" | "Paul", number[]> = {
   Paul: [1, 3],
 };
 
+const TOAST_ENREGISTRE = "C'est bien enregistré !";
+const AUTO_NEXT_DELAY_MS = 1200;
+
 function Step1Interactive() {
   const [selectedCharacter, setSelectedCharacter] = useState<"Marie" | "Paul" | null>(null);
   const [practiceStarted, setPracticeStarted] = useState(false);
   const [lineIndex, setLineIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [score, setScore] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
 
   const userLineIndices = selectedCharacter ? USER_LINE_INDICES[selectedCharacter] : [];
   const currentDemoIndex = userLineIndices[lineIndex];
@@ -72,6 +77,14 @@ function Step1Interactive() {
     setLineIndex((i) => i + 1);
     setRevealed(false);
     setScore(null);
+  };
+
+  const handleScore = (value: number) => {
+    setScore(value);
+    setToast({ message: TOAST_ENREGISTRE, variant: "success" });
+    if (hasNextLine) {
+      setTimeout(goToNextLine, AUTO_NEXT_DELAY_MS);
+    }
   };
 
   if (!selectedCharacter) {
@@ -235,7 +248,7 @@ function Step1Interactive() {
                       <button
                         key={opt.value}
                         type="button"
-                        onClick={() => setScore(opt.value)}
+                        onClick={() => handleScore(opt.value)}
                         className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${opt.color} ${
                           score === opt.value ? "ring-2 ring-[#3b1f4a] ring-offset-2" : ""
                         }`}
@@ -259,6 +272,14 @@ function Step1Interactive() {
           );
         })}
       </div>
+      )}
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          duration={1600}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   );
