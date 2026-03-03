@@ -39,7 +39,9 @@ export async function GET(request: NextRequest) {
           const { count, error: countError } = await admin
             .from("user_learning_sessions")
             .select("id", { count: "exact", head: true })
-            .eq("user_id", uid);
+            .eq("user_id", uid)
+            .not("ended_at", "is", null)
+            .gt("completed_lines", 0);
           if (countError) return { uid, count: 0 };
           return { uid, count: count ?? 0 };
         })
