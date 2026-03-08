@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Ressources | Côté-Cour",
   description:
     "Conseils et articles pour apprendre tes textes de théâtre, mémoriser tes répliques et progresser en cours de théâtre.",
+  alternates: { canonical: "/ressources" },
 };
 
 export default function RessourcesPage() {

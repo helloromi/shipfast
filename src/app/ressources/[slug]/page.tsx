@@ -18,6 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${article.title} | Côté-Cour`,
     description: article.description,
+    alternates: { canonical: `/ressources/${slug}` },
   };
 }
 

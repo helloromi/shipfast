@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -7,6 +8,10 @@ import { HowItWorks } from "@/components/landing/how-it-works";
 import { FAQSection } from "@/components/landing/faq-section";
 import { LandingViewTracker } from "@/components/landing/landing-view-tracker";
 import { PricingSection } from "@/components/pricing/pricing-section";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/landing" },
+};
 
 export default async function LandingPage() {
   const user = await getSupabaseSessionUser();

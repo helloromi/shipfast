@@ -4,6 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Politique de Confidentialité - Côté-Cour",
   description: "Politique de confidentialité et protection des données personnelles",
+  alternates: { canonical: "/confidentialite" },
 };
 
 function Section({ number, title, children }: { number: string; title: string; children: React.ReactNode }) {

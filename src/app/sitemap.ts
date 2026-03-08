@@ -33,10 +33,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     ...resourceEntries,
     {
-      url: `${baseUrl}/alternatives`,
+      url: `${baseUrl}/confidentialite`,
       lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.6,
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
     },
   ];
 }
