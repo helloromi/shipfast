@@ -4,6 +4,7 @@ import { getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { isAdmin } from "@/lib/utils/admin";
 import { AdminActivityCharts } from "@/components/admin/admin-activity-charts";
 import { AdminBillingSummary } from "@/components/admin/admin-billing-summary";
+import { AdminLandingViews } from "@/components/admin/admin-landing-views";
 import { AdminUsersTable } from "@/components/admin/admin-users-table";
 
 export default async function AdminDashboardPage() {
@@ -34,6 +35,13 @@ export default async function AdminDashboardPage() {
           Créer une scène privée
         </Link>
       </div>
+
+      <section className="rounded-2xl border border-[#e7e1d9] bg-white/95 p-4 shadow-sm sm:p-6">
+        <h2 className="mb-4 font-display text-lg font-semibold text-[#1c1b1f]">
+          Vues landing
+        </h2>
+        <AdminLandingViews />
+      </section>
 
       <section className="rounded-2xl border border-[#e7e1d9] bg-white/95 p-4 shadow-sm sm:p-6">
         <h2 className="mb-4 font-display text-lg font-semibold text-[#1c1b1f]">

@@ -5,6 +5,7 @@ import { getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { t } from "@/locales/fr";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { FAQSection } from "@/components/landing/faq-section";
+import { LandingViewTracker } from "@/components/landing/landing-view-tracker";
 import { PricingSection } from "@/components/pricing/pricing-section";
 
 export default async function LandingPage() {
@@ -15,6 +16,7 @@ export default async function LandingPage() {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-12 py-12">
+      <LandingViewTracker />
       {/* Hero Section */}
       <section className="relative overflow-hidden rounded-3xl border border-[#e7e1d9] bg-white/80 px-8 py-10 shadow-xl">
         <div className="pointer-events-none absolute inset-0 opacity-70">

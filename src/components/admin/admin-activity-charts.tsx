@@ -16,6 +16,12 @@ type ActivityResponse = {
   weekly: { period: string; count: number; label?: string }[];
 };
 
+/** Formate une date YYYY-MM-DD en DD/MM/YY */
+function formatDateDDMMYY(iso: string): string {
+  if (iso.length < 10) return iso;
+  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(2, 4)}`;
+}
+
 export function AdminActivityCharts() {
   const [data, setData] = useState<ActivityResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,11 +65,11 @@ export function AdminActivityCharts() {
 
   const dailyChart = data.daily.map((d) => ({
     ...d,
-    label: d.label ?? d.date.slice(5),
+    label: formatDateDDMMYY(d.date),
   }));
   const weeklyChart = data.weekly.map((w) => ({
     ...w,
-    label: w.period.length >= 10 ? `${w.period.slice(8, 10)}/${w.period.slice(5, 7)}` : (w.label ?? w.period.slice(5)),
+    label: w.period.length >= 10 ? formatDateDDMMYY(w.period) : (w.label ?? w.period.slice(5)),
   }));
 
   return (
@@ -100,7 +106,7 @@ export function AdminActivityCharts() {
                 }}
                 formatter={(value: number | undefined) => [value ?? 0, "Actifs"]}
                 labelFormatter={(_, payload) =>
-                  payload?.[0]?.payload?.date ? `Date: ${payload[0].payload.date}` : ""
+                  payload?.[0]?.payload?.date ? `Date: ${formatDateDDMMYY(payload[0].payload.date)}` : ""
                 }
               />
               <Line
@@ -147,7 +153,7 @@ export function AdminActivityCharts() {
                 formatter={(value: number | undefined) => [value ?? 0, "Actifs"]}
                 labelFormatter={(_, payload) =>
                   payload?.[0]?.payload?.period
-                    ? `Semaine du ${payload[0].payload.period}`
+                    ? `Semaine du ${formatDateDDMMYY(payload[0].payload.period)}`
                     : ""
                 }
               />
