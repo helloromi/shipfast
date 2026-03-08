@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/imports/process",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/emails/inactivity",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/emails/unpaid",
+      "schedule": "0 6 * * *"
     }
   ]
 }
