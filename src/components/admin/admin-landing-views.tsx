@@ -140,7 +140,7 @@ export function AdminLandingViews() {
                       borderRadius: "8px",
                       padding: "8px 12px",
                     }}
-                    formatter={(value: number | undefined, name: string) => [
+                    formatter={(value: number | undefined, name?: string) => [
                       value ?? 0,
                       name === "count" ? "Vues" : "Clics CTA",
                     ]}
