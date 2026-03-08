@@ -853,7 +853,7 @@ export function LearnSession(props: LearnSessionProps) {
           aria-modal="true"
           aria-label={t.learn.setup.title}
         >
-          <div className="w-full max-w-lg rounded-2xl border border-[#e7e1d9] bg-white p-6 shadow-2xl">
+          <div className="max-h-[85dvh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#e7e1d9] bg-white p-6 shadow-2xl">
             <div className="flex flex-col gap-0.5">
               <h3 className="font-display text-lg font-semibold text-[#1c1b1f]">{t.learn.setup.title}</h3>
               <p className="text-sm text-[#7a7184]">Configure ta session d'entraînement</p>
@@ -1171,7 +1171,7 @@ export function LearnSession(props: LearnSessionProps) {
 
       {showSummary && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-lg rounded-2xl border border-[#e7e1d9] bg-white p-6 shadow-2xl">
+          <div className="max-h-[85dvh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#e7e1d9] bg-white p-6 shadow-2xl">
             <h3 className="font-display text-lg font-semibold text-[#1c1b1f]">{t.learn.messages.sessionTerminee}</h3>
             <p className="mt-1 text-sm text-[#524b5a]">
               {t.learn.messages.resumeFeedbacks}

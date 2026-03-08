@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -63,18 +63,18 @@ export function AdminActivityCharts() {
   }));
   const weeklyChart = data.weekly.map((w) => ({
     ...w,
-    label: w.label ?? w.period.slice(5),
+    label: w.period.length >= 10 ? `${w.period.slice(8, 10)}/${w.period.slice(5, 7)}` : (w.label ?? w.period.slice(5)),
   }));
 
   return (
-    <div className="grid gap-8 md:grid-cols-2">
+    <div className="flex flex-col gap-8">
       <div>
         <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[#7a7184]">
           Par jour (30 derniers jours)
         </p>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={dailyChart} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+            <LineChart data={dailyChart} margin={{ top: 5, right: 5, left: 0, bottom: 28 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e7e1d9" />
               <XAxis
                 dataKey="label"
@@ -82,7 +82,7 @@ export function AdminActivityCharts() {
                 fontSize={10}
                 tickLine={false}
                 axisLine={false}
-                interval="preserveStartEnd"
+                interval={4}
               />
               <YAxis
                 stroke="#7a7184"
@@ -103,8 +103,15 @@ export function AdminActivityCharts() {
                   payload?.[0]?.payload?.date ? `Date: ${payload[0].payload.date}` : ""
                 }
               />
-              <Bar dataKey="count" fill="#3b1f4a" radius={[4, 4, 0, 0]} />
-            </BarChart>
+              <Line
+                type="monotone"
+                dataKey="count"
+                stroke="#3b1f4a"
+                strokeWidth={2}
+                dot={{ fill: "#3b1f4a", r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
@@ -114,7 +121,7 @@ export function AdminActivityCharts() {
         </p>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={weeklyChart} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+            <LineChart data={weeklyChart} margin={{ top: 5, right: 5, left: 0, bottom: 28 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e7e1d9" />
               <XAxis
                 dataKey="label"
@@ -144,8 +151,15 @@ export function AdminActivityCharts() {
                     : ""
                 }
               />
-              <Bar dataKey="count" fill="#7a7184" radius={[4, 4, 0, 0]} />
-            </BarChart>
+              <Line
+                type="monotone"
+                dataKey="count"
+                stroke="#3b1f4a"
+                strokeWidth={2}
+                dot={{ fill: "#3b1f4a", r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
