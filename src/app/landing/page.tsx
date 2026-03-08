@@ -6,6 +6,7 @@ import { getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { t } from "@/locales/fr";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { FAQSection } from "@/components/landing/faq-section";
+import { LandingCtaTrackedLink } from "@/components/landing/landing-cta-tracked-link";
 import { LandingViewTracker } from "@/components/landing/landing-view-tracker";
 import { PricingSection } from "@/components/pricing/pricing-section";
 
@@ -41,12 +42,12 @@ export default async function LandingPage() {
             </p>
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap gap-3">
-                <Link
+                <LandingCtaTrackedLink
                   href="/login"
                   className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-[#ff6b6b] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#ff6b6b33] transition hover:-translate-y-[1px] hover:bg-[#e75a5a] active:scale-95"
                 >
                   {t.landing.cta.commencer}
-                </Link>
+                </LandingCtaTrackedLink>
                 <Link
                   href="#comment-ca-marche"
                   className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-[#e7e1d9] bg-white px-5 py-3 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:border-[#3b1f4a33] hover:text-[#3b1f4a] active:scale-95"
@@ -156,12 +157,12 @@ export default async function LandingPage() {
         </h2>
         <p className="mt-2 text-lg text-[#524b5a]">{t.landing.ctaBottom.subtitle}</p>
         <div className="mt-6">
-          <Link
+          <LandingCtaTrackedLink
             href="/login"
             className="inline-flex min-h-[48px] items-center justify-center rounded-full bg-[#ff6b6b] px-8 py-4 text-base font-semibold text-white shadow-lg shadow-[#ff6b6b33] transition hover:-translate-y-[1px] hover:bg-[#e75a5a] active:scale-95"
           >
             {t.landing.ctaBottom.button}
-          </Link>
+          </LandingCtaTrackedLink>
         </div>
       </section>
     </div>

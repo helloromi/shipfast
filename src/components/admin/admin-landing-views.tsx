@@ -15,7 +15,8 @@ type GroupBy = "day" | "week" | "month";
 
 type LandingViewsResponse = {
   total: number;
-  series: { period: string; count: number }[];
+  ctaClicksTotal: number;
+  series: { period: string; count: number; ctaClicks: number }[];
 };
 
 /** Formate une date YYYY-MM-DD en DD/MM/YY */
@@ -75,10 +76,16 @@ export function AdminLandingViews() {
         </div>
       ) : (
         <>
-          <p className="text-2xl font-semibold text-[#1c1b1f]">
-            {data?.total.toLocaleString("fr-FR") ?? 0} vue
-            {(data?.total ?? 0) !== 1 ? "s" : ""} de la page d’accueil
-          </p>
+          <div className="flex flex-col gap-1">
+            <p className="text-2xl font-semibold text-[#1c1b1f]">
+              {data?.total.toLocaleString("fr-FR") ?? 0} vue
+              {(data?.total ?? 0) !== 1 ? "s" : ""} de la page d’accueil
+            </p>
+            <p className="text-lg font-medium text-[#524b5a]">
+              {(data?.ctaClicksTotal ?? 0).toLocaleString("fr-FR")} clic
+              {(data?.ctaClicksTotal ?? 0) !== 1 ? "s" : ""} sur « Se connecter »
+            </p>
+          </div>
 
           <div className="flex flex-wrap gap-2">
             {(["day", "week", "month"] as const).map((g) => (
@@ -133,9 +140,9 @@ export function AdminLandingViews() {
                       borderRadius: "8px",
                       padding: "8px 12px",
                     }}
-                    formatter={(value: number | undefined) => [
+                    formatter={(value: number | undefined, name: string) => [
                       value ?? 0,
-                      "Vues",
+                      name === "count" ? "Vues" : "Clics CTA",
                     ]}
                     labelFormatter={(_, payload) =>
                       payload?.[0]?.payload?.period
@@ -148,9 +155,19 @@ export function AdminLandingViews() {
                   <Line
                     type="monotone"
                     dataKey="count"
+                    name="count"
                     stroke="#3b1f4a"
                     strokeWidth={2}
                     dot={{ fill: "#3b1f4a", r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="ctaClicks"
+                    name="ctaClicks"
+                    stroke="#7a7184"
+                    strokeWidth={2}
+                    dot={{ fill: "#7a7184", r: 4 }}
                     activeDot={{ r: 6 }}
                   />
                 </LineChart>

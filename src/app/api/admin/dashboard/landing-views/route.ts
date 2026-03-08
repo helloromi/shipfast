@@ -32,9 +32,11 @@ export async function GET(request: NextRequest) {
 
     const admin = createSupabaseAdminClient();
 
-    const { count, error: countError } = await admin
-      .from("landing_page_views")
-      .select("id", { count: "exact", head: true });
+    const [{ count, error: countError }, ctaResult] = await Promise.all([
+      admin.from("landing_page_views").select("id", { count: "exact", head: true }),
+      admin.from("landing_cta_clicks").select("id", { count: "exact", head: true }).then((r) => r).catch(() => ({ count: 0, error: null, data: null })),
+    ]);
+    const ctaCount = ctaResult?.error ? 0 : (ctaResult?.count ?? 0);
 
     if (countError) {
       console.error("Error fetching landing views count:", countError);
@@ -72,10 +74,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const { data: rows, error: listError } = await admin
-      .from("landing_page_views")
-      .select("viewed_at")
-      .gte("viewed_at", startDate.toISOString());
+    const [{ data: viewRows, error: listError }, ctaListResult] = await Promise.all([
+      admin.from("landing_page_views").select("viewed_at").gte("viewed_at", startDate.toISOString()),
+      admin.from("landing_cta_clicks").select("clicked_at").gte("clicked_at", startDate.toISOString()).then((r) => r).catch(() => ({ data: [] as { clicked_at: string }[], error: null })),
+    ]);
+    const ctaRows = ctaListResult?.error ? [] : (ctaListResult?.data ?? []);
 
     if (listError) {
       console.error("Error fetching landing views:", listError);
@@ -86,11 +89,13 @@ export async function GET(request: NextRequest) {
     }
 
     const countByPeriod = new Map<string, number>();
+    const ctaCountByPeriod = new Map<string, number>();
     for (const key of periodKeys) {
       countByPeriod.set(key, 0);
+      ctaCountByPeriod.set(key, 0);
     }
 
-    for (const row of rows ?? []) {
+    for (const row of viewRows ?? []) {
       const viewedAt = row.viewed_at as string;
       const d = new Date(viewedAt);
       let key: string;
@@ -106,13 +111,31 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    for (const row of ctaRows ?? []) {
+      const clickedAt = row.clicked_at as string;
+      const d = new Date(clickedAt);
+      let key: string;
+      if (validGroupBy === "day") {
+        key = d.toISOString().split("T")[0];
+      } else if (validGroupBy === "week") {
+        key = getStartOfWeek(d);
+      } else {
+        key = getStartOfMonth(d);
+      }
+      if (ctaCountByPeriod.has(key)) {
+        ctaCountByPeriod.set(key, (ctaCountByPeriod.get(key) ?? 0) + 1);
+      }
+    }
+
     const series = periodKeys.map((period) => ({
       period,
       count: countByPeriod.get(period) ?? 0,
+      ctaClicks: ctaCountByPeriod.get(period) ?? 0,
     }));
 
     return NextResponse.json({
       total: count ?? 0,
+      ctaClicksTotal: ctaCount,
       series,
     });
   } catch (err) {
