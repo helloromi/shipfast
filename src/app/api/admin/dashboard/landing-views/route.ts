@@ -34,7 +34,9 @@ export async function GET(request: NextRequest) {
 
     const [{ count, error: countError }, ctaResult] = await Promise.all([
       admin.from("landing_page_views").select("id", { count: "exact", head: true }),
-      admin.from("landing_cta_clicks").select("id", { count: "exact", head: true }).then((r) => r).catch(() => ({ count: 0, error: null, data: null })),
+      Promise.resolve(
+        admin.from("landing_cta_clicks").select("id", { count: "exact", head: true })
+      ).catch(() => ({ count: 0, error: null, data: null })),
     ]);
     const ctaCount = ctaResult?.error ? 0 : (ctaResult?.count ?? 0);
 
@@ -76,7 +78,9 @@ export async function GET(request: NextRequest) {
 
     const [{ data: viewRows, error: listError }, ctaListResult] = await Promise.all([
       admin.from("landing_page_views").select("viewed_at").gte("viewed_at", startDate.toISOString()),
-      admin.from("landing_cta_clicks").select("clicked_at").gte("clicked_at", startDate.toISOString()).then((r) => r).catch(() => ({ data: [] as { clicked_at: string }[], error: null })),
+      Promise.resolve(
+        admin.from("landing_cta_clicks").select("clicked_at").gte("clicked_at", startDate.toISOString())
+      ).catch(() => ({ data: [] as { clicked_at: string }[], error: null })),
     ]);
     const ctaRows = ctaListResult?.error ? [] : (ctaListResult?.data ?? []);
 
