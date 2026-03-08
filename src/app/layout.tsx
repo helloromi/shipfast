@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Suspense } from "react";
 
 import { Header } from "@/components/header";
@@ -89,6 +90,7 @@ export default async function RootLayout({
           </div>
         </SupabaseProvider>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
