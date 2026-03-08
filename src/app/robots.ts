@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 function getBaseUrl(): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://cote-cour.fr";
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://cote-cour.studio";
   return base.startsWith("http") ? base : `https://${base}`;
 }
 

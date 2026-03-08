@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getArticlesList } from "@/content/ressources/articles";
 
-function getBaseUrl(): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://cote-cour.fr";
+function getBaseUrl(request: NextRequest): string {
+  const origin = request.nextUrl.origin;
+  if (origin && origin.startsWith("http")) return origin;
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://cote-cour.studio";
   return base.startsWith("http") ? base : `https://${base}`;
 }
 
@@ -15,8 +17,8 @@ function escapeXml(unsafe: string): string {
     .replace(/'/g, "&apos;");
 }
 
-export async function GET() {
-  const baseUrl = getBaseUrl().replace(/\/$/, "");
+export async function GET(request: NextRequest) {
+  const baseUrl = getBaseUrl(request).replace(/\/$/, "");
   const articles = getArticlesList();
 
   const entries: { loc: string; lastmod: string; changefreq: string; priority: number }[] = [
