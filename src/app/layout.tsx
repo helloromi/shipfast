@@ -9,6 +9,7 @@ import { Header } from "@/components/header";
 import { JsonLdSoftwareApplication } from "@/components/seo/json-ld-software-application";
 import { SupabaseProvider } from "@/components/supabase-provider";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseSessionUser } from "@/lib/queries/scenes";
 import "./globals.css";
 
 const karla = Karla({
@@ -52,13 +53,17 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // getSupabaseSessionUser est mémoïsé par requête (React cache) : le layout et
+  // les pages partagent le même appel auth.getUser(). getSession lit le cookie
+  // localement (pas d'appel réseau).
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [user, sessionResult] = await Promise.all([
+    getSupabaseSessionUser(),
+    supabase.auth.getSession(),
+  ]);
   const {
     data: { session: rawSession },
-  } = await supabase.auth.getSession();
+  } = sessionResult;
 
   const session = rawSession
     ? ({ ...rawSession, user } as typeof rawSession)

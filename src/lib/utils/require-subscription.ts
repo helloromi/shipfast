@@ -17,14 +17,15 @@ export async function requireSubscriptionOrRedirect(
 ): Promise<void> {
   if (!user) redirect("/login");
 
-  const admin = await isAdmin(user.id);
-  if (admin) return;
+  // Les trois vérifications sont indépendantes : on les lance en parallèle
+  // (latence = la plus lente, pas la somme des trois).
+  const [admin, subscribed, inClass] = await Promise.all([
+    isAdmin(user.id),
+    hasActiveSubscription(user.id),
+    hasClassMembership(user.id),
+  ]);
 
-  const subscribed = await hasActiveSubscription(user.id);
-  if (subscribed) return;
-
-  const inClass = await hasClassMembership(user.id);
-  if (inClass) return;
+  if (admin || subscribed || inClass) return;
 
   redirect(redirectTo);
 }

@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import type {
   ClassAnnotation,
@@ -168,47 +170,54 @@ export async function fetchStudentClasses(userId: string): Promise<StudentClass[
   }
 
   type MembershipRow = ClassMember & { teacher_classes: TeacherClass | null };
-  const result: StudentClass[] = [];
-  for (const m of (memberships ?? []) as MembershipRow[]) {
-    const klass = m.teacher_classes;
-    if (!klass) continue;
+  const rows = ((memberships ?? []) as MembershipRow[]).filter((m) => m.teacher_classes);
+  if (rows.length === 0) return [];
 
-    const [assignmentsRes, showNotesRes, membersRes] = await Promise.all([
-      supabase
-        .from("class_assignments")
-        .select("*, scenes(title), characters(name)")
-        .eq("class_id", klass.id)
-        .eq("member_id", m.id),
-      supabase
-        .from("class_show_notes")
-        .select("*")
-        .eq("class_id", klass.id)
-        .order("position", { ascending: true }),
-      supabase
-        .from("class_members")
-        .select("*")
-        .eq("class_id", klass.id),
-    ]);
+  const classIds = rows.map((m) => m.class_id);
+  const membershipIds = rows.map((m) => m.id);
 
-    result.push({
-      membership: m as unknown as ClassMember,
-      klass,
-      assignments: (
-        (assignmentsRes.data ?? []) as (ClassAssignment & {
-          scenes: { title: string } | null;
-          characters: { name: string } | null;
-        })[]
-      ).map(({ scenes, characters, ...a }) => ({
-        ...a,
-        sceneTitle: scenes?.title ?? null,
-        characterName: characters?.name ?? null,
-      })),
-      showNotes: (showNotesRes.data ?? []) as ClassShowNote[],
-      members: (membersRes.data ?? []) as ClassMember[],
-    });
+  // Requêtes groupées sur toutes les classes (pas de N+1 par classe).
+  const [assignmentsRes, showNotesRes, membersRes] = await Promise.all([
+    supabase
+      .from("class_assignments")
+      .select("*, scenes(title), characters(name)")
+      .in("member_id", membershipIds),
+    supabase
+      .from("class_show_notes")
+      .select("*")
+      .in("class_id", classIds)
+      .order("position", { ascending: true }),
+    supabase.from("class_members").select("*").in("class_id", classIds),
+  ]);
+
+  for (const res of [assignmentsRes, showNotesRes, membersRes]) {
+    if (res.error) console.error(res.error);
   }
 
-  return result;
+  type AssignmentRow = ClassAssignment & {
+    scenes: { title: string } | null;
+    characters: { name: string } | null;
+  };
+  const assignments = (assignmentsRes.data ?? []) as AssignmentRow[];
+  const showNotes = (showNotesRes.data ?? []) as ClassShowNote[];
+  const members = (membersRes.data ?? []) as ClassMember[];
+
+  return rows.map((m) => {
+    const klass = m.teacher_classes as TeacherClass;
+    return {
+      membership: m as unknown as ClassMember,
+      klass,
+      assignments: assignments
+        .filter((a) => a.member_id === m.id)
+        .map(({ scenes, characters, ...a }) => ({
+          ...a,
+          sceneTitle: scenes?.title ?? null,
+          characterName: characters?.name ?? null,
+        })),
+      showNotes: showNotes.filter((n) => n.class_id === klass.id),
+      members: members.filter((member) => member.class_id === klass.id),
+    };
+  });
 }
 
 /**
@@ -230,7 +239,8 @@ export async function fetchAnnotationsForScene(sceneId: string): Promise<ClassAn
   return (data ?? []) as ClassAnnotation[];
 }
 
-export async function hasClassMembership(userId: string): Promise<boolean> {
+// Mémoïsé par requête : appelé par le paywall ET par les checks d'accès fins.
+export const hasClassMembership = cache(async (userId: string): Promise<boolean> => {
   if (!userId) return false;
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.rpc("has_class_membership", {
@@ -242,4 +252,4 @@ export async function hasClassMembership(userId: string): Promise<boolean> {
     return false;
   }
   return Boolean(data);
-}
+});

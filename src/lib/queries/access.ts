@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { UserWorkAccess } from "@/types/scenes";
 import { isAdmin } from "@/lib/utils/admin";
@@ -9,7 +11,8 @@ type BillingSubscriptionRow = {
   current_period_end: string | null;
 };
 
-export async function hasActiveSubscription(userId: string): Promise<boolean> {
+// Mémoïsé par requête : appelé par le paywall ET par les checks d'accès fins.
+export const hasActiveSubscription = cache(async (userId: string): Promise<boolean> => {
   if (!userId) return false;
 
   const supabase = await createSupabaseServerClient();
@@ -36,7 +39,7 @@ export async function hasActiveSubscription(userId: string): Promise<boolean> {
     const endMs = new Date(s.current_period_end).getTime();
     return Number.isFinite(endMs) ? endMs > nowMs : true;
   });
-}
+});
 
 export async function getUserWorkAccess(
   userId: string,
@@ -228,16 +231,16 @@ export async function hasAccess(
 ): Promise<boolean> {
   if (!userId) return false;
 
-  // Les admins ont un accès complet à tout
-  const admin = await isAdmin(userId);
-  if (admin) return true;
-
-  // Accès global via abonnement (workId/sceneId non utilisés)
-  if (await hasActiveSubscription(userId)) return true;
-
-  // Les élèves membres d'une classe sont couverts par l'abonnement du professeur.
+  // Admin OU abonnement actif OU membre d'une classe (couvert par le professeur).
+  // Vérifications indépendantes lancées en parallèle.
   const { hasClassMembership } = await import("@/lib/queries/teacher");
-  return await hasClassMembership(userId);
+  const [admin, subscribed, inClass] = await Promise.all([
+    isAdmin(userId),
+    hasActiveSubscription(userId),
+    hasClassMembership(userId),
+  ]);
+
+  return admin || subscribed || inClass;
 }
 
 

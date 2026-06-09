@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
     const now = new Date();
     let startDate: Date;
-    let periodKeys: string[] = [];
+    const periodKeys: string[] = [];
 
     if (validGroupBy === "day") {
       startDate = new Date(now);

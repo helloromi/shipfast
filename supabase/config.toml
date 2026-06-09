@@ -1,0 +1,4 @@
+# Configuration Supabase CLI.
+# Lien avec le projet distant : `supabase link --project-ref <ref>` (le ref est
+# dans l'URL du dashboard). Voir supabase/README.md pour le workflow complet.
+project_id = "cote-cour"

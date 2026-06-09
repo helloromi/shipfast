@@ -124,7 +124,7 @@ export async function fetchUserStatsSummary(userId: string): Promise<UserStatsSu
       .map((d) => new Date(d))
       .sort((a, b) => b.getTime() - a.getTime());
 
-    let checkDate = new Date(today);
+    const checkDate = new Date(today);
     for (const activityDate of sortedDates) {
       const activityDateStr = activityDate.toISOString().split("T")[0];
       const checkDateStr = checkDate.toISOString().split("T")[0];

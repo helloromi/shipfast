@@ -45,9 +45,22 @@ automatiquement par les routes de distribution.
 
 ### Étape 1 — Base de données (Supabase SQL Editor)
 
-Exécute **`supabase/migrations/add_teacher_spaces.sql`** dans le SQL Editor.
+Deux options :
 
-Pré-requis (déjà en prod normalement) :
+**Option A — Supabase CLI (recommandé, désormais en place)** :
+```bash
+supabase login
+supabase link --project-ref <project-ref>
+supabase db push   # applique supabase/migrations/20260609120000_add_teacher_spaces.sql
+```
+
+**Option B — à la main** : exécute
+**`supabase/migrations/20260609120000_add_teacher_spaces.sql`** dans le SQL Editor,
+puis `supabase migration repair --status applied 20260609120000` si tu adoptes le CLI ensuite.
+
+Le détail du workflow de migrations (legacy vs CLI) est documenté dans `supabase/README.md`.
+
+Pré-requis (déjà en prod normalement — voir `supabase/migrations-legacy/`) :
 - `add_user_profiles_and_email_automation.sql` (table `user_profiles`)
 - `add_user_work_access_unique_user_scene.sql` (index unique `user_id, scene_id`)
 - `add_scene_sharing.sql` (policies RLS de lecture via `user_work_access` 'private')

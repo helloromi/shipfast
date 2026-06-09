@@ -145,7 +145,6 @@ export default function ImportPreviewPage() {
 
     if (jobId) {
       let cancelled = false;
-      let interval: number | undefined;
 
       const tick = async () => {
         if (cancelled) return;
@@ -153,11 +152,11 @@ export default function ImportPreviewPage() {
       };
 
       void tick();
-      interval = window.setInterval(tick, 2000);
+      const interval = window.setInterval(tick, 2000);
 
       return () => {
         cancelled = true;
-        if (interval) window.clearInterval(interval);
+        window.clearInterval(interval);
       };
     }
   }, [jobId]);

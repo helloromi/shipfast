@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { Character, Scene, SceneWithRelations } from "@/types/scenes";
 import { weightedAverageScoreByRecency } from "@/lib/utils/score";
@@ -30,7 +32,11 @@ export type SceneProgress = {
   lastCharacterName: string | null;
 };
 
-export async function getSupabaseSessionUser() {
+/**
+ * Utilisateur de la session courante, mémoïsé par requête (React cache) :
+ * layout, pages et guards partagent un seul appel réseau auth.getUser().
+ */
+export const getSupabaseSessionUser = cache(async () => {
   try {
     const supabase = await createSupabaseServerClient();
     const {
@@ -46,7 +52,7 @@ export async function getSupabaseSessionUser() {
   } catch {
     return null;
   }
-}
+});
 
 export async function fetchScenes(): Promise<Scene[]> {
   const supabase = await createSupabaseServerClient();
