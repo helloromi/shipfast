@@ -240,3 +240,78 @@ begin
       for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
   end if;
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- Espace professeur (voir supabase/migrations/add_teacher_spaces.sql pour les
+-- policies RLS et helpers complets — cette section résume les tables)
+-- ---------------------------------------------------------------------------
+
+-- user_profiles.role : 'student' | 'teacher'
+
+create table if not exists public.teacher_classes (
+  id uuid primary key default uuid_generate_v4(),
+  teacher_id uuid not null references auth.users (id) on delete cascade,
+  name text not null,
+  description text,
+  invite_code text not null unique default upper(substring(md5(uuid_generate_v4()::text) from 1 for 8)),
+  show_title text,
+  show_date date,
+  show_venue text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.class_members (
+  id uuid primary key default uuid_generate_v4(),
+  class_id uuid not null references public.teacher_classes (id) on delete cascade,
+  user_id uuid references auth.users (id) on delete cascade,
+  email text not null,
+  display_name text,
+  joined_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (class_id, email)
+);
+
+create table if not exists public.class_scenes (
+  class_id uuid not null references public.teacher_classes (id) on delete cascade,
+  scene_id uuid not null references public.scenes (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (class_id, scene_id)
+);
+
+create table if not exists public.class_assignments (
+  id uuid primary key default uuid_generate_v4(),
+  class_id uuid not null references public.teacher_classes (id) on delete cascade,
+  member_id uuid not null references public.class_members (id) on delete cascade,
+  scene_id uuid not null references public.scenes (id) on delete cascade,
+  character_id uuid references public.characters (id) on delete set null,
+  note text,
+  due_date date,
+  created_at timestamptz not null default now(),
+  unique (class_id, member_id, scene_id)
+);
+
+create table if not exists public.class_annotations (
+  id uuid primary key default uuid_generate_v4(),
+  class_id uuid not null references public.teacher_classes (id) on delete cascade,
+  scene_id uuid not null references public.scenes (id) on delete cascade,
+  line_id uuid references public.lines (id) on delete cascade,
+  content text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.class_show_notes (
+  id uuid primary key default uuid_generate_v4(),
+  class_id uuid not null references public.teacher_classes (id) on delete cascade,
+  scene_id uuid references public.scenes (id) on delete set null,
+  member_id uuid references public.class_members (id) on delete set null,
+  category text not null default 'mise_en_scene'
+    check (category in ('mise_en_scene', 'costumes', 'decors', 'accessoires', 'technique', 'autre')),
+  title text not null,
+  content text,
+  status text not null default 'todo' check (status in ('todo', 'in_progress', 'done')),
+  position int not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);

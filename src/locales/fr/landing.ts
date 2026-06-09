@@ -1,4 +1,52 @@
 export const landing = {
+  hero: {
+    badge: "Pour comédien·nes, troupes et cours de théâtre",
+    titleLine1: "Ton texte.",
+    titleLine2: "Su par cœur.",
+    description:
+      "Importe n'importe quelle scène, masque tes répliques, récite, note-toi. Côté-Cour transforme ton téléphone en partenaire de répétition — et donne aux professeurs un vrai outil de troupe.",
+    ctaPrimary: "Commencer à répéter",
+    ctaSecondary: "Je suis professeur",
+    subtext: "Dès 5 € par mois · sans engagement · import illimité",
+    demo: {
+      sceneLabel: "Acte II — Scène 3",
+      otherCharacter: "ROMÉO",
+      otherLine: "L'amour m'a prêté ses ailes pour franchir ces murs…",
+      youCharacter: "JULIETTE — ta réplique",
+      masked: "● ● ● ● ● ● ● ●",
+      reveal: "Révéler",
+      annotation: "Note du prof : presque chuchoté, dos au public",
+    },
+  },
+  teacherSection: {
+    badge: "Nouveau — Espace professeur",
+    title: "Faites répéter toute la troupe",
+    subtitle:
+      "Un espace pensé pour les cours de théâtre et les troupes : du premier filage jusqu'au soir de la première.",
+    features: {
+      import: {
+        title: "Importez vos textes",
+        desc: "Photo ou PDF : la pièce est découpée en scènes, personnages et répliques automatiquement.",
+      },
+      classe: {
+        title: "Invitez vos élèves",
+        desc: "Un code d'invitation suffit. Vos élèves accèdent à leurs textes sans abonnement supplémentaire.",
+      },
+      distribution: {
+        title: "Distribuez les rôles",
+        desc: "Attribuez à chaque élève sa scène et son personnage, suivez qui répète quoi.",
+      },
+      annotations: {
+        title: "Annotez pour toute la classe",
+        desc: "Indications de jeu, intentions, didascalies : vos notes apparaissent sur le texte de chaque élève.",
+      },
+      spectacle: {
+        title: "Préparez le spectacle",
+        desc: "Mise en scène, costumes, décors, technique : toutes les coulisses centralisées au même endroit.",
+      },
+    },
+    cta: "Créer ma classe",
+  },
   badge: "Pour étudiant•es en théâtre",
   title: "Côté-Cour : apprendre ses textes de théâtre plus vite",
   description:
@@ -63,6 +111,7 @@ export const landing = {
     order: [
       "q1",
       "q2",
+      "qProfs",
       "q3",
       "qConfidentialite",
       "qOffline",
@@ -83,6 +132,11 @@ export const landing = {
       q3: {
         question: "Puis-je utiliser mes propres textes ?",
         answer: "Oui ! Tout repose sur tes textes : tu importes tes œuvres (photo, PDF, extrait de pièce ou scène d'audition). Pas de catalogue prêt à l'emploi — tu amènes ce que tu travailles.",
+      },
+      qProfs: {
+        question: "Je suis professeur de théâtre, qu'est-ce que ça m'apporte ?",
+        answer:
+          "L'espace professeur te permet d'importer tes textes, de créer ta classe, d'inviter tes élèves avec un simple code, de distribuer les rôles, d'annoter les textes pour toute la classe et de centraliser la préparation du spectacle (mise en scène, costumes, décors, technique). Tes élèves accèdent à leurs textes sans abonnement supplémentaire.",
       },
       qConfidentialite: {
         question: "Mes textes restent-ils privés ?",

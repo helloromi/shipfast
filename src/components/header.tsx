@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useSupabase } from "@/components/supabase-provider";
 import { t } from "@/locales/fr";
@@ -15,6 +15,35 @@ export function Header() {
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isTeacher, setIsTeacher] = useState(false);
+  const [hasClasses, setHasClasses] = useState(false);
+
+  const userId = session?.user?.id;
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!userId) {
+        if (!cancelled) {
+          setIsTeacher(false);
+          setHasClasses(false);
+        }
+        return;
+      }
+      const [{ data: profile }, { count }] = await Promise.all([
+        supabase.from("user_profiles").select("role").eq("user_id", userId).maybeSingle(),
+        supabase
+          .from("class_members")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId),
+      ]);
+      if (cancelled) return;
+      setIsTeacher(profile?.role === "teacher");
+      setHasClasses((count ?? 0) > 0);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, supabase]);
 
   // Mode Zen devient le mode par défaut sur /learn.
   // `?zen=0` reste un échappatoire (debug) pour afficher la nav.
@@ -35,6 +64,8 @@ export function Header() {
     ? [
         { href: "/home", label: t.common.nav.accueil },
         { href: "/bibliotheque", label: t.common.nav.bibliotheque },
+        ...(hasClasses ? [{ href: "/mes-cours", label: t.common.nav.mesCours }] : []),
+        ...(isTeacher ? [{ href: "/professeur", label: t.common.nav.espaceProf }] : []),
       ]
     : [];
 

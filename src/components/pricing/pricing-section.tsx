@@ -3,7 +3,7 @@ import { t } from "@/locales/fr";
 
 export function PricingSection() {
   return (
-    <section className="rounded-3xl border border-[#e7e1d9] bg-white/80 px-8 py-12 shadow-xl">
+    <section className="mx-auto w-full max-w-6xl">
       <div className="mx-auto max-w-6xl">
         <div className="text-center">
           <h2 className="font-display text-3xl font-semibold text-[#1c1b1f] sm:text-4xl">

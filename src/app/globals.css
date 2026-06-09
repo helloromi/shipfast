@@ -1,19 +1,47 @@
 @import "tailwindcss";
 
+/* ----------------------------------------------------------------------------
+   Côté-Cour — design tokens
+   Direction : "velours de scène" — papier ivoire, encre prune, corail de rideau,
+   or de dorure. Typo éditoriale (Fraunces) + humaniste (Karla).
+---------------------------------------------------------------------------- */
+
 :root {
-  --bg-ivory: #f9f7f3;
-  --fg-ink: #1c1b1f;
+  /* Papier & encre */
+  --paper: #f9f6f0;
+  --paper-warm: #f3eee4;
+  --ink: #211a26;
+  --muted: #5d5468;
+  --faint: #8a8093;
+
+  /* Scène */
   --prune: #3b1f4a;
+  --prune-deep: #251331;
+  --prune-night: #160a1f;
   --corail: #ff6b6b;
+  --corail-deep: #e75a5a;
   --gold: #f4c95d;
-  --card: rgba(255, 255, 255, 0.86);
-  --stroke: #e7e1d9;
-  --muted: #524b5a;
+  --gold-deep: #d9a93a;
+  --sauge: #2cb67d;
+
+  /* Surfaces */
+  --card: rgba(255, 255, 255, 0.88);
+  --stroke: #e7e0d4;
+  --stroke-strong: #d8cfc0;
+
+  /* Compat (anciens noms encore référencés) */
+  --bg-ivory: var(--paper);
+  --fg-ink: var(--ink);
 }
 
 @theme inline {
-  --color-background: var(--bg-ivory);
-  --color-foreground: var(--fg-ink);
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-prune: var(--prune);
+  --color-corail: var(--corail);
+  --color-gold: var(--gold);
   --font-sans: var(--font-sans);
   --font-display: var(--font-display);
 }
@@ -23,21 +51,21 @@
 }
 
 html {
-  background: var(--bg-ivory);
+  background: var(--paper);
   color-scheme: light;
   min-height: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--bg-ivory);
-  color: var(--fg-ink);
+  background: var(--paper);
+  color: var(--ink);
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   text-rendering: optimizeLegibility;
   min-height: 100vh;
 }
 
-/* iOS Safari auto-zoome au focus si font-size < 16px sur les champs.
-   On force 16px uniquement sur iOS et uniquement en mobile. */
+/* iOS Safari auto-zoome au focus si font-size < 16px sur les champs. */
 @supports (-webkit-touch-callout: none) {
   @media (max-width: 640px) {
     input,
@@ -53,15 +81,16 @@ h2,
 h3,
 .font-display {
   font-family: var(--font-display), var(--font-sans), serif;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 
-/* Micro-interactions cohérentes sur les éléments interactifs */
+/* Micro-interactions cohérentes */
 a,
 button,
 [role="button"] {
-  transition: transform 160ms ease, filter 160ms ease, opacity 160ms ease, background-color 160ms ease,
-    border-color 160ms ease, color 160ms ease;
+  transition: transform 160ms ease, filter 160ms ease, opacity 160ms ease,
+    background-color 160ms ease, border-color 160ms ease, color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 button:not(:disabled),
@@ -81,6 +110,7 @@ button:active:not(:disabled),
 
 button:disabled {
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 ::selection {
@@ -90,4 +120,237 @@ button:disabled {
 :focus-visible {
   outline: 2px solid var(--corail);
   outline-offset: 2px;
+}
+
+/* ----------------------------------------------------------------------------
+   Composants partagés
+---------------------------------------------------------------------------- */
+
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.65rem 1.4rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .btn-primary,
+  .btn-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.65rem 1.5rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    background: linear-gradient(120deg, var(--corail), #c74884);
+    color: #fff;
+    box-shadow: 0 10px 24px -10px rgba(255, 107, 107, 0.65);
+  }
+
+  .btn-primary:hover,
+  .btn-cta:hover {
+    filter: brightness(1.05);
+    box-shadow: 0 14px 28px -10px rgba(255, 107, 107, 0.75);
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.65rem 1.4rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    background: #fff;
+    color: var(--prune);
+    border: 1px solid var(--stroke);
+    box-shadow: 0 2px 8px -4px rgba(59, 31, 74, 0.18);
+  }
+
+  .btn-secondary:hover {
+    border-color: color-mix(in srgb, var(--prune) 35%, transparent);
+  }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 40px;
+    padding: 0.45rem 0.9rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .btn-ghost:hover {
+    background: color-mix(in srgb, var(--gold) 18%, transparent);
+    color: var(--prune);
+  }
+
+  .btn-gold {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.65rem 1.5rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    background: var(--gold);
+    color: var(--prune-deep);
+    box-shadow: 0 10px 24px -12px rgba(244, 201, 93, 0.9);
+  }
+
+  .btn-gold:hover {
+    background: #f6d178;
+  }
+
+  .card {
+    border-radius: 1.25rem;
+    border: 1px solid var(--stroke);
+    background: var(--card);
+    box-shadow: 0 1px 2px rgba(59, 31, 74, 0.05), 0 8px 24px -18px rgba(59, 31, 74, 0.25);
+  }
+
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(59, 31, 74, 0.06), 0 16px 32px -16px rgba(59, 31, 74, 0.3);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 9999px;
+    padding: 0.2rem 0.7rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: color-mix(in srgb, var(--gold) 24%, transparent);
+    color: var(--prune);
+  }
+
+  .input {
+    width: 100%;
+    border-radius: 0.85rem;
+    border: 1px solid var(--stroke);
+    background: #fff;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.9rem;
+    color: var(--ink);
+  }
+
+  .input:focus {
+    outline: 2px solid color-mix(in srgb, var(--corail) 60%, transparent);
+    outline-offset: 0;
+    border-color: transparent;
+  }
+
+  .label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Section sombre "scène" : velours + projecteurs */
+  .stage-dark {
+    position: relative;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 0%, rgba(244, 201, 93, 0.16), transparent 60%),
+      radial-gradient(ellipse 50% 40% at 85% 10%, rgba(255, 107, 107, 0.14), transparent 60%),
+      radial-gradient(ellipse 80% 60% at 50% 110%, rgba(59, 31, 74, 0.8), transparent),
+      linear-gradient(180deg, var(--prune-night), var(--prune-deep));
+    color: #f6f1e8;
+  }
+
+  .stage-dark .font-display {
+    color: #fdf9f0;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   Animations
+---------------------------------------------------------------------------- */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spotlight-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(4%, 2%, 0) scale(1.06);
+  }
+}
+
+@keyframes marquee-glow {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.reveal {
+  opacity: 0;
+  animation: fade-up 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.reveal-1 { animation-delay: 80ms; }
+.reveal-2 { animation-delay: 180ms; }
+.reveal-3 { animation-delay: 300ms; }
+.reveal-4 { animation-delay: 440ms; }
+.reveal-5 { animation-delay: 600ms; }
+
+.spotlight {
+  animation: spotlight-drift 14s ease-in-out infinite;
+  will-change: transform;
+}
+
+.glow {
+  animation: marquee-glow 3.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .spotlight,
+  .glow {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
 }

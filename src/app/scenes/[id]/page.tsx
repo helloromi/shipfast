@@ -4,7 +4,9 @@ import { notFound, redirect } from "next/navigation";
 import { fetchSceneWithRelations, fetchUserProgressScenes, getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { fetchLineMastery, fetchSceneStats } from "@/lib/queries/stats";
 import { fetchUserLineHighlights } from "@/lib/queries/notes";
+import { fetchAnnotationsForScene } from "@/lib/queries/teacher";
 import { SceneDetailTabs } from "@/components/scenes/scene-detail-tabs";
+import { TeacherAnnotationsPanel } from "@/components/classes/teacher-annotations-panel";
 import { t } from "@/locales/fr";
 import { hasAccess } from "@/lib/queries/access";
 import { ensurePersonalSceneForCurrentUser } from "@/lib/utils/personal-scene";
@@ -60,9 +62,10 @@ export default async function SceneDetailPage({ params }: Props) {
     return `/learn/${id}?${params.toString()}`;
   })();
 
-  const [lineMastery, highlightsByLineId] = await Promise.all([
+  const [lineMastery, highlightsByLineId, teacherAnnotations] = await Promise.all([
     user && lastCharacterId ? fetchLineMastery(user.id, id, lastCharacterId) : Promise.resolve([]),
     user ? fetchUserLineHighlights(user.id, sortedLines.map((l) => l.id)) : Promise.resolve({}),
+    user ? fetchAnnotationsForScene(id) : Promise.resolve([]),
   ]);
 
   return (
@@ -115,6 +118,15 @@ export default async function SceneDetailPage({ params }: Props) {
           </div>
         )}
       </div>
+
+      <TeacherAnnotationsPanel
+        annotations={teacherAnnotations}
+        lines={sortedLines.map((line) => ({
+          id: line.id,
+          text: line.text,
+          characterName: line.characters?.name ?? null,
+        }))}
+      />
 
       <SceneDetailTabs
         scene={scene}

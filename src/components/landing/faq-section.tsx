@@ -11,35 +11,41 @@ export function FAQSection() {
   );
 
   return (
-    <section className="rounded-3xl border border-[#e7e1d9] bg-white/80 px-8 py-12 shadow-xl">
-      <div className="mx-auto max-w-3xl">
-        <h2 className="font-display text-3xl font-semibold text-[#1c1b1f] sm:text-4xl">
-          {t.landing.faq.title}
-        </h2>
+    <section className="mx-auto w-full max-w-3xl">
+      <h2 className="font-display text-3xl font-semibold text-[#211a26] sm:text-4xl">
+        {t.landing.faq.title}
+      </h2>
 
-        <div className="mt-8 space-y-4">
-          {faqItems.map((item, index) => (
+      <div className="mt-8 space-y-3">
+        {faqItems.map((item, index) => {
+          const open = openIndex === index;
+          return (
             <div
               key={index}
-              className="rounded-2xl border border-[#e7e1d9] bg-white/90 shadow-sm transition hover:shadow-md"
+              className={`card overflow-hidden transition ${open ? "ring-1 ring-[#f4c95d]" : ""}`}
             >
               <button
-                onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                className="flex min-h-[56px] w-full items-center justify-between px-6 py-4 text-left transition active:bg-[#f4c95d11]"
+                onClick={() => setOpenIndex(open ? null : index)}
+                className="flex min-h-[56px] w-full items-center justify-between gap-4 px-5 py-4 text-left"
+                aria-expanded={open}
               >
                 <span className="font-semibold text-[#3b1f4a]">{item.question}</span>
-                <span className="text-2xl text-[#524b5a]">{openIndex === index ? "−" : "+"}</span>
+                <span
+                  className={`text-xl text-[#8a8093] transition-transform duration-200 ${open ? "rotate-45" : ""}`}
+                  aria-hidden
+                >
+                  +
+                </span>
               </button>
-              {openIndex === index && (
-                <div className="border-t border-[#e7e1d9] px-6 pb-4 pt-2">
-                  <p className="text-sm text-[#524b5a]">{item.answer}</p>
+              {open && (
+                <div className="border-t border-[#efe9dd] px-5 pb-4 pt-3">
+                  <p className="text-sm leading-relaxed text-[#5d5468]">{item.answer}</p>
                 </div>
               )}
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </section>
   );
 }
-

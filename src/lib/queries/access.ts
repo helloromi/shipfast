@@ -232,8 +232,12 @@ export async function hasAccess(
   const admin = await isAdmin(userId);
   if (admin) return true;
 
-  // Nouveau modèle: accès global via abonnement (workId/sceneId non utilisés)
-  return await hasActiveSubscription(userId);
+  // Accès global via abonnement (workId/sceneId non utilisés)
+  if (await hasActiveSubscription(userId)) return true;
+
+  // Les élèves membres d'une classe sont couverts par l'abonnement du professeur.
+  const { hasClassMembership } = await import("@/lib/queries/teacher");
+  return await hasClassMembership(userId);
 }
 
 

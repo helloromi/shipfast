@@ -2,10 +2,12 @@ import { redirect } from "next/navigation";
 import { User } from "@supabase/supabase-js";
 
 import { hasActiveSubscription } from "@/lib/queries/access";
+import { hasClassMembership } from "@/lib/queries/teacher";
 import { isAdmin } from "@/lib/utils/admin";
 
 /**
- * Enforce the new paywall: only admins or users with an active subscription can access protected pages.
+ * Enforce the paywall: admins, abonnés et membres d'une classe (élèves couverts
+ * par le compte de leur professeur) accèdent aux pages protégées.
  * - If user is null: redirect to /login
  * - If not entitled: redirect to /onboarding (default)
  */
@@ -20,6 +22,9 @@ export async function requireSubscriptionOrRedirect(
 
   const subscribed = await hasActiveSubscription(user.id);
   if (subscribed) return;
+
+  const inClass = await hasClassMembership(user.id);
+  if (inClass) return;
 
   redirect(redirectTo);
 }

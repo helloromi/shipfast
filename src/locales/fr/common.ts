@@ -3,6 +3,8 @@ export const common = {
     bibliotheque: "Mes scènes",
     accueil: "Apprendre",
     importer: "Importer",
+    mesCours: "Mes cours",
+    espaceProf: "Espace prof",
   },
   header: {
     appName: "Côté-Cour",

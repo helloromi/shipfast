@@ -252,7 +252,22 @@ export function LearnSession(props: LearnSessionProps) {
       if (startIndex > 0) {
         const startUserLine = userLinesAll[startIndex];
         if (startUserLine) {
-          return lines.filter((l) => l.order >= startUserLine.order);
+          // Inclure la réplique adverse précédente (hors didascalies) pour conserver le contexte
+          // en haut de la carte après « Continuer ».
+          const sorted = [...lines].sort((a, b) => a.order - b.order);
+          const idx = sorted.findIndex((l) => l.id === startUserLine.id);
+          let fromOrder = startUserLine.order;
+          if (idx > 0) {
+            for (let i = idx - 1; i >= 0; i -= 1) {
+              const candidate = sorted[i];
+              if (isLikelyStageDirection(candidate)) continue;
+              if (!candidate.isUserLine) {
+                fromOrder = candidate.order;
+                break;
+              }
+            }
+          }
+          return sorted.filter((l) => l.order >= fromOrder);
         }
       }
       return lines;
