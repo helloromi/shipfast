@@ -4,13 +4,19 @@ import { getOrCreateStripeCustomer } from "@/lib/stripe/customer";
 import { getSiteUrl } from "@/lib/url";
 import { requireAuth } from "@/lib/utils/api-auth";
 
-function getSubscriptionPriceId(plan: "monthly" | "quarterly" | "yearly"): string {
-  const envKey = plan === "monthly" 
+// "quarterly" est le pass 3 mois : paiement unique (mode "payment"), price
+// one-time dédié. monthly/yearly restent des abonnements legacy (plus aucune
+// UI ne les propose).
+function getPriceEnvKey(plan: "monthly" | "quarterly" | "yearly"): string {
+  return plan === "monthly"
     ? "STRIPE_SUBSCRIPTION_PRICE_ID_MONTHLY"
     : plan === "quarterly"
-    ? "STRIPE_SUBSCRIPTION_PRICE_ID_QUARTERLY"
-    : "STRIPE_SUBSCRIPTION_PRICE_ID_YEARLY";
-  
+      ? "STRIPE_PASS_PRICE_ID"
+      : "STRIPE_SUBSCRIPTION_PRICE_ID_YEARLY";
+}
+
+function getPriceId(plan: "monthly" | "quarterly" | "yearly"): string {
+  const envKey = getPriceEnvKey(plan);
   const priceId = process.env[envKey];
   if (!priceId) {
     throw new Error(`${envKey} is not set`);
@@ -22,12 +28,7 @@ function checkCheckoutEnv(plan: "monthly" | "quarterly" | "yearly"): { error?: s
   if (!process.env.STRIPE_SECRET_KEY) {
     return { error: "STRIPE_SECRET_KEY is not set" };
   }
-  const priceIdKey =
-    plan === "monthly"
-      ? "STRIPE_SUBSCRIPTION_PRICE_ID_MONTHLY"
-      : plan === "quarterly"
-        ? "STRIPE_SUBSCRIPTION_PRICE_ID_QUARTERLY"
-        : "STRIPE_SUBSCRIPTION_PRICE_ID_YEARLY";
+  const priceIdKey = getPriceEnvKey(plan);
   if (!process.env[priceIdKey]) {
     return { error: `${priceIdKey} is not set` };
   }
@@ -70,23 +71,28 @@ export async function POST(request: NextRequest) {
     const successUrl = `${siteUrl}/api/payments/success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${siteUrl}/subscribe`;
 
+    const isPass = selectedPlan === "quarterly";
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       customer: stripeCustomerId,
-      line_items: [{ price: getSubscriptionPriceId(selectedPlan), quantity: 1 }],
-      mode: "subscription",
+      line_items: [{ price: getPriceId(selectedPlan), quantity: 1 }],
+      mode: isPass ? "payment" : "subscription",
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: {
         user_id: user.id,
         plan: selectedPlan,
       },
-      subscription_data: {
-        metadata: {
-          user_id: user.id,
-          plan: selectedPlan,
-        },
-      },
+      ...(isPass
+        ? {}
+        : {
+            subscription_data: {
+              metadata: {
+                user_id: user.id,
+                plan: selectedPlan,
+              },
+            },
+          }),
     });
 
     return NextResponse.json({ sessionId: session.id, url: session.url });

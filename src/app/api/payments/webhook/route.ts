@@ -3,6 +3,7 @@ import { getStripe } from "@/lib/stripe/client";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import Stripe from "stripe";
 import { sendPaymentThankYouEmailIfNeeded } from "@/lib/resend/automation";
+import { buildPassBillingRow } from "@/lib/stripe/pass";
 
 function getWebhookSecret(): string {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -102,10 +103,6 @@ export async function POST(request: NextRequest) {
           console.error("[WEBHOOK] ERREUR: Pas de customer dans la session");
           return NextResponse.json({ error: "No customer" }, { status: 400 });
         }
-        if (!subscriptionId) {
-          console.error("[WEBHOOK] ERREUR: Pas de subscription dans la session");
-          return NextResponse.json({ error: "No subscription" }, { status: 400 });
-        }
 
         // 1) Upsert customer mapping
         const { error: customerWriteError } = await supabase
@@ -117,6 +114,41 @@ export async function POST(request: NextRequest) {
         if (customerWriteError) {
           console.error("[WEBHOOK] ERREUR upsert billing_customers:", customerWriteError);
           return NextResponse.json({ error: "Failed to upsert billing_customers" }, { status: 500 });
+        }
+
+        // Pass 3 mois (mode "payment") : pas de subscription Stripe, l'accès
+        // est une ligne billing_subscriptions expirant 3 mois après paiement.
+        if (session.mode === "payment") {
+          if (session.payment_status !== "paid") {
+            console.error("[WEBHOOK] ERREUR: session payment non payée:", session.payment_status);
+            return NextResponse.json({ error: "Session not paid" }, { status: 400 });
+          }
+          const { error: passWriteError } = await supabase
+            .from("billing_subscriptions")
+            .upsert(
+              buildPassBillingRow({
+                checkoutSessionId: session.id,
+                userId,
+                paidAtUnixSeconds: session.created,
+              }),
+              { onConflict: "stripe_subscription_id" }
+            );
+          if (passWriteError) {
+            console.error("[WEBHOOK] ERREUR upsert pass billing_subscriptions:", passWriteError);
+            return NextResponse.json({ error: "Failed to upsert billing_subscriptions" }, { status: 500 });
+          }
+
+          if (debug) console.log("[WEBHOOK] ✅ Pass 3 mois enregistré (checkout payment)");
+
+          await sendPaymentThankYouEmailIfNeeded(userId).catch((e) => {
+            console.warn("[WEBHOOK] Payment thank-you email error:", e);
+          });
+          return NextResponse.json({ received: true });
+        }
+
+        if (!subscriptionId) {
+          console.error("[WEBHOOK] ERREUR: Pas de subscription dans la session");
+          return NextResponse.json({ error: "No subscription" }, { status: 400 });
         }
 
         // 2) Fetch subscription snapshot from Stripe and upsert

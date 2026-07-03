@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { getStripe } from "@/lib/stripe/client";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import Stripe from "stripe";
+import { buildPassBillingRow } from "@/lib/stripe/pass";
 
 type SubscriptionPeriodFields = {
   current_period_end?: number | null;
@@ -49,12 +50,43 @@ export async function GET(request: NextRequest) {
       redirect("/subscribe");
     }
 
-    // Validation: session attendue pour un abonnement et complète.
+    // Validation: session complète, en mode abonnement (legacy) ou paiement unique (pass).
     const isComplete = session.status === "complete";
-    const isSubscription = session.mode === "subscription";
-    if (!isSubscription || !isComplete) {
+    const isKnownMode = session.mode === "subscription" || session.mode === "payment";
+    if (!isKnownMode || !isComplete) {
       if (debug) console.warn("[SUCCESS] Session Stripe non complète ou mauvais mode:", session.status, session.mode);
       redirect("/subscribe");
+    }
+
+    // Fallback pass 3 mois (mode payment) : même écriture idempotente que le webhook.
+    if (session.mode === "payment" && userId && customerId && session.payment_status === "paid") {
+      const adminSupabase = createSupabaseAdminClient();
+
+      const { error: customerWriteError } = await adminSupabase
+        .from("billing_customers")
+        .upsert(
+          { user_id: userId, stripe_customer_id: customerId },
+          { onConflict: "user_id" }
+        );
+      if (customerWriteError) {
+        console.warn("[SUCCESS] ⚠️ Erreur upsert billing_customers:", customerWriteError);
+      }
+
+      const { error: passWriteError } = await adminSupabase
+        .from("billing_subscriptions")
+        .upsert(
+          buildPassBillingRow({
+            checkoutSessionId: session.id,
+            userId,
+            paidAtUnixSeconds: session.created,
+          }),
+          { onConflict: "stripe_subscription_id" }
+        );
+      if (passWriteError) {
+        console.warn("[SUCCESS] ⚠️ Erreur upsert pass billing_subscriptions:", passWriteError);
+      }
+
+      redirect("/home");
     }
 
     // Fallback: attempt to upsert billing snapshot directly (in case webhook is delayed)
@@ -104,6 +136,8 @@ export async function GET(request: NextRequest) {
 
     redirect("/home");
   } catch (error) {
+    // Les redirect() de Next lancent une exception : ne pas les avaler ici.
+    unstable_rethrow(error);
     console.error("[SUCCESS] ❌ Erreur lors de la récupération de la session:", error);
     redirect("/subscribe");
   }

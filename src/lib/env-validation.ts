@@ -43,6 +43,7 @@ export function validateEnv(isProduction: boolean = process.env.NODE_ENV === "pr
     "STRIPE_SUBSCRIPTION_PRICE_ID_MONTHLY",
     "STRIPE_SUBSCRIPTION_PRICE_ID_QUARTERLY",
     "STRIPE_SUBSCRIPTION_PRICE_ID_YEARLY",
+    "STRIPE_PASS_PRICE_ID",
   ];
 
   // Valider les variables toujours requises
@@ -89,6 +90,7 @@ export function validateEnv(isProduction: boolean = process.env.NODE_ENV === "pr
     process.env.STRIPE_SUBSCRIPTION_PRICE_ID_MONTHLY,
     process.env.STRIPE_SUBSCRIPTION_PRICE_ID_QUARTERLY,
     process.env.STRIPE_SUBSCRIPTION_PRICE_ID_YEARLY,
+    process.env.STRIPE_PASS_PRICE_ID,
   ].filter(Boolean) as string[];
 
   for (const priceId of priceIds) {
