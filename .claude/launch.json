@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "cote-cour-prod",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["CRON_SECRET=local-dev-dummy", "npx", "next", "start", "-p", "3999"],
+      "port": 3999
+    }
+  ]
+}

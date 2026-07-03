@@ -1,26 +1,25 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { MagicLinkForm } from "@/components/auth/magic-link-form";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { getSupabaseSessionUser } from "@/lib/queries/scenes";
+import { safeInternalPath } from "@/lib/utils/safe-path";
 import { t } from "@/locales/fr";
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams?: Record<string, string | string[] | undefined>;
-}) {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
+type Props = {
+  searchParams: Promise<{ error?: string; redirect?: string }>;
+};
 
+export default async function LoginPage({ searchParams }: Props) {
+  const params = await searchParams;
+  // Cible post-connexion (ex: /rejoindre?code=XXXX pour un élève invité).
+  const next = safeInternalPath(params.redirect, "/onboarding");
+
+  const user = await getSupabaseSessionUser();
   if (user) {
-    redirect("/home");
+    redirect(next === "/onboarding" ? "/home" : next);
   }
 
-  const errorParam = searchParams?.error;
-  const errorMessage = Array.isArray(errorParam) ? errorParam[0] : errorParam;
+  const errorMessage = params.error;
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6">
@@ -36,12 +35,7 @@ export default async function LoginPage({
           {errorMessage}
         </div>
       ) : null}
-      <MagicLinkForm />
+      <MagicLinkForm next={next} />
     </div>
   );
 }
-
-
-
-
-

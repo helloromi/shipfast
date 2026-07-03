@@ -1,7 +1,7 @@
 const baseUrl =
   typeof process.env.NEXT_PUBLIC_APP_URL === "string" && process.env.NEXT_PUBLIC_APP_URL
     ? process.env.NEXT_PUBLIC_APP_URL
-    : "https://cote-cour.fr";
+    : "https://cote-cour.studio";
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -16,7 +16,7 @@ const jsonLd = {
   inLanguage: "fr",
   offers: {
     "@type": "Offer",
-    price: "5",
+    price: "12",
     priceCurrency: "EUR",
   },
 };

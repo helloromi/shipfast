@@ -32,8 +32,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const scene = await getScene(id);
   if (!scene) return {};
 
-  // Les scènes privées ne doivent pas être indexées.
-  if (scene.is_private) {
+  // Les scènes privées ou rattachées à une œuvre hors domaine public
+  // ne doivent pas être indexées.
+  if (scene.is_private || scene.work?.is_public_domain === false) {
     return { robots: { index: false, follow: false } };
   }
 
@@ -76,6 +77,13 @@ export default async function SceneDetailPage({ params }: Props) {
 
   const scene = await getScene(id);
   if (!scene) {
+    notFound();
+  }
+
+  // Une scène du catalogue public rattachée à une œuvre hors domaine public
+  // ne doit pas exposer son texte intégral. Les copies privées (import perso)
+  // restent accessibles à leur propriétaire.
+  if (!scene.is_private && scene.work?.is_public_domain === false) {
     notFound();
   }
 

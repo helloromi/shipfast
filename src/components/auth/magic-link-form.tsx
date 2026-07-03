@@ -12,7 +12,12 @@ type ToastState = {
   variant: "success" | "error";
 };
 
-export function MagicLinkForm() {
+type Props = {
+  /** Chemin interne vers lequel rediriger après connexion (défaut: /onboarding). */
+  next?: string;
+};
+
+export function MagicLinkForm({ next = "/onboarding" }: Props) {
   const { supabase } = useSupabase();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
@@ -24,7 +29,7 @@ export function MagicLinkForm() {
     setStatus("loading");
     setError(null);
 
-    const redirectUrl = `${getSiteUrl()}/auth/callback?next=/onboarding`;
+    const redirectUrl = `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(next)}`;
 
     const { error: signInError } = await supabase.auth.signInWithOtp({
       email,

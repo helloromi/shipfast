@@ -1,57 +1,55 @@
-# CLAUDE.md
+# CLAUDE.md — Côté-Cour
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Fichier lu automatiquement par Claude Code à chaque session sur ce repo (référence-le aussi dans les rules Cursor si tu y retournes). Il définit ce qui est autorisé, interdit, et les critères de validation.
 
-## What this is
+## Le produit
 
-Despite the repo name "shipfast", this is **Côté-Cour** — a French web app for actors to learn theater lines (mask/reveal lines, self-score 0–10, track mastery). Next.js 16 App Router + React 19 + Tailwind 4, Supabase (auth + Postgres + storage), Stripe subscriptions, Resend emails, OpenAI for scene imports. Deployed on Vercel.
+App française d'apprentissage de texte de théâtre par flashcards et répétition espacée. Utilisateurs sur mobile (métro, coulisses). Stack : Next.js + Tailwind, Supabase (Postgres + auth magic-link), Stripe, Brevo, déployé sur Vercel.
 
-All user-facing copy is in **French**, centralized in `src/locales/fr/` (imported as the `t` object from `src/locales/fr/index.ts`). Code comments are also mostly French — follow that convention. URLs use French slugs (`/compte`, `/bibliotheque`, `/ressources`, `/confidentialite`).
+- Version Next.js et App Router ou Pages Router : Next.js 16.0.10, App Router (`src/app/`), React 19, Tailwind 4.
+- Tables Supabase principales (projet `cote-cour`) : `works`, `scenes`, `characters`, `lines` (le texte), `user_profiles`, `user_line_feedback`, `user_learning_sessions`, `user_work_access`, `import_jobs`, `billing_customers`, `billing_subscriptions` (le pass), `teacher_classes` + `class_*` (mode professeur), `landing_page_views` / `landing_cta_clicks` (tracking). `user_stripe_customers` et `user_subscriptions` existent mais sont vides (legacy).
+- Où vit la logique de paywall : `src/lib/queries/access.ts` (`hasActiveSubscription`, lit `billing_subscriptions.status` + `current_period_end`) et `src/lib/utils/require-subscription.ts` (garde côté serveur). Flux Stripe dans `src/app/api/payments/` (create-checkout, webhook, success).
+- Commandes : `npm run dev` / `npm run build` / `npm run lint` / `npm run test` (vitest) / `npm run seed:scenes` (exécute `supabase/seed/seed-scenes.ts` via tsx).
 
-## Commands
+## Phase actuelle : SEO, gel des features
 
-- `npm run dev` — start dev server (http://localhost:3000)
-- `npm run build` — production build
-- `npm run lint` — ESLint (must exit 0; `no-explicit-any` is a warning for historical debt)
-- `npm test` — Vitest (`npm run test:watch` for watch mode); run a single file with `npx vitest run src/lib/utils/csrf.test.ts`
+Jusqu'à fin août 2026, ce repo ne reçoit que du travail lié au funnel SEO → compte → pass. Toute autre demande (nouvelle feature, refactor de confort, polish UI hors funnel) doit être refusée avec un rappel de cette règle, même si Paul la demande. Une exception : le parcours visiteur anonyme (voir plus bas).
 
-Unit tests are colocated as `src/**/*.test.ts` (pure logic only: paywall decision matrix, CSRF, rate limit, cron auth, scores, env validation). CI (`.github/workflows/ci.yml`) enforces lint + typecheck + tests + build on every push/PR. Copy `example.env` to `.env.local` for local config; `src/lib/env-validation.ts` enforces required vars (Supabase, Stripe, Resend, `CRON_SECRET`; plus `NEXT_PUBLIC_SITE_URL` in production).
+## Règles produit invariantes
 
-## Database
+1. Tout le contenu du domaine public est gratuit et accessible SANS compte. Ne jamais mettre une scène du domaine public derrière un login.
+2. Le paywall porte sur l'import de texte perso (photo/PDF via IA). Modèle : pass 3 mois à 12€, paiement Stripe unique, date d'expiration en base, pas d'abonnement récurrent.
+3. Le compte n'est proposé que pour sauvegarder sa progression ou importer un texte.
+4. Mobile-first : toute page ou composant se vérifie d'abord sur un viewport 375px, utilisable à une main.
 
-Migrations are managed with the **Supabase CLI**: timestamped files in `supabase/migrations/` applied with `supabase db push` (create new ones with `supabase migration new <name>`). `supabase/migrations-legacy/` holds the historical hand-applied migrations (reference only — already in prod); `supabase/schema.sql` is a base-schema reference document, not an executable migration. See `supabase/README.md` for the full workflow. When changing the schema, add a CLI migration AND keep `schema.sql` in sync.
+## Exigences SEO (s'appliquent à toute page publique)
 
-Domain model: `works` → `scenes` → `characters` → `lines` (ordered by `"order"`, unique per scene). Per-user data: `user_line_feedback` (score 0–10), `user_learning_sessions`, notes, highlights, `user_work_access`, `import_jobs`, profiles for email automation. RLS: public read on works/scenes/characters/lines, per-user rows restricted to the owner. Users can fork scenes into private copies (`is_private`, `owner_user_id`, `source_scene_id`).
+- Rendu côté serveur (SSR ou SSG). Aucun contenu clé chargé uniquement côté client.
+- Une URL propre et stable par scène : /scenes/[auteur]/[piece]/[scene-slug] ou équivalent.
+- Title et meta description uniques par page, construits sur la requête cible (ex. « Tirade du nez, Cyrano de Bergerac : texte intégral et apprentissage »).
+- Schema.org : CreativeWork/Play sur les pages scènes (auteur, pièce, personnages), FAQPage sur les guides.
+- Sitemap.xml généré automatiquement, incluant chaque nouvelle scène seedée.
+- Canonical sur chaque page, Open Graph rempli.
+- Le texte intégral de la scène est dans le HTML servi, pas dans un JSON hydraté après coup.
 
-## Auth and access control
+## Definition of done d'une page scène
 
-Three Supabase clients in `src/lib/`:
-- `supabase-browser.ts` — client components (anon key)
-- `supabase-server.ts` — server components/routes, cookie-based session (gracefully degrades to anonymous when `cookies()` is unavailable)
-- `supabase-admin.ts` — service role, bypasses RLS; only for webhooks, crons, admin routes, and import processing
+Une page scène est terminée quand : le texte intégral s'affiche sans compte, le mode flashcard se lance sans compte, la page passe Lighthouse SEO > 90 sur mobile, le schema est valide (validator.schema.org), l'URL est dans le sitemap, et un CTA vers la création de compte est présent sans être bloquant.
 
-Login is magic-link only (`/login`, callback at `/auth/callback`). Admins are identified by email via the `ADMIN_EMAILS` env var (`src/lib/utils/admin.ts`).
+## Seed du contenu
 
-Per-request memoization: `getSupabaseSessionUser`, `isAdmin`, `hasActiveSubscription`, and `hasClassMembership` are wrapped in React `cache()` so layout + pages + guards share one `auth.getUser()` network call and one set of entitlement queries per request. Keep new per-request lookups behind `cache()` too, and don't "unwrap" these into plain functions — pages call them repeatedly assuming they're free after the first call.
+Les scènes arrivent par lots de 10 en JSON (générés dans le projet Claude, format du seed script existant). Chaque fiche porte un champ reliability : les pièces en vers (Cyrano, Le Cid…) sont vérifiées contre Wikisource avant mise en ligne. Le seed script utilise le client admin Supabase avec le bloc CONFIG centralisé, ne pas dupliquer la logique.
 
-The paywall model is: **admin, active Stripe subscription, or class membership** (students are covered by their teacher's subscription; see `has_class_membership` SQL helper); otherwise redirect to `/onboarding`. Use the existing guards rather than rolling your own:
-- Pages: `requireSubscriptionOrRedirect` (`src/lib/utils/require-subscription.ts`)
-- API routes: `requireAuth(request, rateLimitConfig, options)` (`src/lib/utils/api-auth.ts`) — chains same-origin CSRF check → Supabase user → optional `requireAdmin` → rate limiting. Returns `{ ok, user, supabase }` or a ready-made error response.
-- Cron routes: `assertCronAuth` (`src/lib/utils/cron.ts`) — `Authorization: Bearer $CRON_SECRET`
-- Fine-grained scene/work access: `checkAccess` / free-slot logic in `src/lib/utils/access-control.ts` + `src/lib/queries/access.ts`
+## Ce que l'agent doit faire systématiquement
 
-## Key flows
+- Avant tout changement : vérifier que la page concernée reste indexable (pas de redirect vers login, pas de noindex hérité).
+- Après tout changement de route ou de page : régénérer/vérifier le sitemap.
+- Signaler tout endroit où du contenu domaine public passerait derrière l'auth.
+- Proposer les changements en petits diffs vérifiables, pas en réécriture de fichiers entiers.
 
-**Payments** (`src/app/api/payments/`): checkout via `create-checkout` with one of three price IDs (`STRIPE_SUBSCRIPTION_PRICE_ID_MONTHLY/QUARTERLY/YEARLY`); the webhook at `/api/payments/webhook` handles `checkout.session.completed`; `/api/payments/webhook/test` reports config status. Billing portal at `/api/billing/portal`.
+## Ce que l'agent ne fait jamais
 
-**Scene imports** (async pipeline): user uploads PDF/text → file goes to Supabase storage + a row in `import_jobs` → `src/lib/imports/process-import-job.ts` runs stages (validating → downloading → extracting → parsing → finalizing) with progress written back to the job row → text extraction (`src/lib/utils/text-extraction.ts`, pdfjs/pdf-parse with optional OpenAI OCR) → AI parsing into characters/lines (`src/lib/utils/text-parser.ts`, requires `consent_to_ai`) → user previews at `/imports/[jobId]/preview` and commits via `/api/scenes/import/commit`. Jobs are processed by the cron `/api/cron/imports/process`.
-
-**Emails**: Resend client/templates/automation in `src/lib/resend/`. Cron-driven automation for inactivity and unpaid users (`/api/cron/emails/*`). Cron schedules live in `vercel.json`.
-
-**Data fetching pattern**: server components call query helpers in `src/lib/queries/` (scenes, stats, works, access, notes) and pass data to client components in `src/components/<feature>/`. Mutations go through `/api` routes, not server actions.
-
-**Teacher spaces**: `user_profiles.role` is `student`/`teacher`. Teachers manage classes at `/professeur` (members, attached scenes, role casting, line annotations, show-prep notes); students join via invite code at `/rejoindre` and see everything at `/mes-cours`. Tables `teacher_classes`, `class_members`, `class_scenes`, `class_assignments`, `class_annotations`, `class_show_notes` — RLS gives teachers write and class members read (via `is_class_teacher`/`is_class_member` security-definer helpers). Assigning a scene to a student creates a `user_work_access` row (`access_type='private'`) so existing scene RLS grants read; the assignment/member/scene DELETE routes clean those rows up. Types in `src/types/teacher.ts`, queries in `src/lib/queries/teacher.ts`, strings in `src/locales/fr/teacher.ts`.
-
-**Design system**: tokens and shared component classes live in `src/app/globals.css` (`.btn-primary`, `.btn-secondary`, `.btn-gold`, `.card`, `.chip`, `.input`, `.label`, `.stage-dark` dark hero sections, `.reveal`/`.spotlight` animations). Fonts: Fraunces (display) + Karla (body) via `next/font` in `layout.tsx`. Prefer these utilities over repeating raw hex Tailwind classes.
-
-**Admin dashboard** at `/admin` (users, activity charts, billing summary, landing analytics) backed by `/api/admin/dashboard/*` routes using the service-role client.
+- Créer une nouvelle feature hors funnel, même « rapide ».
+- Toucher au flux Stripe existant sans plan de test sandbox explicite.
+- Supprimer ou modifier des données de production Supabase sans confirmation.
+- Introduire une dépendance lourde pour un besoin ponctuel.

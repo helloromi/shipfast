@@ -10,7 +10,7 @@ type SceneAverage = {
 };
 
 type SceneQueryResult = Scene & {
-  works?: { id: string; title: string } | null;
+  works?: { id: string; title: string; is_public_domain?: boolean } | null;
   characters: Character[];
   lines: {
     id: string;
@@ -122,7 +122,7 @@ export async function fetchSceneWithRelations(id: string): Promise<SceneWithRela
         is_private,
         owner_user_id,
         source_scene_id,
-        works ( id, title ),
+        works ( id, title, is_public_domain ),
         characters ( id, name ),
         lines (
           id,

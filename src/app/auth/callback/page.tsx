@@ -4,11 +4,10 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 import { useSupabase } from "@/components/supabase-provider";
+import { safeInternalPath } from "@/lib/utils/safe-path";
 
 function safeNextPath(nextParam: string | null | undefined): string {
-  if (!nextParam) return "/onboarding";
-  if (nextParam.startsWith("/") && !nextParam.startsWith("//")) return nextParam;
-  return "/onboarding";
+  return safeInternalPath(nextParam, "/onboarding");
 }
 
 export default function AuthCallbackPage() {

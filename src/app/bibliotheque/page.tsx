@@ -81,17 +81,32 @@ export default async function MesScenesPage({ searchParams }: Props) {
         </p>
       </div>
 
-      {/* Barre de recherche + CTA import */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+      {/* Barre de recherche + actions */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:flex-wrap">
         {hasAnyScene && (
-          <div className="flex-1">
+          <div className="flex-1 min-w-[200px]">
             <SearchBar />
           </div>
         )}
-        <Link
-          href="/scenes/import"
-          className="flex items-center justify-center gap-2 rounded-xl bg-[#3b1f4a] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2d1638] sm:w-auto"
-        >
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Link
+            href="/scenes"
+            className="flex items-center justify-center gap-2 rounded-xl border border-[#3b1f4a] bg-white px-5 py-2.5 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:bg-[#3b1f4a08] sm:w-auto"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+              />
+            </svg>
+            {t.scenes.works.bibliotheque.voirCatalogue}
+          </Link>
+          <Link
+            href="/scenes/import"
+            className="flex items-center justify-center gap-2 rounded-xl bg-[#3b1f4a] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2d1638] sm:w-auto"
+          >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
@@ -101,8 +116,12 @@ export default async function MesScenesPage({ searchParams }: Props) {
             />
           </svg>
           Importer une scène
-        </Link>
+          </Link>
+        </div>
       </div>
+      {!hasAnyScene && (
+        <p className="text-sm text-[#524b5a]">{t.scenes.works.bibliotheque.voirCatalogueHint}</p>
+      )}
 
       {/* Grille des scènes */}
       {hasContent ? (
@@ -244,10 +263,14 @@ function EmptyState() {
         <p className="max-w-sm text-sm text-[#524b5a] leading-relaxed">
           Photographiez ou scannez n&apos;importe quel texte — le rôle sera extrait automatiquement pour que vous puissiez commencer à travailler.
         </p>
-        <p className="max-w-sm text-xs text-[#7a7184] leading-relaxed">
-          Bientôt, vous pourrez aussi partager vos scènes avec d&apos;autres utilisateurs.
-        </p>
       </div>
+
+      <Link
+        href="/scenes"
+        className="flex items-center gap-2 rounded-xl border border-[#3b1f4a] bg-white px-6 py-3 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:bg-[#3b1f4a08]"
+      >
+        {t.scenes.works.bibliotheque.voirCatalogue}
+      </Link>
 
       <Link
         href="/scenes/import"

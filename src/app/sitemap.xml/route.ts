@@ -29,8 +29,9 @@ export async function GET(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
   const { data: publicScenes, error: scenesError } = await supabase
     .from("scenes")
-    .select("id, created_at")
-    .eq("is_private", false);
+    .select("id, created_at, works!inner(is_public_domain)")
+    .eq("is_private", false)
+    .eq("works.is_public_domain", true);
   if (scenesError) {
     console.error("sitemap: failed to fetch public scenes", scenesError);
   }

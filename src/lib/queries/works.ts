@@ -32,9 +32,11 @@ export async function fetchWorks(
       title,
       author,
       summary,
-      scenes (id)
+      scenes!inner (id)
       `
-    );
+    )
+    .eq("is_public_domain", true)
+    .eq("scenes.is_private", false);
 
   if (authorFilter && authorFilter !== "all") {
     query = query.eq("author", authorFilter);
@@ -96,9 +98,11 @@ export async function searchWorks(
       title,
       author,
       summary,
-      scenes (id)
+      scenes!inner (id)
       `
     )
+    .eq("is_public_domain", true)
+    .eq("scenes.is_private", false)
     .or(`title.ilike.${searchTerm},author.ilike.${searchTerm}`);
 
   if (authorFilter && authorFilter !== "all") {
