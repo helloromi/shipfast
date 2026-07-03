@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getArticlesList } from "@/content/ressources/articles";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 function getBaseUrl(request: NextRequest): string {
+  // Env d'abord : l'origin de la requête peut être un domaine de preview Vercel.
+  const base = process.env.NEXT_PUBLIC_APP_URL;
+  if (base) return base.startsWith("http") ? base : `https://${base}`;
   const origin = request.nextUrl.origin;
   if (origin && origin.startsWith("http")) return origin;
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://cote-cour.studio";
-  return base.startsWith("http") ? base : `https://${base}`;
+  return "https://cote-cour.studio";
 }
 
 function escapeXml(unsafe: string): string {
@@ -21,6 +24,17 @@ export async function GET(request: NextRequest) {
   const baseUrl = getBaseUrl(request).replace(/\/$/, "");
   const articles = getArticlesList();
 
+  // Toutes les scènes publiques (RLS autorise la lecture anonyme sur is_private = false).
+  // `scenes` n'a pas de colonne updated_at : created_at sert de lastmod.
+  const supabase = await createSupabaseServerClient();
+  const { data: publicScenes, error: scenesError } = await supabase
+    .from("scenes")
+    .select("id, created_at")
+    .eq("is_private", false);
+  if (scenesError) {
+    console.error("sitemap: failed to fetch public scenes", scenesError);
+  }
+
   const entries: { loc: string; lastmod: string; changefreq: string; priority: number }[] = [
     {
       loc: `${baseUrl}/landing`,
@@ -34,6 +48,18 @@ export async function GET(request: NextRequest) {
       changefreq: "weekly",
       priority: 0.8,
     },
+    {
+      loc: `${baseUrl}/scenes`,
+      lastmod: new Date().toISOString().slice(0, 10),
+      changefreq: "weekly",
+      priority: 0.9,
+    },
+    ...(publicScenes ?? []).map((scene) => ({
+      loc: `${baseUrl}/scenes/${encodeURIComponent(scene.id)}`,
+      lastmod: String(scene.created_at ?? "").slice(0, 10) || new Date().toISOString().slice(0, 10),
+      changefreq: "monthly",
+      priority: 0.8,
+    })),
     ...articles.map((a) => ({
       loc: `${baseUrl}/ressources/${encodeURIComponent(a.slug)}`,
       lastmod: a.publishedAt instanceof Date ? a.publishedAt.toISOString().slice(0, 10) : String(a.publishedAt).slice(0, 10),

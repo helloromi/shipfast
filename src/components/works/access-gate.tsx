@@ -76,24 +76,24 @@ export function AccessGate({
     return <>{children}</>;
   }
 
-  // Pas d'accès - abonnement requis
+  // Pas d'accès - pass requis
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-[#e7e1d9] bg-white/92 p-6 shadow-sm">
       <div className="flex flex-col gap-2">
         <h3 className="font-display text-lg font-semibold text-[#3b1f4a]">
-          Accès réservé aux abonnés
+          Accès réservé aux détenteurs du pass
         </h3>
         <p className="text-sm text-[#524b5a]">
-          Abonnez-vous à 5€/mois pour débloquer l'apprentissage, l'import et toute la bibliothèque.
+          Débloque l'import de tes textes persos avec le pass 3 mois — 12€, paiement unique, sans abonnement.
         </p>
       </div>
 
       <div className="flex flex-col gap-3">
-        <CheckoutButton 
-          plan="monthly"
+        <CheckoutButton
+          plan="quarterly"
           className="w-full rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]"
         >
-          S'abonner — 5€/mois
+          Prendre le pass — 12€ / 3 mois
         </CheckoutButton>
 
         {!user && (

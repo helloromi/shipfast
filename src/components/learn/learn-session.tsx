@@ -21,7 +21,7 @@ type LearnSessionProps = {
   characterId: string;
   userCharacterName: string;
   lines: LearnLine[];
-  userId: string;
+  userId: string | null;
   initialNotesByLineId: Record<string, string>;
 };
 
@@ -382,6 +382,8 @@ export function LearnSession(props: LearnSessionProps) {
   }, [scoreValue, userLines]);
 
   const startTrackingSession = async (totalLines: number) => {
+    // Visiteur anonyme : la session se joue en local, rien n'est tracké en base.
+    if (!userId) return;
     try {
       const response = await fetch("/api/sessions/start", {
         method: "POST",
@@ -438,17 +440,20 @@ export function LearnSession(props: LearnSessionProps) {
   };
 
   const saveScore = async (lineId: string, score: number) => {
-    setSaving((prev) => ({ ...prev, [lineId]: true }));
-    setToast(null);
-    const { error } = await supabase.from("user_line_feedback").insert({
-      line_id: lineId,
-      user_id: userId,
-      score,
-    });
-    setSaving((prev) => ({ ...prev, [lineId]: false }));
-    if (error) {
-      setToast({ message: `${t.learn.messages.erreur} ${error.message}`, variant: "error" });
-      return;
+    // Anonyme : le score reste local (pas de sauvegarde), la session continue normalement.
+    if (userId) {
+      setSaving((prev) => ({ ...prev, [lineId]: true }));
+      setToast(null);
+      const { error } = await supabase.from("user_line_feedback").insert({
+        line_id: lineId,
+        user_id: userId,
+        score,
+      });
+      setSaving((prev) => ({ ...prev, [lineId]: false }));
+      if (error) {
+        setToast({ message: `${t.learn.messages.erreur} ${error.message}`, variant: "error" });
+        return;
+      }
     }
 
     setLineState((prev) => ({ ...prev, [lineId]: "scored" }));
@@ -1282,13 +1287,23 @@ export function LearnSession(props: LearnSessionProps) {
                       <button
                         onClick={() => {
                           setShowSummary(false);
-                          router.push("/home");
+                          router.push(userId ? "/home" : `/scenes/${sceneId}`);
                         }}
                         className="flex-1 rounded-full bg-[#ff6b6b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a]"
                       >
-                        {t.learn.buttons.retournerAccueil}
+                        {userId ? t.learn.buttons.retournerAccueil : t.learn.buttons.retourScene}
                       </button>
                     </div>
+                    {!userId && (
+                      <p className="text-center text-sm text-[#524b5a]">
+                        <a
+                          href="/login"
+                          className="font-semibold text-[#3b1f4a] underline underline-offset-4"
+                        >
+                          {t.learn.messages.ctaCompteAnonyme}
+                        </a>
+                      </p>
+                    )}
                   </>
                 );
               })()}

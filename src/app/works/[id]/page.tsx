@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { fetchWorkWithScenesAndStats } from "@/lib/queries/works";
 import { getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { WorkDetailClient } from "@/components/works/work-detail-client";
-import { AccessGate } from "@/components/works/access-gate";
 import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
 
 type Props = {
@@ -25,23 +24,9 @@ export default async function WorkDetailPage({ params }: Props) {
     notFound();
   }
 
-  // Si l'œuvre a des scènes, on vérifie l'accès à la première scène pour l'œuvre entière
-  // Sinon, on affiche directement (œuvre sans scènes - pas de contrôle d'accès nécessaire)
-  if (work.scenes.length === 0) {
-    return <WorkDetailClient work={work} />;
-  }
-
-  const firstSceneId = work.scenes[0].id;
-
-  return (
-    <AccessGate
-      user={user}
-      workId={id}
-      sceneId={firstSceneId}
-    >
-      <WorkDetailClient work={work} />
-    </AccessGate>
-  );
+  // Contenu domaine public : rendu serveur, sans gate. La RLS ne renvoie de toute
+  // façon que les scènes publiques ou possédées par l'utilisateur courant.
+  return <WorkDetailClient work={work} />;
 }
 
 

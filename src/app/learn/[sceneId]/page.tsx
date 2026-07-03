@@ -18,19 +18,23 @@ export default async function LearnPage({ params, searchParams }: Props) {
   const { character: characterId, characterName: characterNameParam, startLine: startLineParam, endLine: endLineParam } =
     await searchParams;
   const user = await getSupabaseSessionUser();
-  if (!user) {
-    redirect("/login");
-  }
-  await requireSubscriptionOrRedirect(user);
 
   const scene = await fetchSceneWithRelations(sceneId);
   if (!scene) {
     notFound();
   }
 
+  // Les scènes du domaine public se jouent sans compte ; seul le contenu privé exige une session.
+  if (!user && scene.is_private) {
+    redirect("/login");
+  }
+  if (user) {
+    await requireSubscriptionOrRedirect(user);
+  }
+
   // Si le deeplink pointe vers une scène publique et que l'utilisateur a accès,
   // on redirige vers sa copie perso (et on remappe le personnage par nom).
-  if (!scene.is_private) {
+  if (user && !scene.is_private) {
     const access = await hasAccess(user.id, scene.work_id ?? undefined, scene.id);
     if (access) {
       const ensured = await ensurePersonalSceneForCurrentUser(scene.id);
@@ -89,10 +93,12 @@ export default async function LearnPage({ params, searchParams }: Props) {
     isUserLine: line.character_id === character.id,
   }));
 
-  const initialNotesByLineId = await fetchUserLineNotes(
-    user.id,
-    allLines.map((l) => l.id)
-  );
+  const initialNotesByLineId = user
+    ? await fetchUserLineNotes(
+        user.id,
+        allLines.map((l) => l.id)
+      )
+    : {};
 
   const rangeInfo =
     startLine !== null && endLine !== null && !isNaN(startLine) && !isNaN(endLine)
@@ -133,7 +139,7 @@ export default async function LearnPage({ params, searchParams }: Props) {
         characterId={characterId}
         userCharacterName={character.name}
         lines={lines}
-        userId={user.id}
+        userId={user?.id ?? null}
         initialNotesByLineId={initialNotesByLineId}
       />
     </div>

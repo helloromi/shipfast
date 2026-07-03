@@ -27,7 +27,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://cote-cour.fr"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://cote-cour.studio"),
   title: "Apprendre son texte de théâtre – Mémorisation répliques | Côté-Cour",
   description:
     "Application pour comédiens : apprends ton texte de théâtre et mémorise tes répliques 3x plus vite. Importe ta scène, révèle tes répliques, reçois un feedback instantané.",

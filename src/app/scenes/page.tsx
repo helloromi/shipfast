@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { fetchWorks, searchWorks, fetchUserWorkAverages } from "@/lib/queries/works";
 import { getSupabaseSessionUser, fetchUserPrivateScenes } from "@/lib/queries/scenes";
 import { SearchBar } from "@/components/works/search-bar";
@@ -18,9 +17,6 @@ export default async function ScenesPage({ searchParams }: Props) {
   if (user) {
     await requireSubscriptionOrRedirect(user);
   }
-  if (!user) {
-    redirect("/landing");
-  }
   const [works, averages, privateScenes] = await Promise.all([
     query ? searchWorks(query) : fetchWorks(),
     user ? fetchUserWorkAverages(user.id) : Promise.resolve([]),
@@ -33,19 +29,27 @@ export default async function ScenesPage({ searchParams }: Props) {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">
-          {t.scenes.works.bibliotheque.sectionLabel}
+          {t.scenes.bibliotheque.sectionLabel}
         </p>
         <h1 className="font-display text-3xl font-semibold text-[#1c1b1f]">
-          {t.scenes.works.bibliotheque.title}
+          {t.scenes.bibliotheque.title}
         </h1>
         <p className="text-sm text-[#524b5a] leading-relaxed">
-          {t.scenes.works.bibliotheque.description}
+          {t.scenes.bibliotheque.description}
         </p>
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <SearchBar />
-        {user && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          {user && (
+          <Link
+            href="/bibliotheque"
+            className="flex items-center justify-center gap-2 rounded-full border border-[#3b1f4a] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:bg-[#3b1f4a08] sm:w-auto"
+          >
+            {t.scenes.bibliotheque.retourMesScenes}
+          </Link>
+          )}
           <Link
             href="/scenes/import"
             className="flex items-center justify-center gap-2 rounded-full bg-[#3b1f4a] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#2d1638] sm:w-auto"
@@ -60,7 +64,7 @@ export default async function ScenesPage({ searchParams }: Props) {
             </svg>
             {t.common.nav.importer}
           </Link>
-        )}
+        </div>
       </div>
 
       {user && privateScenes.length > 0 && (
@@ -143,7 +147,7 @@ export default async function ScenesPage({ searchParams }: Props) {
 
       {!works.length && (
         <div className="rounded-2xl border border-dashed border-[#e7e1d9] bg-white/85 p-4 text-sm text-[#524b5a]">
-          {t.scenes.works.bibliotheque.empty}
+          {t.scenes.bibliotheque.empty}
         </div>
       )}
     </div>

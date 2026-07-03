@@ -1,5 +1,7 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { cache } from "react";
 
 import { fetchSceneWithRelations, fetchUserProgressScenes, getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { fetchLineMastery, fetchSceneStats } from "@/lib/queries/stats";
@@ -16,13 +18,63 @@ type Props = {
   params: Promise<{ id: string }>;
 };
 
+// Mémoïsé par requête : generateMetadata et la page partagent le même fetch.
+const getScene = cache(fetchSceneWithRelations);
+
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).trimEnd()}…`;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  if (!id) return {};
+  const scene = await getScene(id);
+  if (!scene) return {};
+
+  // Les scènes privées ne doivent pas être indexées.
+  if (scene.is_private) {
+    return { robots: { index: false, follow: false } };
+  }
+
+  const workTitle = scene.work?.title ?? null;
+  const context = [workTitle !== scene.title ? workTitle : null, scene.author]
+    .filter(Boolean)
+    .join(", ");
+  const title = `${scene.title}${context ? ` — ${context}` : ""} : texte et apprentissage`;
+
+  const charactersCount = scene.characters.length;
+  const kind = charactersCount <= 1 ? "ce monologue" : `cette scène à ${charactersCount} personnages`;
+  const origin = [
+    workTitle && workTitle !== scene.title ? ` de ${workTitle}` : "",
+    scene.author ? ` (${scene.author})` : "",
+  ].join("");
+  const description = truncate(
+    `Texte intégral de ${scene.title}${origin}. Apprends ${kind} avec la méthode des flashcards, sans compte.`,
+    155
+  );
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/scenes/${id}` },
+    openGraph: {
+      title,
+      description,
+      url: `/scenes/${id}`,
+      type: "article",
+      locale: "fr_FR",
+    },
+  };
+}
+
 export default async function SceneDetailPage({ params }: Props) {
   const { id } = await params;
   if (!id) {
     notFound();
   }
 
-  const scene = await fetchSceneWithRelations(id);
+  const scene = await getScene(id);
   if (!scene) {
     notFound();
   }
@@ -68,8 +120,35 @@ export default async function SceneDetailPage({ params }: Props) {
     user ? fetchAnnotationsForScene(id) : Promise.resolve([]),
   ]);
 
+  const jsonLd = scene.is_private
+    ? null
+    : {
+        "@context": "https://schema.org",
+        "@type": "CreativeWork",
+        name: scene.title,
+        ...(scene.author ? { author: { "@type": "Person", name: scene.author } } : {}),
+        ...(scene.work?.title
+          ? { isPartOf: { "@type": "CreativeWork", name: scene.work.title } }
+          : {}),
+        inLanguage: "fr",
+        ...(scene.characters.length > 0
+          ? {
+              character: scene.characters.map((c) => ({
+                "@type": "Person",
+                name: c.name,
+              })),
+            }
+          : {}),
+      };
+
   return (
     <div className="flex flex-col gap-6">
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
       {user && (
         <div className="sticky top-0 z-30 -mx-4 border-b border-[#e7e1d9] bg-[rgba(249,247,243,0.92)] px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
