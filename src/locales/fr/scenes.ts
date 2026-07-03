@@ -4,6 +4,7 @@ export const scenes = {
     title: "Scènes disponibles",
     description: "Choisis une scène, sélectionne ton personnage, puis lance le mode apprentissage.",
     empty: "Aucune scène pour le moment.",
+    retourMesScenes: "Retour à mes scènes",
   },
   detail: {
     sectionLabel: "Scène",
@@ -90,6 +91,8 @@ export const scenes = {
       empty: "Vous n'avez pas encore importé de scène.",
       scenesCount: "scène",
       scenesCountPlural: "scènes",
+      voirCatalogue: "Voir le catalogue",
+      voirCatalogueHint: "Textes du répertoire (Molière, Corneille…)",
     },
     detail: {
       sectionLabel: "Œuvre",
