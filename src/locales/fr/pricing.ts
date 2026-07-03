@@ -1,66 +1,43 @@
 export const pricing = {
   title: "Tarifs transparents",
-  subtitle: "Choisis l'abonnement qui te convient",
-  includedFeatures: {
-    title: "Ce qui est inclus dans tous les plans :",
-    items: [
-      "Apprentissage complet de tes scènes",
-      "Import illimité de tes propres textes",
-      "Accès à la bibliothèque de scènes",
-      "Statistiques et suivi de progression",
+  subtitle: "Un seul pass, tout compris",
+  pass: {
+    name: "Accès complet",
+    price: "12€",
+    period: "3 mois · paiement unique · pas d'abonnement",
+    includedTitle: "Ce qui est inclus :",
+    included: [
+      "Import de tes propres textes (photo ou PDF)",
+      "Découpage automatique en scènes et répliques",
+      "Sessions illimitées sur tous tes textes importés",
+      "Statistiques de progression",
     ],
+    freeTitle: "Toujours gratuit, sans compte :",
+    free: [
+      "80+ scènes du domaine public (Molière, Racine, Shakespeare…)",
+      "Mode flashcard complet sur toutes les scènes publiques",
+    ],
+    cta: "Obtenir le pass",
   },
-  plans: {
-    monthly: {
-      name: "Mensuel",
-      price: "5€",
-      period: "/ mois",
-      description: "Parfait pour essayer",
-      features: [
-        "Apprentissage complet",
-        "Import illimité",
-        "Bibliothèque + stats",
-      ],
-    },
-    quarterly: {
-      name: "Trimestriel",
-      price: "13€",
-      period: "/ 3 mois",
-      description: "Économise 13%",
-      savings: "2€ d'économie",
-      features: [
-        "Apprentissage complet",
-        "Import illimité",
-        "Bibliothèque + stats",
-      ],
-    },
-    yearly: {
-      name: "Annuel",
-      price: "50€",
-      period: "/ an",
-      description: "Meilleur rapport qualité/prix",
-      savings: "10€ d'économie",
-      popular: true,
-      features: [
-        "Apprentissage complet",
-        "Import illimité",
-        "Bibliothèque + stats",
-      ],
-    },
+  passCheckout: {
+    eyebrow: "Pass",
+    title: "Accès complet à l'import",
+    priceLine: "12€ · 3 mois · paiement unique",
+    features: [
+      "Import illimité (photo ou PDF)",
+      "Découpage automatique en scènes et répliques",
+      "Sessions illimitées sur tes textes importés",
+    ],
+    cta: "Obtenir le pass →",
+    note: "Pas d'abonnement. Le pass expire au bout de 3 mois.",
   },
   credibility: {
     secure: "Paiement sécurisé",
     noCommitment: "Sans engagement",
     instantAccess: "Accès immédiat après paiement",
-    cancellable: "Annulable à tout moment",
   },
   contact: {
     question: "Des questions ?",
     link: "Contactez-nous",
-  },
-  cta: "S'abonner",
-  model: {
-    monthly: "5€ / mois",
-    description: "Accès complet à l'apprentissage, l'import, la bibliothèque et tes statistiques",
   },
 };

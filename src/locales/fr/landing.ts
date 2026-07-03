@@ -7,7 +7,7 @@ export const landing = {
       "Importe n'importe quelle scène, masque tes répliques, récite, note-toi. Côté-Cour transforme ton téléphone en partenaire de répétition — et donne aux professeurs un vrai outil de troupe.",
     ctaPrimary: "Commencer à répéter",
     ctaSecondary: "Je suis professeur",
-    subtext: "Dès 5 € par mois · sans engagement · import illimité",
+    subtext: "Pass 3 mois · 12€ · paiement unique",
     demo: {
       sceneLabel: "Acte II — Scène 3",
       otherCharacter: "ROMÉO",
@@ -30,7 +30,7 @@ export const landing = {
       },
       classe: {
         title: "Invitez vos élèves",
-        desc: "Un code d'invitation suffit. Vos élèves accèdent à leurs textes sans abonnement supplémentaire.",
+        desc: "Un code d'invitation suffit. Vos élèves accèdent à leurs textes sans pass supplémentaire.",
       },
       distribution: {
         title: "Distribuez les rôles",
@@ -53,7 +53,7 @@ export const landing = {
     "L'application qui transforme ton téléphone en partenaire de répétition. Sollicite ta mémoire visuelle, gagne des heures de travail et arrive sereine à tes auditions.",
   cta: {
     commencer: "Commencer maintenant",
-    commencerSubtext: "Disponible dès 5 euros par mois.",
+    commencerSubtext: "Catalogue domaine public gratuit, sans compte.",
     commentImporter: "Comment importer ?",
   },
   trustSignals: {
@@ -93,16 +93,16 @@ export const landing = {
     subtitle: "Simple comme tout",
     steps: {
       step1: {
-        title: "Importe ta scène",
-        desc: "Prends une photo de ton texte et importe-le en un clic.",
+        title: "Choisis une scène",
+        desc: "Parcours les 80+ scènes du domaine public, sans compte.",
       },
       step2: {
-        title: "Apprends facilement",
-        desc: "Plusieurs modes d'apprentissage pour maîtriser tes textes : idéal pour tes répétitions comme pour préparer une audition.",
+        title: "Répète avec les flashcards",
+        desc: "Tes répliques masquées, révèle-les une à une.",
       },
       step3: {
-        title: "Progrès & Statistiques",
-        desc: "Évalue chaque réplique, vois ta progression et choisis où commencer tes sessions pour te concentrer sur ce que tu dois améliorer.",
+        title: "Importe ton texte",
+        desc: "Photo ou PDF : découpe automatique en répliques (pass 12€).",
       },
     },
   },
@@ -127,16 +127,16 @@ export const landing = {
       },
       q2: {
         question: "Combien ça coûte ?",
-        answer: "Disponible dès 5 euros par mois, annulable en un clic.",
+        answer: "Les scènes du domaine public sont gratuites, sans compte. Pour importer tes propres textes : pass 3 mois à 12€, paiement unique — pas de prélèvement récurrent.",
       },
       q3: {
         question: "Puis-je utiliser mes propres textes ?",
-        answer: "Oui ! Tout repose sur tes textes : tu importes tes œuvres (photo, PDF, extrait de pièce ou scène d'audition). Pas de catalogue prêt à l'emploi — tu amènes ce que tu travailles.",
+        answer: "Oui ! Avec le pass, tu importes tes propres textes (photo, PDF, extrait de pièce ou scène d'audition). Et le catalogue de scènes du domaine public reste accessible gratuitement, sans compte.",
       },
       qProfs: {
         question: "Je suis professeur de théâtre, qu'est-ce que ça m'apporte ?",
         answer:
-          "L'espace professeur te permet d'importer tes textes, de créer ta classe, d'inviter tes élèves avec un simple code, de distribuer les rôles, d'annoter les textes pour toute la classe et de centraliser la préparation du spectacle (mise en scène, costumes, décors, technique). Tes élèves accèdent à leurs textes sans abonnement supplémentaire.",
+          "L'espace professeur te permet d'importer tes textes, de créer ta classe, d'inviter tes élèves avec un simple code, de distribuer les rôles, d'annoter les textes pour toute la classe et de centraliser la préparation du spectacle (mise en scène, costumes, décors, technique). Tes élèves accèdent à leurs textes sans pass supplémentaire.",
       },
       qConfidentialite: {
         question: "Mes textes restent-ils privés ?",

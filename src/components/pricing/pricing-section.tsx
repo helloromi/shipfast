@@ -12,100 +12,46 @@ export function PricingSection() {
           <p className="mt-2 text-lg text-[#524b5a]">{t.pricing.subtitle}</p>
         </div>
 
-        {/* Fonctionnalités incluses */}
-        <div className="mt-8 rounded-2xl border border-[#e7e1d9] bg-gradient-to-br from-[#f4c95d11] to-[#ff6b6b11] p-6">
-          <h3 className="text-center text-lg font-semibold text-[#3b1f4a]">
-            {t.pricing.includedFeatures.title}
-          </h3>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {t.pricing.includedFeatures.items.map((feature, index) => (
-              <div key={index} className="flex items-center gap-2 text-sm text-[#524b5a]">
-                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-green-100 text-xs text-green-600">
-                  ✓
-                </span>
-                <span>{feature}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
-          {/* Plan Mensuel */}
-          <div className="rounded-2xl border border-[#e7e1d9] bg-white/90 p-6 shadow-sm transition hover:shadow-md">
-            <div className="flex h-full flex-col gap-4">
-              <h3 className="text-xl font-semibold text-[#3b1f4a]">
-                {t.pricing.plans.monthly.name}
-              </h3>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-[#3b1f4a]">
-                  {t.pricing.plans.monthly.price}
-                </span>
-                <span className="text-sm text-[#7a7184]">
-                  {t.pricing.plans.monthly.period}
-                </span>
-              </div>
-              <Link
-                href="/login"
-                className="mt-auto inline-flex w-full items-center justify-center rounded-full border border-[#3b1f4a] bg-white px-6 py-3 text-sm font-semibold text-[#3b1f4a] transition hover:-translate-y-[1px] hover:bg-[#3b1f4a] hover:text-white"
-              >
-                {t.pricing.cta}
-              </Link>
+        <div className="mx-auto mt-10 max-w-md rounded-2xl border-2 border-[#3b1f4a] bg-white/90 p-6 shadow-md sm:p-8">
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-2 text-center">
+              <h3 className="text-xl font-semibold text-[#3b1f4a]">{t.pricing.pass.name}</h3>
+              <span className="text-5xl font-bold text-[#3b1f4a]">{t.pricing.pass.price}</span>
+              <p className="text-sm text-[#7a7184]">{t.pricing.pass.period}</p>
             </div>
-          </div>
 
-          {/* Plan Trimestriel */}
-          <div className="rounded-2xl border border-[#e7e1d9] bg-white/90 p-6 shadow-sm transition hover:shadow-md">
-            <div className="flex h-full flex-col gap-4">
-              <h3 className="text-xl font-semibold text-[#3b1f4a]">
-                {t.pricing.plans.quarterly.name}
-              </h3>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-[#3b1f4a]">
-                  {t.pricing.plans.quarterly.price}
-                </span>
-                <span className="text-sm text-[#7a7184]">
-                  {t.pricing.plans.quarterly.period}
-                </span>
-              </div>
-              <p className="text-sm font-semibold text-green-600">
-                <span aria-hidden="true">💰</span> {t.pricing.plans.quarterly.savings}
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-semibold text-[#3b1f4a]">
+                {t.pricing.pass.includedTitle}
               </p>
-              <Link
-                href="/login"
-                className="mt-auto inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#3b1f4a] to-[#5a3d6b] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]"
-              >
-                {t.pricing.cta}
-              </Link>
+              {t.pricing.pass.included.map((feature, index) => (
+                <div key={index} className="flex items-start gap-2 text-sm text-[#524b5a]">
+                  <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-green-100 text-xs text-green-600">
+                    ✓
+                  </span>
+                  <span>{feature}</span>
+                </div>
+              ))}
             </div>
-          </div>
 
-          {/* Plan Annuel */}
-          <div className="relative rounded-2xl border-2 border-[#ff6b6b] bg-white/90 p-6 shadow-md transition hover:shadow-lg">
-            <div className="absolute -top-2 right-4 rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-3 py-0.5 text-xs font-semibold text-white shadow" aria-label="Plan le plus populaire">
-              Populaire
+            <div className="flex flex-col gap-2 rounded-xl bg-[#f4c95d1a] p-4">
+              <p className="text-sm font-semibold text-[#3b1f4a]">{t.pricing.pass.freeTitle}</p>
+              {t.pricing.pass.free.map((feature, index) => (
+                <div key={index} className="flex items-start gap-2 text-sm text-[#524b5a]">
+                  <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#f4c95d55] text-xs text-[#3b1f4a]">
+                    🎭
+                  </span>
+                  <span>{feature}</span>
+                </div>
+              ))}
             </div>
-            <div className="flex h-full flex-col gap-4">
-              <h3 className="text-xl font-semibold text-[#3b1f4a]">
-                {t.pricing.plans.yearly.name}
-              </h3>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-[#3b1f4a]">
-                  {t.pricing.plans.yearly.price}
-                </span>
-                <span className="text-sm text-[#7a7184]">
-                  {t.pricing.plans.yearly.period}
-                </span>
-              </div>
-              <p className="text-sm font-semibold text-green-600">
-                <span aria-hidden="true">💰</span> {t.pricing.plans.yearly.savings}
-              </p>
-              <Link
-                href="/login"
-                className="mt-auto inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]"
-              >
-                {t.pricing.cta}
-              </Link>
-            </div>
+
+            <Link
+              href="/login?redirect=/subscribe"
+              className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]"
+            >
+              {t.pricing.pass.cta}
+            </Link>
           </div>
         </div>
 
@@ -136,4 +82,3 @@ export function PricingSection() {
     </section>
   );
 }
-
