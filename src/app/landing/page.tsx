@@ -118,6 +118,19 @@ export default async function LandingPage() {
         <div className="h-1.5 w-full bg-gradient-to-r from-[#f4c95d] via-[#ff6b6b] to-[#3b1f4a]" aria-hidden />
       </FullBleed>
 
+      {/* ------------------------------------------------ Scènes du domaine public */}
+      <section className="mx-auto w-full max-w-6xl">
+        <div className="flex flex-col items-start gap-4 rounded-2xl border border-[#e7e1d9] bg-white/92 p-6 shadow-sm shadow-[#3b1f4a14] sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-base text-[#3f3946]">{t.landing.scenesBanner.text}</p>
+          <Link
+            href="/scenes"
+            className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-full border border-[#3b1f4a] bg-white px-6 text-sm font-semibold text-[#3b1f4a] transition hover:bg-[#3b1f4a] hover:text-white"
+          >
+            {t.landing.scenesBanner.cta} →
+          </Link>
+        </div>
+      </section>
+
       {/* ------------------------------------------------ Pourquoi */}
       <section className="mx-auto w-full max-w-6xl">
         <h2 className="font-display text-3xl font-semibold text-[#211a26] sm:text-4xl">

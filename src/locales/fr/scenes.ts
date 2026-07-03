@@ -5,6 +5,7 @@ export const scenes = {
     description: "Choisis une scène, sélectionne ton personnage, puis lance le mode apprentissage.",
     empty: "Aucune scène pour le moment.",
     retourMesScenes: "Retour à mes scènes",
+    toutesLesScenes: "Toutes les scènes",
   },
   detail: {
     sectionLabel: "Scène",
@@ -23,6 +24,10 @@ export const scenes = {
     },
     apercu: {
       title: "Aperçu",
+      choisisTonRole: "Choisis ton rôle pour lancer le mode flashcard :",
+      tuJoues: "Tu joues",
+      changer: "changer",
+      ctaCompte: "Sauvegarde ta progression — c'est gratuit",
     },
     notes: {
       notePerso: "Note perso",

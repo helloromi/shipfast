@@ -94,6 +94,9 @@ export default async function RootLayout({
                   <Link href="/landing" className="transition underline-offset-4 hover:text-[#3b1f4a] hover:underline">
                     Découvrir
                   </Link>
+                  <Link href="/scenes" className="transition underline-offset-4 hover:text-[#3b1f4a] hover:underline">
+                    Scènes du domaine public
+                  </Link>
                   <Link href="/ressources" className="transition underline-offset-4 hover:text-[#3b1f4a] hover:underline">
                     Ressources
                   </Link>

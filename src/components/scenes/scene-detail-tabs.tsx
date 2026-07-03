@@ -48,6 +48,7 @@ export function SceneDetailTabs({
 }: SceneDetailTabsProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showRolePicker, setShowRolePicker] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [shareEmail, setShareEmail] = useState("");
@@ -119,6 +120,47 @@ export function SceneDetailTabs({
       label: t.scenes.detail.tabs.apercu,
       content: (
         <div className="flex flex-col gap-2 rounded-2xl border border-[#e7e1d9] bg-white/92 p-5 shadow-sm shadow-[#3b1f4a14]">
+          {/* Choix du rôle exposé dès l'Aperçu : un visiteur SEO ne connaît pas l'onglet Réglages. */}
+          {scene.characters.length > 0 && (
+            <div className="rounded-xl border border-[#f4c95d80] bg-[#f4c95d1f] px-3 py-3">
+              {lastCharacterId && !showRolePicker ? (
+                <p className="text-sm text-[#3b1f4a]">
+                  {t.scenes.detail.apercu.tuJoues}{" "}
+                  <span className="font-semibold">{lastCharacterName ?? t.scenes.detail.personnages.monRole}</span>
+                  {" · "}
+                  <button
+                    type="button"
+                    onClick={() => setShowRolePicker(true)}
+                    className="font-semibold underline underline-offset-4"
+                  >
+                    {t.scenes.detail.apercu.changer}
+                  </button>
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm font-semibold text-[#3b1f4a]">
+                    {t.scenes.detail.apercu.choisisTonRole}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {scene.characters.map((character) => (
+                      <Link
+                        key={character.id}
+                        href={`/learn/${sceneId}?character=${character.id}`}
+                        className="inline-flex items-center gap-2 rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:-translate-y-[1px] hover:border-[#3b1f4a66]"
+                      >
+                        {character.name}
+                        <span className="text-xs font-medium text-[#7a7184]">
+                          {lastCharacterId === character.id
+                            ? t.scenes.detail.personnages.dejaChoisi
+                            : t.scenes.detail.personnages.choisirCeRole}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {user && (
             <div className="rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] px-3 py-2 text-sm text-[#524b5a]">
               {t.scenes.detail.highlights.help}
@@ -153,6 +195,16 @@ export function SceneDetailTabs({
                 </div>
               );
             })
+          )}
+          {!user && (
+            <div className="mt-2 border-t border-[#e7e1d9] pt-4 text-center">
+              <Link
+                href="/login"
+                className="text-sm font-semibold text-[#3b1f4a] underline underline-offset-4"
+              >
+                {t.scenes.detail.apercu.ctaCompte}
+              </Link>
+            </div>
           )}
         </div>
       ),

@@ -56,6 +56,10 @@ export const landing = {
     commencerSubtext: "Catalogue domaine public gratuit, sans compte.",
     commentImporter: "Comment importer ?",
   },
+  scenesBanner: {
+    text: "Molière, Racine, Rostand… des scènes du domaine public, gratuites et sans compte.",
+    cta: "Parcourir les scènes",
+  },
   trustSignals: {
     importFocused: "Importe n'importe quel texte — pièce, extrait, audition — et commence à répéter.",
   },
