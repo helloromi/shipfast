@@ -1,13 +1,13 @@
 export const landing = {
   hero: {
-    badge: "Pour comédien·nes, troupes et cours de théâtre",
-    titleLine1: "Ton texte.",
-    titleLine2: "Su par cœur.",
+    badge: "Pour comédiennes, comédiens et étudiants en théâtre",
+    titleLine1: "Apprends ton texte de théâtre",
+    titleLine2: "en 10 minutes par jour",
     description:
-      "Importe n'importe quelle scène, masque tes répliques, récite, note-toi. Côté-Cour transforme ton téléphone en partenaire de répétition — et donne aux professeurs un vrai outil de troupe.",
-    ctaPrimary: "Commencer à répéter",
+      "Côté-Cour masque tes répliques et te demande de les retrouver, une à une. La logique des flashcards, appliquée au théâtre. Sur ton téléphone, dans le métro, entre deux répétitions.",
+    ctaPrimary: "Parcourir les scènes gratuitement",
     ctaSecondary: "Je suis professeur",
-    subtext: "Pass 3 mois · 12€ · paiement unique",
+    subtext: "Pass 3 mois · 12€ · paiement unique · pas d'abonnement",
     demo: {
       sceneLabel: "Acte II — Scène 3",
       otherCharacter: "ROMÉO",
@@ -20,9 +20,9 @@ export const landing = {
   },
   teacherSection: {
     badge: "Nouveau — Espace professeur",
-    title: "Faites répéter toute la troupe",
+    title: "Vous êtes professeur ou metteur en scène ?",
     subtitle:
-      "Un espace pensé pour les cours de théâtre et les troupes : du premier filage jusqu'au soir de la première.",
+      "Un espace classe pour distribuer les rôles, partager les textes et voir qui répète quoi. Vos élèves accèdent à leurs scènes sans passer à la caisse.",
     features: {
       import: {
         title: "Importez vos textes",
@@ -57,7 +57,7 @@ export const landing = {
     commentImporter: "Comment importer ?",
   },
   scenesBanner: {
-    text: "Molière, Racine, Rostand… des scènes du domaine public, gratuites et sans compte.",
+    text: "Molière, Racine, Corneille, Rostand… des scènes du domaine public, disponibles gratuitement sans compte.",
     cta: "Parcourir les scènes",
   },
   trustSignals: {
@@ -74,22 +74,22 @@ export const landing = {
     step3: { title: "Scène prête à répéter", desc: "Lance une session dès que c'est prêt." },
   },
   problemSection: {
-    title: "Marre de perdre du temps avec tes surligneurs ?",
+    title: "La méthode visuelle, pour les mémoires qui retiennent ce qu'elles lisent",
     subtitle:
-      "Le stress du trou de mémoire en répétition ou à l'audition ? Côté-Cour t'aide à maîtriser ton texte sans y passer des nuits.",
+      "Apprendre à l'oreille, avec une voix qui donne la réplique, ça marche pour certains. Pour ceux qui retiennent mieux ce qu'ils ont lu, c'est une autre affaire. Côté-Cour applique la logique des flashcards au théâtre : le texte est masqué, tu dois retrouver ta réplique sans aide, et l'application note automatiquement où tu hésites. Dix minutes de travail ciblé remplacent une heure de relecture passive.",
   },
   sections: {
     masquage: {
-      title: "Apprends facilement",
-      desc: "Tes répliques sont masquées : révèle-les une à une pour solliciter ta mémoire visuelle et vérifier que tu les connais.",
+      title: "Révèle réplique par réplique",
+      desc: "Tes répliques sont masquées. Tu les révèles une à une, tu te corriges si tu te trompes. Ta mémoire visuelle fait le reste.",
     },
     progression: {
-      title: "Identifie tes points faibles",
-      desc: "Identifie tes points faibles à chaque répétition pour ne plus jamais bégayer en scène ou à l'audition. Suis ta progression en temps réel et cible les répliques à travailler.",
+      title: "Repère tes trous avant la répétition",
+      desc: "L'app suit tes hésitations et remonte les répliques à travailler. Tu arrives en répétition en sachant exactement ce que tu ne sais pas encore.",
     },
     mobile: {
-      title: "Répète entre deux cours ou dans le métro",
-      desc: "Optimisé mobile : apprends dans les transports, en marchant, entre deux répétitions ou avant une audition. Ta scène toujours à portée de main.",
+      title: "Ton téléphone comme partenaire de répétition",
+      desc: "Pas de feuilles, pas de PDF à scroller. Une session dure 10 minutes — dans les transports, en coulisses, entre deux cours.",
     },
   },
   howItWorks: {
@@ -98,7 +98,7 @@ export const landing = {
     steps: {
       step1: {
         title: "Choisis une scène",
-        desc: "Parcours les 80+ scènes du domaine public, sans compte.",
+        desc: "Parcours les scènes du domaine public, sans compte.",
       },
       step2: {
         title: "Répète avec les flashcards",
@@ -172,22 +172,22 @@ export const landing = {
     title: "Cas d'usage",
     items: {
       firstShow: {
-        title: "Préparer sa première représentation de théâtre",
-        desc: "Premier spectacle : le stress et l'enjeu sont là. Avec Côté-Cour, tu arrives prêt : répliques masquées, feedback immédiat et repérage des trous de mémoire avant le jour J.",
+        title: "Préparer sa première représentation",
+        desc: "Premier spectacle, stress du trou de mémoire en répétition générale. Tu travailles ta scène en amont, réplique par réplique, jusqu'à ce que ça tienne même sous pression.",
       },
       associativeCourse: {
-        title: "Répéter ses scènes pour un petit cours de théâtre associatif",
-        desc: "Peu de répétitions collectives, temps limité ? Travaille ta scène en autonomie entre deux cours : importe le texte du cours et arrive en répétition déjà à l'aise.",
+        title: "Réviser entre deux cours",
+        desc: "Peu de répétitions collectives, texte distribué la semaine d'avant. Tu l'apprends seul depuis ton téléphone, et tu arrives à la répétition avec déjà le fil.",
       },
       transports: {
-        title: "Mémoriser ses répliques dans les transports",
-        desc: "Métro, bus, temps morts : utilise ton mobile pour réviser. Ta scène sous la main, des sessions courtes, sans feuilles à trimballer.",
+        title: "Mémoriser dans les transports",
+        desc: "Métro, bus, salle d'attente. Ton téléphone devient ton partenaire de répétition. Pas de feuilles, des sessions courtes, une vraie progression.",
       },
     },
   },
   ctaBottom: {
-    title: "Maîtrise ton texte maintenant",
-    subtitle: "Rejoins les étudiants qui sont côté-cour.",
-    button: "Je commence à mémoriser mes scènes gratuitement",
+    title: "Apprends ton texte, dès maintenant",
+    subtitle: "Les scènes du domaine public sont gratuites. Aucun compte requis pour commencer.",
+    button: "Parcourir les scènes",
   },
 };

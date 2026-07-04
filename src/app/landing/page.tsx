@@ -11,7 +11,18 @@ import { LandingViewTracker } from "@/components/landing/landing-view-tracker";
 import { PricingSection } from "@/components/pricing/pricing-section";
 
 export const metadata: Metadata = {
+  title: "Apprendre son texte de théâtre : méthode flashcards | Côté-Cour",
+  description:
+    "Mémorise tes répliques réplique par réplique, avec des flashcards. Scènes du domaine public gratuites et sans compte : Molière, Racine, Corneille, Rostand.",
   alternates: { canonical: "/landing" },
+  openGraph: {
+    // Next.js ne fusionne pas openGraph en profondeur avec le layout parent :
+    // type/locale doivent être répétés ici pour ne pas disparaître du HTML.
+    title: "Apprendre son texte de théâtre par cœur — Côté-Cour",
+    description: "La méthode flashcards pour mémoriser tes scènes. Gratuit sur le domaine public, sans compte.",
+    type: "website",
+    locale: "fr_FR",
+  },
 };
 
 /** Section pleine largeur qui s'échappe du conteneur du layout. */
