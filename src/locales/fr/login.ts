@@ -2,6 +2,12 @@ export const login = {
   sectionLabel: "Connexion",
   title: "Connexion simple",
   description: "",
+  google: {
+    button: "Continuer avec Google",
+    loading: "Redirection...",
+    errorToast: "Impossible de se connecter avec Google. Réessaie.",
+  },
+  divider: "ou",
   form: {
     label: "Email",
     placeholder: "jeunedemoiselle@cherchepiecemortelle.com",

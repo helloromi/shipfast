@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { MagicLinkForm } from "@/components/auth/magic-link-form";
 import { getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { safeInternalPath } from "@/lib/utils/safe-path";
@@ -35,6 +36,12 @@ export default async function LoginPage({ searchParams }: Props) {
           {errorMessage}
         </div>
       ) : null}
+      <GoogleSignInButton next={next} />
+      <div className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-[#8a8390]">
+        <span className="h-px flex-1 bg-[#e7e1d9]" />
+        {t.login.divider}
+        <span className="h-px flex-1 bg-[#e7e1d9]" />
+      </div>
       <MagicLinkForm next={next} />
     </div>
   );
