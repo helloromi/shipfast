@@ -87,6 +87,9 @@ export const learn = {
     cancel: "Annuler",
     start: "Commencer",
     advancedOptions: "Options avancées",
+    previewIntro: "Vérifie le texte avant de commencer.",
+    previewBack: "Retour",
+    previewCta: "Lancer le test",
   },
   messages: {
     feedbackEnregistre: "Retour enregistré pour cette réplique.",

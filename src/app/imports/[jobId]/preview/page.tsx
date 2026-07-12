@@ -79,7 +79,10 @@ export default function ImportPreviewPage() {
   }, [jobStatus]);
 
   useEffect(() => {
-    const fetchJob = async () => {
+    const isTerminalStatus = (status: ImportJobStatus | null) =>
+      status === "preview_ready" || status === "completed" || status === "error";
+
+    const fetchJob = async (): Promise<ImportJobStatus | null> => {
       try {
         const response = await fetch(`/api/scenes/import/${jobId}`, { cache: "no-store" });
         if (!response.ok) {
@@ -100,19 +103,19 @@ export default function ImportPreviewPage() {
         if (status === "error") {
           setJobError(String(data.job.error_message || "L'import a échoué."));
           setLoading(false);
-          return;
+          return status;
         }
 
         if (status !== "preview_ready") {
           // pending/processing/... : on attend, sans afficher d'erreur
           setLoading(true);
-          return;
+          return status;
         }
 
         const parsedDraft = data.job.draft_data as ParsedScene;
         setDraftTitle(parsedDraft.title || "");
         setDraftAuthor(parsedDraft.author || "");
-        
+
         // Initialiser les personnages avec des IDs uniques
         const characterMap = new Map<string, string>();
         const uniqueCharacters = Array.from(new Set(parsedDraft.characters));
@@ -134,29 +137,37 @@ export default function ImportPreviewPage() {
           };
         });
         setLines(editorLines);
-        
+
         setLoading(false);
+        return status;
       } catch (error: any) {
         console.error("Erreur lors de la récupération du job:", error);
         setJobError(error.message || "Erreur lors de la récupération du preview");
         setLoading(false);
+        return "error";
       }
     };
 
     if (jobId) {
       let cancelled = false;
+      let intervalId: number | null = null;
 
       const tick = async () => {
         if (cancelled) return;
-        await fetchJob();
+        const status = await fetchJob();
+        if (cancelled) return;
+        if (isTerminalStatus(status) && intervalId !== null) {
+          window.clearInterval(intervalId);
+          intervalId = null;
+        }
       };
 
       void tick();
-      const interval = window.setInterval(tick, 2000);
+      intervalId = window.setInterval(tick, 2000);
 
       return () => {
         cancelled = true;
-        window.clearInterval(interval);
+        if (intervalId !== null) window.clearInterval(intervalId);
       };
     }
   }, [jobId]);

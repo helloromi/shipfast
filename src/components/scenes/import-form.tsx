@@ -127,6 +127,70 @@ export function ImportForm() {
     }
   }, []);
 
+  const launchImportJob = useCallback(async (orderedFiles: Array<{ path: string; name: string; preview?: string }>) => {
+    if (orderedFiles.length === 0) return;
+
+    try {
+      setProcessing({ stage: "uploading", progress: 0.95, detail: "Lancement du traitement…" });
+
+      // Utiliser l'ordre choisi
+      const orderedPaths = orderedFiles.map(f => f.path);
+
+      // Lancer l'import en arrière-plan
+      const response = await fetch("/api/scenes/import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Import-Background": "1",
+        },
+        body: JSON.stringify({
+          filePaths: orderedPaths,
+          action: "preview",
+          consentToThirdPartyAI: true,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || data.details || t.scenes.import.errors.generic);
+      }
+
+      const jobId: string | undefined = typeof data.jobId === "string" ? data.jobId : undefined;
+
+      // Nettoyer les previews
+      orderedFiles.forEach(f => {
+        if (f.preview) URL.revokeObjectURL(f.preview);
+      });
+
+      // Afficher un message de succès et réinitialiser
+      setToast({
+        message:
+          "Import lancé en arrière-plan. Redirection vers le suivi de l'import… (vous pouvez aussi retrouver vos imports via /imports)",
+        variant: "success",
+      });
+      setFiles([]);
+      setUploadedFiles([]);
+      setReorderingFiles([]);
+      setProcessing({ stage: "idle" });
+
+      // Rediriger vers la page preview (elle attendra jusqu'à ce que le preview soit prêt).
+      if (jobId) {
+        router.push(`/imports/${jobId}/preview`);
+      }
+    } catch (error: any) {
+      console.error("Erreur lors de l'import:", error);
+      setProcessing({
+        stage: "error",
+        error: error.message || t.scenes.import.errors.generic,
+      });
+      setToast({
+        message: error.message || t.scenes.import.errors.generic,
+        variant: "error",
+      });
+    }
+  }, [router]);
+
   const handleSubmit = useCallback(async () => {
     if (!files.length) {
       setToast({ message: t.scenes.import.errors.noFile, variant: "error" });
@@ -200,10 +264,15 @@ export function ImportForm() {
         uploaded.push({ path: uploadData.path, name: f.name, preview });
       }
 
-      // Étape 2 : Afficher l'interface de réorganisation
-      setUploadedFiles(uploaded);
-      setReorderingFiles([...uploaded]);
-      setProcessing({ stage: "idle" });
+      // Étape 2 : un seul fichier → pas besoin de réorganisation, on lance directement.
+      // Plusieurs fichiers → afficher l'interface de réorganisation.
+      if (uploaded.length === 1) {
+        await launchImportJob(uploaded);
+      } else {
+        setUploadedFiles(uploaded);
+        setReorderingFiles([...uploaded]);
+        setProcessing({ stage: "idle" });
+      }
     } catch (error: any) {
       console.error("Erreur lors de l'import:", error);
       setProcessing({
@@ -215,71 +284,11 @@ export function ImportForm() {
         variant: "error",
       });
     }
-  }, [files, session, supabase, router, consentToAI]);
+  }, [files, session, supabase, router, consentToAI, launchImportJob]);
 
   const handleConfirmOrder = useCallback(async () => {
-    if (reorderingFiles.length === 0) return;
-
-    try {
-      setProcessing({ stage: "uploading", progress: 0.95, detail: "Lancement du traitement…" });
-
-      // Utiliser l'ordre choisi
-      const orderedPaths = reorderingFiles.map(f => f.path);
-
-      // Lancer l'import en arrière-plan
-      const response = await fetch("/api/scenes/import", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Import-Background": "1",
-        },
-        body: JSON.stringify({
-          filePaths: orderedPaths,
-          action: "preview",
-          consentToThirdPartyAI: true,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || data.details || t.scenes.import.errors.generic);
-      }
-
-      const jobId: string | undefined = typeof data.jobId === "string" ? data.jobId : undefined;
-
-      // Nettoyer les previews
-      uploadedFiles.forEach(f => {
-        if (f.preview) URL.revokeObjectURL(f.preview);
-      });
-
-      // Afficher un message de succès et réinitialiser
-      setToast({
-        message:
-          "Import lancé en arrière-plan. Redirection vers le suivi de l'import… (vous pouvez aussi retrouver vos imports via /imports)",
-        variant: "success",
-      });
-      setFiles([]);
-      setUploadedFiles([]);
-      setReorderingFiles([]);
-      setProcessing({ stage: "idle" });
-
-      // Rediriger vers la page preview (elle attendra jusqu'à ce que le preview soit prêt).
-      if (jobId) {
-        router.push(`/imports/${jobId}/preview`);
-      }
-    } catch (error: any) {
-      console.error("Erreur lors de l'import:", error);
-      setProcessing({
-        stage: "error",
-        error: error.message || t.scenes.import.errors.generic,
-      });
-      setToast({
-        message: error.message || t.scenes.import.errors.generic,
-        variant: "error",
-      });
-    }
-  }, [reorderingFiles, uploadedFiles, router, consentToAI]);
+    await launchImportJob(reorderingFiles);
+  }, [launchImportJob, reorderingFiles]);
 
   const moveFile = useCallback((fromIndex: number, toIndex: number) => {
     if (toIndex < 0 || toIndex >= reorderingFiles.length) return;
@@ -383,7 +392,7 @@ export function ImportForm() {
   return (
     <div className="flex flex-col gap-6">
       {/* Étape de réorganisation des fichiers */}
-      {uploadedFiles.length > 0 && processing.stage === "idle" && (
+      {uploadedFiles.length > 1 && processing.stage === "idle" && (
         <div className="rounded-2xl border border-[#e7e1d9] bg-white/90 p-6">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-4">

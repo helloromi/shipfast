@@ -93,6 +93,7 @@ export function LearnSession(props: LearnSessionProps) {
   const isZen = searchParams?.get("zen") !== "0";
 
   const [showSetupModal, setShowSetupModal] = useState(true);
+  const [setupStep, setSetupStep] = useState<"config" | "preview">("config");
   const [limitCount, setLimitCount] = useState<number | null>(null); // null => toutes
   const [startIndex, setStartIndex] = useState(0); // Index de départ dans userLinesAll
   const [inputMode, setInputMode] = useState<InputMode>("revealOnly");
@@ -406,6 +407,17 @@ export function LearnSession(props: LearnSessionProps) {
     }
   };
 
+  const handleStartSession = () => {
+    if (typeof window !== "undefined") {
+      const prefs: ScenePrefs = { mode, limitChoice, inputMode };
+      window.localStorage.setItem(prefsKey, JSON.stringify(prefs));
+    }
+    resetLocalState(false, true);
+    setShowSetupModal(false);
+    setSetupStep("config");
+    void startTrackingSession(userLines.length);
+  };
+
   const [hintUsed, setHintUsed] = useState<Record<string, boolean>>({});
   const PREVIEW_WORDS = 4;
 
@@ -649,6 +661,19 @@ export function LearnSession(props: LearnSessionProps) {
     );
   };
 
+  const renderSetupPreviewList = () => (
+    <div className="divide-y divide-[#f0ece6] rounded-xl border border-[#e7e1d9]">
+      {userLines.map((line) => (
+        <div key={line.id} className="flex flex-col gap-1 p-3">
+          <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
+            {line.characterName}
+          </div>
+          <p className="text-sm text-[#1c1b1f]">{line.text}</p>
+        </div>
+      ))}
+    </div>
+  );
+
   const renderOverviewMode = () => (
     <div className="flex flex-col gap-2">
       {visibleLines.map((line) => {
@@ -879,6 +904,8 @@ export function LearnSession(props: LearnSessionProps) {
               <p className="text-sm text-[#7a7184]">Configure ta session d'entraînement</p>
             </div>
 
+            {setupStep === "config" && (
+            <>
             <div className="mt-4 flex flex-col gap-4">
               {/* Hero : Nombre de répliques à pratiquer */}
               <div className="flex flex-col gap-2">
@@ -1157,33 +1184,70 @@ export function LearnSession(props: LearnSessionProps) {
                 </div>
               </div>
             )}
+            </>
+            )}
+
+            {setupStep === "preview" && (
+              <div className="mt-4 flex flex-col gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-sm font-semibold text-[#1c1b1f]">
+                    {userLines.length === 1
+                      ? "1 réplique à apprendre"
+                      : `${userLines.length} répliques à apprendre`}
+                  </div>
+                  <p className="text-xs text-[#7a7184]">
+                    {t.learn.setup.previewIntro}
+                  </p>
+                </div>
+                {renderSetupPreviewList()}
+              </div>
+            )}
 
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() => router.push(`/scenes/${sceneId}`)}
-                className="w-full rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] sm:w-auto"
-              >
-                {t.learn.setup.cancel}
-              </button>
-              <button
-                type="button"
-                disabled={userLines.length === 0}
-                onClick={() => {
-                  if (typeof window !== "undefined") {
-                    const prefs: ScenePrefs = { mode, limitChoice, inputMode };
-                    window.localStorage.setItem(prefsKey, JSON.stringify(prefs));
-                  }
-                  resetLocalState(false, true);
-                  setShowSetupModal(false);
-                  void startTrackingSession(userLines.length);
-                }}
-                className="w-full rounded-full bg-[#ff6b6b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a] disabled:opacity-50 sm:w-auto"
-              >
-                {userLines.length > 0
-                  ? `${t.learn.setup.start} (${userLines.length} ${userLines.length === 1 ? "réplique" : "répliques"})`
-                  : t.learn.setup.start}
-              </button>
+              {setupStep === "config" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/scenes/${sceneId}`)}
+                    className="w-full rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] sm:w-auto"
+                  >
+                    {t.learn.setup.cancel}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={userLines.length === 0}
+                    onClick={() => {
+                      if (mode === "flashcard") {
+                        setSetupStep("preview");
+                        return;
+                      }
+                      handleStartSession();
+                    }}
+                    className="w-full rounded-full bg-[#ff6b6b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a] disabled:opacity-50 sm:w-auto"
+                  >
+                    {userLines.length > 0
+                      ? `${t.learn.setup.start} (${userLines.length} ${userLines.length === 1 ? "réplique" : "répliques"})`
+                      : t.learn.setup.start}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setSetupStep("config")}
+                    className="w-full rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] transition hover:border-[#3b1f4a33] sm:w-auto"
+                  >
+                    {t.learn.setup.previewBack}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleStartSession}
+                    className="w-full rounded-full bg-[#ff6b6b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-[#e75a5a] sm:w-auto"
+                  >
+                    {t.learn.setup.previewCta}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

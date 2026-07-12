@@ -6,6 +6,12 @@
       "runtimeExecutable": "env",
       "runtimeArgs": ["CRON_SECRET=local-dev-dummy", "npx", "next", "start", "-p", "3999"],
       "port": 3999
+    },
+    {
+      "name": "cote-cour-dev",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["CRON_SECRET=local-dev-dummy", "npx", "next", "dev", "-p", "3998"],
+      "port": 3998
     }
   ]
 }
