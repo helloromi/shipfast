@@ -14,7 +14,7 @@ export const pricing = {
     ],
     freeTitle: "Toujours gratuit, sans compte :",
     free: [
-      "80+ scènes du domaine public (Molière, Racine, Shakespeare…)",
+      "150+ scènes du domaine public (Molière, Racine, Corneille…)",
       "Mode flashcard complet sur toutes les scènes publiques",
     ],
     cta: "Obtenir le pass",
