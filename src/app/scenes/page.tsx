@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { fetchWorks, searchWorks, fetchUserWorkAverages } from "@/lib/queries/works";
 import { getSupabaseSessionUser, fetchUserPrivateScenes } from "@/lib/queries/scenes";
 import { SearchBar } from "@/components/works/search-bar";
 import { t } from "@/locales/fr";
 import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
+import { ScenesListSkeleton } from "@/components/works/scenes-list-skeleton";
 
 type Props = {
   searchParams: Promise<{ q?: string }>;
@@ -12,18 +14,11 @@ type Props = {
 export default async function ScenesPage({ searchParams }: Props) {
   const params = await searchParams;
   const query = params.q || "";
-  
+
   const user = await getSupabaseSessionUser();
   if (user) {
     await requireSubscriptionOrRedirect(user);
   }
-  const [works, averages, privateScenes] = await Promise.all([
-    query ? searchWorks(query) : fetchWorks(),
-    user ? fetchUserWorkAverages(user.id) : Promise.resolve([]),
-    user ? fetchUserPrivateScenes(user.id) : Promise.resolve([]),
-  ]);
-
-  const averageByWork = new Map(averages.map((item) => [item.workId, item.average]));
 
   return (
     <div className="flex flex-col gap-6">
@@ -67,6 +62,25 @@ export default async function ScenesPage({ searchParams }: Props) {
         </div>
       </div>
 
+      <Suspense fallback={<ScenesListSkeleton />}>
+        <ScenesList query={query} userId={user?.id ?? null} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function ScenesList({ query, userId }: { query: string; userId: string | null }) {
+  const [works, averages, privateScenes] = await Promise.all([
+    query ? searchWorks(query) : fetchWorks(),
+    userId ? fetchUserWorkAverages(userId) : Promise.resolve([]),
+    userId ? fetchUserPrivateScenes(userId) : Promise.resolve([]),
+  ]);
+
+  const averageByWork = new Map(averages.map((item) => [item.workId, item.average]));
+  const user = userId ? { id: userId } : null;
+
+  return (
+    <>
       {user && privateScenes.length > 0 && (
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
@@ -150,7 +164,7 @@ export default async function ScenesPage({ searchParams }: Props) {
           {t.scenes.bibliotheque.empty}
         </div>
       )}
-    </div>
+    </>
   );
 }
 

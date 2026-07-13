@@ -1,9 +1,7 @@
-import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { cache } from "react";
+import { redirect } from "next/navigation";
 
-import { fetchSceneWithRelations, fetchUserProgressScenes, getSupabaseSessionUser } from "@/lib/queries/scenes";
+import { fetchUserProgressScenes, getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { fetchLineMastery, fetchSceneStats } from "@/lib/queries/stats";
 import { fetchUserLineHighlights } from "@/lib/queries/notes";
 import { fetchAnnotationsForScene } from "@/lib/queries/teacher";
@@ -13,79 +11,20 @@ import { t } from "@/locales/fr";
 import { hasAccess } from "@/lib/queries/access";
 import { ensurePersonalSceneForCurrentUser } from "@/lib/utils/personal-scene";
 import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
+import { SceneWithRelations } from "@/types/scenes";
 
 type Props = {
-  params: Promise<{ id: string }>;
+  scene: SceneWithRelations;
 };
 
-// Mémoïsé par requête : generateMetadata et la page partagent le même fetch.
-const getScene = cache(fetchSceneWithRelations);
-
-function truncate(text: string, max: number): string {
-  if (text.length <= max) return text;
-  return `${text.slice(0, max - 1).trimEnd()}…`;
-}
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-  if (!id) return {};
-  const scene = await getScene(id);
-  if (!scene) return {};
-
-  // Les scènes privées ou rattachées à une œuvre hors domaine public
-  // ne doivent pas être indexées.
-  if (scene.is_private || scene.work?.is_public_domain === false) {
-    return { robots: { index: false, follow: false } };
-  }
-
-  const workTitle = scene.work?.title ?? null;
-  const context = [workTitle !== scene.title ? workTitle : null, scene.author]
-    .filter(Boolean)
-    .join(", ");
-  const title = `${scene.title}${context ? ` — ${context}` : ""} : texte et apprentissage`;
-
-  const charactersCount = scene.characters.length;
-  const kind = charactersCount <= 1 ? "ce monologue" : `cette scène à ${charactersCount} personnages`;
-  const origin = [
-    workTitle && workTitle !== scene.title ? ` de ${workTitle}` : "",
-    scene.author ? ` (${scene.author})` : "",
-  ].join("");
-  const description = truncate(
-    `Texte intégral de ${scene.title}${origin}. Apprends ${kind} avec la méthode des flashcards, sans compte.`,
-    155
-  );
-
-  return {
-    title,
-    description,
-    alternates: { canonical: `/scenes/${id}` },
-    openGraph: {
-      title,
-      description,
-      url: `/scenes/${id}`,
-      type: "article",
-      locale: "fr_FR",
-    },
-  };
-}
-
-export default async function SceneDetailPage({ params }: Props) {
-  const { id } = await params;
-  if (!id) {
-    notFound();
-  }
-
-  const scene = await getScene(id);
-  if (!scene) {
-    notFound();
-  }
-
-  // Une scène du catalogue public rattachée à une œuvre hors domaine public
-  // ne doit pas exposer son texte intégral. Les copies privées (import perso)
-  // restent accessibles à leur propriétaire.
-  if (!scene.is_private && scene.work?.is_public_domain === false) {
-    notFound();
-  }
+/**
+ * Corps de la page détail scène (auth, copie perso, stats, JSON-LD, JSX),
+ * partagé par la route UUID (/scenes/[identifiant] — copies privées, imports, catalogue
+ * payant) et la route slug (/scenes/[auteur]/[piece]/[scene] — scènes publiques
+ * du domaine public). Comportement identique quelle que soit la route d'entrée.
+ */
+export async function SceneDetailView({ scene }: Props) {
+  const id = scene.id;
 
   const user = await getSupabaseSessionUser();
   if (user) {
@@ -244,8 +183,3 @@ export default async function SceneDetailPage({ params }: Props) {
     </div>
   );
 }
-
-
-
-
-

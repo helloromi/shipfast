@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed:scenes": "tsx supabase/seed/seed-scenes.ts",
-    "seed:wikisource": "tsx supabase/seed/wikisource-fetch.ts --merge"
+    "seed:wikisource": "tsx supabase/seed/wikisource-fetch.ts --merge",
+    "backfill:scene-slugs": "tsx supabase/seed/backfill-scene-slugs.ts"
   },
   "dependencies": {
     "@stripe/stripe-js": "^8.6.0",

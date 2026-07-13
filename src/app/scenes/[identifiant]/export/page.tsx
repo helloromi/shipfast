@@ -10,11 +10,11 @@ import { ExportPrintTrigger } from "@/components/scenes/export-print-trigger";
 import { t } from "@/locales/fr";
 
 type Props = {
-  params: Promise<{ id: string }>;
+  params: Promise<{ identifiant: string }>;
 };
 
 export default async function SceneExportPage({ params }: Props) {
-  const { id } = await params;
+  const { identifiant: id } = await params;
   if (!id) {
     notFound();
   }

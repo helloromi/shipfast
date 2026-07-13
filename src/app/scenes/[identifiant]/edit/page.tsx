@@ -7,11 +7,11 @@ import { SceneEditor } from "@/components/scenes/scene-editor";
 import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
 
 type Props = {
-  params: Promise<{ id: string }>;
+  params: Promise<{ identifiant: string }>;
 };
 
 export default async function SceneEditPage({ params }: Props) {
-  const { id: sceneId } = await params;
+  const { identifiant: sceneId } = await params;
   if (!sceneId) notFound();
 
   const user = await getSupabaseSessionUser();
@@ -23,7 +23,7 @@ export default async function SceneEditPage({ params }: Props) {
   const scene = await fetchSceneWithRelations(sceneId);
   if (!scene) notFound();
 
-  // Les scènes publiques passent par /scenes/[id] (qui auto-fork si accès).
+  // Les scènes publiques passent par /scenes/[identifiant] (qui auto-fork si accès).
   if (!scene.is_private) {
     redirect(`/scenes/${sceneId}`);
   }

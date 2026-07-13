@@ -10,7 +10,7 @@ type SceneAverage = {
 };
 
 type SceneQueryResult = Scene & {
-  works?: { id: string; title: string; is_public_domain?: boolean } | null;
+  works?: { id: string; title: string; is_public_domain?: boolean; slug: string | null; author: string | null } | null;
   characters: Character[];
   lines: {
     id: string;
@@ -107,32 +107,45 @@ export async function fetchUserPrivateScenes(userId: string): Promise<Scene[]> {
   }));
 }
 
+const SCENE_WITH_RELATIONS_SELECT = `
+  id,
+  work_id,
+  title,
+  author,
+  summary,
+  chapter,
+  is_private,
+  owner_user_id,
+  source_scene_id,
+  slug,
+  works ( id, title, is_public_domain, slug, author ),
+  characters ( id, name ),
+  lines (
+    id,
+    order,
+    text,
+    character_id,
+    characters ( id, name )
+  )
+`;
+
+function mapSceneQueryResult(data: SceneQueryResult): SceneWithRelations {
+  return {
+    ...data,
+    characters: data.characters ?? [],
+    lines: (data.lines ?? []).map((line) => ({
+      ...line,
+      scene_id: data.id,
+    })),
+    work: data.works ?? null,
+  };
+}
+
 export async function fetchSceneWithRelations(id: string): Promise<SceneWithRelations | null> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("scenes")
-    .select(
-      `
-        id,
-        work_id,
-        title,
-        author,
-        summary,
-        chapter,
-        is_private,
-        owner_user_id,
-        source_scene_id,
-        works ( id, title, is_public_domain ),
-        characters ( id, name ),
-        lines (
-          id,
-          order,
-          text,
-          character_id,
-          characters ( id, name )
-        )
-      `
-    )
+    .select(SCENE_WITH_RELATIONS_SELECT)
     .eq("id", id)
     .single<SceneQueryResult>();
 
@@ -143,15 +156,30 @@ export async function fetchSceneWithRelations(id: string): Promise<SceneWithRela
 
   if (!data) return null;
 
-  return {
-    ...data,
-    characters: data.characters ?? [],
-    lines: (data.lines ?? []).map((line) => ({
-      ...line,
-      scene_id: id,
-    })),
-    work: data.works ?? null,
-  };
+  return mapSceneQueryResult(data);
+}
+
+/**
+ * Résolution par slug (route SEO /scenes/[auteur]/[piece]/[scene]). scenes.slug
+ * est unique globalement en base : un seul segment suffit à retrouver la scène,
+ * les segments auteur/piece ne servent qu'à valider/canonicaliser l'URL côté route.
+ */
+export async function fetchSceneWithRelationsBySlug(sceneSlug: string): Promise<SceneWithRelations | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("scenes")
+    .select(SCENE_WITH_RELATIONS_SELECT)
+    .eq("slug", sceneSlug)
+    .single<SceneQueryResult>();
+
+  if (error) {
+    console.error(error);
+    return null;
+  }
+
+  if (!data) return null;
+
+  return mapSceneQueryResult(data);
 }
 
 export async function fetchUserSceneAverages(userId: string): Promise<SceneAverage[]> {

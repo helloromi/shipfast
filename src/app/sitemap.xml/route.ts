@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getArticlesList } from "@/content/ressources/articles";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { slugify } from "@/lib/utils/slugify";
 
 function getBaseUrl(request: NextRequest): string {
   // Env d'abord : l'origin de la requête peut être un domaine de preview Vercel.
@@ -24,14 +25,18 @@ export async function GET(request: NextRequest) {
   const baseUrl = getBaseUrl(request).replace(/\/$/, "");
   const articles = getArticlesList();
 
-  // Toutes les scènes publiques (RLS autorise la lecture anonyme sur is_private = false).
+  // Toutes les scènes publiques du domaine public, avec slug (RLS autorise la
+  // lecture anonyme sur is_private = false). URLs slug uniquement : les UUID
+  // redirigent en 308 depuis /scenes/[identifiant] et n'ont rien à faire dans le sitemap.
   // `scenes` n'a pas de colonne updated_at : created_at sert de lastmod.
   const supabase = await createSupabaseServerClient();
   const { data: publicScenes, error: scenesError } = await supabase
     .from("scenes")
-    .select("id, created_at, works!inner(is_public_domain)")
+    .select("slug, author, created_at, works!inner(slug, is_public_domain)")
     .eq("is_private", false)
-    .eq("works.is_public_domain", true);
+    .eq("works.is_public_domain", true)
+    .not("slug", "is", null)
+    .returns<{ slug: string; author: string | null; created_at: string | null; works: { slug: string | null } }[]>();
   if (scenesError) {
     console.error("sitemap: failed to fetch public scenes", scenesError);
   }
@@ -55,12 +60,17 @@ export async function GET(request: NextRequest) {
       changefreq: "weekly",
       priority: 0.9,
     },
-    ...(publicScenes ?? []).map((scene) => ({
-      loc: `${baseUrl}/scenes/${encodeURIComponent(scene.id)}`,
-      lastmod: String(scene.created_at ?? "").slice(0, 10) || new Date().toISOString().slice(0, 10),
-      changefreq: "monthly",
-      priority: 0.8,
-    })),
+    ...(publicScenes ?? [])
+      .filter((scene) => !!scene.works?.slug)
+      .map((scene) => {
+        const authorSlug = slugify(scene.author ?? "");
+        return {
+          loc: `${baseUrl}/scenes/${encodeURIComponent(authorSlug)}/${encodeURIComponent(scene.works.slug!)}/${encodeURIComponent(scene.slug)}`,
+          lastmod: String(scene.created_at ?? "").slice(0, 10) || new Date().toISOString().slice(0, 10),
+          changefreq: "monthly",
+          priority: 0.8,
+        };
+      }),
     ...articles.map((a) => ({
       loc: `${baseUrl}/ressources/${encodeURIComponent(a.slug)}`,
       lastmod: a.publishedAt instanceof Date ? a.publishedAt.toISOString().slice(0, 10) : String(a.publishedAt).slice(0, 10),

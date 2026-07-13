@@ -5,6 +5,7 @@ export type Work = {
   summary: string | null;
   is_public_domain?: boolean;
   total_lines_count?: number | null;
+  slug?: string | null;
 };
 
 export type WorkWithScenes = Work & {
@@ -21,6 +22,7 @@ export type Scene = {
   source_scene_id?: string | null;
   owner_user_id?: string | null;
   is_private?: boolean;
+  slug?: string | null;
 };
 
 export type AccessType = "free_slot" | "purchased" | "private";
@@ -56,7 +58,7 @@ export type LineWithCharacter = Line & {
 export type SceneWithRelations = Scene & {
   characters: Character[];
   lines: LineWithCharacter[];
-  work?: Pick<Work, "id" | "title" | "is_public_domain"> | null;
+  work?: Pick<Work, "id" | "title" | "is_public_domain" | "slug" | "author"> | null;
 };
 
 export type UserLineFeedback = {
