@@ -1,7 +1,7 @@
 const baseUrl =
   typeof process.env.NEXT_PUBLIC_APP_URL === "string" && process.env.NEXT_PUBLIC_APP_URL
     ? process.env.NEXT_PUBLIC_APP_URL
-    : "https://cote-cour.studio";
+    : "https://www.cote-cour.studio";
 
 const jsonLd = {
   "@context": "https://schema.org",

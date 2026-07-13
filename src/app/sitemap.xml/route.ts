@@ -9,7 +9,7 @@ function getBaseUrl(request: NextRequest): string {
   if (base) return base.startsWith("http") ? base : `https://${base}`;
   const origin = request.nextUrl.origin;
   if (origin && origin.startsWith("http")) return origin;
-  return "https://cote-cour.studio";
+  return "https://www.cote-cour.studio";
 }
 
 function escapeXml(unsafe: string): string {
@@ -47,6 +47,12 @@ export async function GET(request: NextRequest) {
       lastmod: new Date().toISOString().slice(0, 10),
       changefreq: "monthly",
       priority: 0.9,
+    },
+    {
+      loc: `${baseUrl}/professeurs`,
+      lastmod: new Date().toISOString().slice(0, 10),
+      changefreq: "monthly",
+      priority: 0.8,
     },
     {
       loc: `${baseUrl}/ressources`,

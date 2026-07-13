@@ -27,7 +27,9 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://cote-cour.studio"),
+  // Domaine canonique = www (cote-cour.studio nu 307-redirige vers www) :
+  // le fallback doit matcher, sinon tous les canonicals pointent vers un redirect.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://www.cote-cour.studio"),
   title: "Apprendre son texte de théâtre – Mémorisation répliques | Côté-Cour",
   description:
     "Application pour comédiens : apprends ton texte de théâtre et mémorise tes répliques 3x plus vite. Importe ta scène, révèle tes répliques, reçois un feedback instantané.",
