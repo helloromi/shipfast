@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 
 import { getArticleBySlug, getArticlesList } from "@/content/ressources/articles";
 
+const BASE_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.cote-cour.studio").replace(/\/$/, "");
+
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateStaticParams() {
@@ -15,10 +17,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const article = getArticleBySlug(slug);
   if (!article) return {};
+
+  const url = `${BASE_URL}/ressources/${slug}`;
+  const title = `${article.title} | Côté-Cour`;
+
   return {
-    title: `${article.title} | Côté-Cour`,
+    title,
     description: article.description,
-    alternates: { canonical: `/ressources/${slug}` },
+    alternates: { canonical: url },
+    openGraph: {
+      // Next.js ne fusionne pas openGraph en profondeur avec le layout parent :
+      // type/locale doivent être répétés ici pour ne pas disparaître du HTML.
+      title,
+      description: article.description,
+      url,
+      type: "article",
+      locale: "fr_FR",
+    },
   };
 }
 
@@ -29,8 +44,28 @@ export default async function RessourceArticlePage({ params }: Props) {
 
   const Body = article.Body;
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: article.title,
+    description: article.description,
+    datePublished: article.publishedAt.toISOString(),
+    author: { "@type": "Organization", name: "Côté-Cour" },
+    publisher: {
+      "@type": "Organization",
+      name: "Côté-Cour",
+      logo: { "@type": "ImageObject", url: `${BASE_URL}/apple-touch-icon.png` },
+    },
+    mainEntityOfPage: { "@type": "WebPage", "@id": `${BASE_URL}/ressources/${slug}` },
+  };
+
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       <Link
         href="/ressources"
         className="text-sm font-semibold text-[#3b1f4a] underline-offset-4 hover:underline"
