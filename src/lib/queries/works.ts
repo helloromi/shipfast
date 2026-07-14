@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { Scene, Work, WorkWithScenes } from "@/types/scenes";
 import { weightedAverageScoreByRecency } from "@/lib/utils/score";
+import { sortScenesDramaturgical } from "@/lib/utils/scene-order";
 
 type WorkQueryResult = Work & {
   scenes: Scene[];
@@ -174,14 +175,17 @@ export async function fetchWorkWithScenes(workId: string): Promise<WorkWithScene
     title: data.title,
     author: data.author,
     summary: data.summary,
-    scenes: (data.scenes ?? []).map((scene: any) => ({
-      id: scene.id,
-      work_id: scene.work_id,
-      title: scene.title,
-      author: scene.author,
-      summary: scene.summary,
-      chapter: scene.chapter,
-    })),
+    // Ordre dramaturgique (acte puis scène), pas l'ordre d'insertion en base.
+    scenes: sortScenesDramaturgical(
+      (data.scenes ?? []).map((scene: any) => ({
+        id: scene.id,
+        work_id: scene.work_id,
+        title: scene.title,
+        author: scene.author,
+        summary: scene.summary,
+        chapter: scene.chapter,
+      }))
+    ),
   };
 }
 
@@ -311,7 +315,8 @@ export async function fetchWorkWithScenesAndStats(
     title: workData.title,
     author: workData.author,
     summary: workData.summary,
-    scenes: scenesWithStats,
+    // Ordre dramaturgique (acte puis scène), pas l'ordre d'insertion en base.
+    scenes: sortScenesDramaturgical(scenesWithStats),
   };
 }
 
