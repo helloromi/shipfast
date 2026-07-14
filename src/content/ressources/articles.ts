@@ -10,6 +10,12 @@ import {
   meta as metaMethodeFlashcard,
   slug as slugMethodeFlashcard,
 } from "./comment-apprendre-son-texte-de-theatre";
+import {
+  Body as BodyMonologuesHomme,
+  meta as metaMonologuesHomme,
+  monologues as monologuesHomme,
+  slug as slugMonologuesHomme,
+} from "./quel-monologue-choisir-pour-une-audition-homme";
 
 export type ArticleMeta = {
   slug: string;
@@ -18,11 +24,26 @@ export type ArticleMeta = {
   publishedAt: Date;
 };
 
+/**
+ * Une page liste (ex. sélection de monologues) fournit ses items pour émettre un
+ * schema ItemList en plus de l'Article. Absent = page éditoriale simple (Article seul).
+ */
+export type ArticleListItem = { name: string; href: string };
+
 export type Article = ArticleMeta & {
   Body: () => ReactNode;
+  listItems?: ArticleListItem[];
 };
 
 const articles: Article[] = [
+  {
+    slug: slugMonologuesHomme,
+    title: metaMonologuesHomme.title,
+    description: metaMonologuesHomme.description,
+    publishedAt: metaMonologuesHomme.publishedAt,
+    Body: BodyMonologuesHomme,
+    listItems: monologuesHomme.map((m) => ({ name: m.name, href: m.href })),
+  },
   {
     slug: slugMethodeFlashcard,
     title: metaMethodeFlashcard.title,

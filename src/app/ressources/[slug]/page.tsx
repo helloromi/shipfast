@@ -43,9 +43,9 @@ export default async function RessourceArticlePage({ params }: Props) {
   if (!article) notFound();
 
   const Body = article.Body;
+  const pageUrl = `${BASE_URL}/ressources/${slug}`;
 
-  const jsonLd = {
-    "@context": "https://schema.org",
+  const articleNode = {
     "@type": "Article",
     headline: article.title,
     description: article.description,
@@ -56,8 +56,32 @@ export default async function RessourceArticlePage({ params }: Props) {
       name: "Côté-Cour",
       logo: { "@type": "ImageObject", url: `${BASE_URL}/apple-touch-icon.png` },
     },
-    mainEntityOfPage: { "@type": "WebPage", "@id": `${BASE_URL}/ressources/${slug}` },
+    mainEntityOfPage: { "@type": "WebPage", "@id": pageUrl },
   };
+
+  // Page liste : on ajoute un ItemList (chaque monologue → sa page scène) à côté de
+  // l'Article. Article seul pour une page éditoriale classique.
+  const jsonLd =
+    article.listItems && article.listItems.length > 0
+      ? {
+          "@context": "https://schema.org",
+          "@graph": [
+            articleNode,
+            {
+              "@type": "ItemList",
+              name: article.title,
+              itemListOrder: "https://schema.org/ItemListOrderAscending",
+              numberOfItems: article.listItems.length,
+              itemListElement: article.listItems.map((item, i) => ({
+                "@type": "ListItem",
+                position: i + 1,
+                name: item.name,
+                url: `${BASE_URL}${item.href}`,
+              })),
+            },
+          ],
+        }
+      : { "@context": "https://schema.org", ...articleNode };
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
