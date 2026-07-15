@@ -46,9 +46,11 @@ export default async function StudentClassesPage() {
         </div>
       )}
 
-      {classes.map(({ klass, membership, assignments, showNotes, members }) => {
+      {classes.map(({ klass, membership, assignments, showNotes }) => {
         const myNotes = showNotes.filter((n) => n.member_id === membership.id);
-        const classNotes = showNotes.filter((n) => n.member_id !== membership.id);
+        // Uniquement les éléments collectifs : ceux qui visent un camarade ne
+        // regardent pas cet élève (et la RLS ne les renvoie plus).
+        const classNotes = showNotes.filter((n) => n.member_id === null);
         return (
           <section key={klass.id} className="card flex flex-col gap-6 p-6">
             <div className="flex flex-col gap-1">
@@ -149,24 +151,16 @@ export default async function StudentClassesPage() {
                 )}
                 {classNotes.length > 0 && (
                   <ul className="flex flex-col gap-1.5">
-                    {classNotes.map((n) => {
-                      const target = members.find((m) => m.id === n.member_id);
-                      return (
-                        <li
-                          key={n.id}
-                          className="flex flex-wrap items-baseline gap-2 rounded-xl bg-white/70 px-3 py-2 text-sm"
-                        >
-                          <span aria-hidden>{CATEGORY_ICON[n.category]}</span>
-                          <span className="font-semibold text-[#211a26]">{n.title}</span>
-                          {n.content && <span className="text-[#5d5468]">— {n.content}</span>}
-                          {target && (
-                            <span className="text-xs font-semibold text-[#8a8093]">
-                              ({target.display_name || target.email})
-                            </span>
-                          )}
-                        </li>
-                      );
-                    })}
+                    {classNotes.map((n) => (
+                      <li
+                        key={n.id}
+                        className="flex flex-wrap items-baseline gap-2 rounded-xl bg-white/70 px-3 py-2 text-sm"
+                      >
+                        <span aria-hidden>{CATEGORY_ICON[n.category]}</span>
+                        <span className="font-semibold text-[#211a26]">{n.title}</span>
+                        {n.content && <span className="text-[#5d5468]">— {n.content}</span>}
+                      </li>
+                    ))}
                   </ul>
                 )}
               </div>

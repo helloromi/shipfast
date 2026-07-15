@@ -153,7 +153,6 @@ export type StudentClass = {
     characterName: string | null;
   })[];
   showNotes: ClassShowNote[];
-  members: ClassMember[];
 };
 
 export async function fetchStudentClasses(userId: string): Promise<StudentClass[]> {
@@ -177,20 +176,23 @@ export async function fetchStudentClasses(userId: string): Promise<StudentClass[
   const membershipIds = rows.map((m) => m.id);
 
   // Requêtes groupées sur toutes les classes (pas de N+1 par classe).
-  const [assignmentsRes, showNotesRes, membersRes] = await Promise.all([
+  const [assignmentsRes, showNotesRes] = await Promise.all([
     supabase
       .from("class_assignments")
       .select("*, scenes(title), characters(name)")
       .in("member_id", membershipIds),
+    // Éléments collectifs + ceux qui visent cet élève. Redondant avec la RLS
+    // (20260715090000_restrict_student_show_notes.sql) et c'est voulu : la liste
+    // des camarades ne doit jamais transiter jusqu'ici.
     supabase
       .from("class_show_notes")
       .select("*")
       .in("class_id", classIds)
+      .or(`member_id.is.null,member_id.in.(${membershipIds.join(",")})`)
       .order("position", { ascending: true }),
-    supabase.from("class_members").select("*").in("class_id", classIds),
   ]);
 
-  for (const res of [assignmentsRes, showNotesRes, membersRes]) {
+  for (const res of [assignmentsRes, showNotesRes]) {
     if (res.error) console.error(res.error);
   }
 
@@ -200,7 +202,6 @@ export async function fetchStudentClasses(userId: string): Promise<StudentClass[
   };
   const assignments = (assignmentsRes.data ?? []) as AssignmentRow[];
   const showNotes = (showNotesRes.data ?? []) as ClassShowNote[];
-  const members = (membersRes.data ?? []) as ClassMember[];
 
   return rows.map((m) => {
     const klass = m.teacher_classes as TeacherClass;
@@ -215,7 +216,6 @@ export async function fetchStudentClasses(userId: string): Promise<StudentClass[
           characterName: characters?.name ?? null,
         })),
       showNotes: showNotes.filter((n) => n.class_id === klass.id),
-      members: members.filter((member) => member.class_id === klass.id),
     };
   });
 }
