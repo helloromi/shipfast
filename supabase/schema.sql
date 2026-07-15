@@ -1,3 +1,14 @@
+-- ---------------------------------------------------------------------------
+-- Référence du schéma — DOCUMENTATION, pas un fichier à exécuter.
+--
+-- Ce fichier n'est pas rejouable seul : il référence des colonnes ajoutées plus
+-- tard par migrations-legacy/ (scenes.owner_user_id, scenes.is_private…) et ne
+-- porte pas les RLS de l'espace professeur.
+-- La vérité, dans l'ordre : migrations-legacy/ (déjà appliquées à la main en
+-- prod) puis migrations/ (CLI). Voir supabase/README.md pour l'ordre de rejeu
+-- et `supabase db pull` pour générer une vraie baseline.
+-- ---------------------------------------------------------------------------
+
 -- Tables de base
 create extension if not exists "uuid-ossp";
 
@@ -79,45 +90,83 @@ alter table public.characters enable row level security;
 alter table public.lines enable row level security;
 alter table public.user_line_feedback enable row level security;
 
--- Lecture publique sur les contenus
+-- Lecture publique sur les œuvres
 do $$
 begin
   if not exists (
-    select 1 from pg_policies 
-    where schemaname = 'public' 
-    and tablename = 'works' 
+    select 1 from pg_policies
+    where schemaname = 'public'
+    and tablename = 'works'
     and policyname = 'Public read works'
   ) then
     create policy "Public read works" on public.works for select using (true);
   end if;
-
-  if not exists (
-    select 1 from pg_policies 
-    where schemaname = 'public' 
-    and tablename = 'scenes' 
-    and policyname = 'Public read scenes'
-  ) then
-    create policy "Public read scenes" on public.scenes for select using (true);
-  end if;
-
-  if not exists (
-    select 1 from pg_policies 
-    where schemaname = 'public' 
-    and tablename = 'characters' 
-    and policyname = 'Public read characters'
-  ) then
-    create policy "Public read characters" on public.characters for select using (true);
-  end if;
-
-  if not exists (
-    select 1 from pg_policies 
-    where schemaname = 'public' 
-    and tablename = 'lines' 
-    and policyname = 'Public read lines'
-  ) then
-    create policy "Public read lines" on public.lines for select using (true);
-  end if;
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- Lecture des contenus : publique OU propriétaire OU accès partagé explicite.
+--
+-- ⚠️ Ces trois policies ne sont PAS celles d'origine. La base a d'abord porté
+-- un "Public read scenes/characters/lines" en `using (true)`, remplacé depuis
+-- par les policies ci-dessous.
+-- Propriétaire réel de ces policies : migrations-legacy/add_scene_sharing.sql
+-- (dernière version appliquée en prod). Toute évolution passe par une nouvelle
+-- migration, pas par ce fichier — voir supabase/README.md.
+-- ---------------------------------------------------------------------------
+drop policy if exists "Public read scenes" on public.scenes;
+drop policy if exists "Public read characters" on public.characters;
+drop policy if exists "Public read lines" on public.lines;
+
+drop policy if exists "Read scenes public or owned" on public.scenes;
+create policy "Read scenes public or owned" on public.scenes
+  for select using (
+    (is_private = false)
+    or (is_private = true and owner_user_id = auth.uid())
+    or exists (
+      select 1 from public.user_work_access uwa
+      where uwa.scene_id = scenes.id
+        and uwa.user_id = auth.uid()
+        and uwa.access_type = 'private'
+    )
+  );
+
+drop policy if exists "Read characters from accessible scenes" on public.characters;
+create policy "Read characters from accessible scenes" on public.characters
+  for select using (
+    exists (
+      select 1 from public.scenes s
+      where s.id = characters.scene_id
+        and (
+          s.is_private = false
+          or (s.is_private = true and s.owner_user_id = auth.uid())
+          or exists (
+            select 1 from public.user_work_access uwa
+            where uwa.scene_id = s.id
+              and uwa.user_id = auth.uid()
+              and uwa.access_type = 'private'
+          )
+        )
+    )
+  );
+
+drop policy if exists "Read lines from accessible scenes" on public.lines;
+create policy "Read lines from accessible scenes" on public.lines
+  for select using (
+    exists (
+      select 1 from public.scenes s
+      where s.id = lines.scene_id
+        and (
+          s.is_private = false
+          or (s.is_private = true and s.owner_user_id = auth.uid())
+          or exists (
+            select 1 from public.user_work_access uwa
+            where uwa.scene_id = s.id
+              and uwa.user_id = auth.uid()
+              and uwa.access_type = 'private'
+          )
+        )
+    )
+  );
 
 -- Écriture réservée (admin/service role)
 do $$
@@ -242,8 +291,12 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- Espace professeur (voir supabase/migrations/add_teacher_spaces.sql pour les
--- policies RLS et helpers complets — cette section résume les tables)
+-- Espace professeur — cette section ne résume QUE les tables.
+-- Les policies RLS, les helpers security definer (is_class_teacher,
+-- is_class_member, has_class_membership) et les triggers updated_at vivent dans
+-- supabase/migrations/20260609120000_add_teacher_spaces.sql, qui fait foi.
+-- Ne pas les recopier ici : c'est ce qui a fait dériver les policies de
+-- scenes/characters/lines ci-dessus.
 -- ---------------------------------------------------------------------------
 
 -- user_profiles.role : 'student' | 'teacher'
