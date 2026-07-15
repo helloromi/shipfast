@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { displayUrl } from "@/lib/utils/base-url";
+import { countLabel } from "@/lib/utils/plural";
 import { t } from "@/locales/fr";
 import type {
   ClassDetail,
@@ -106,11 +108,15 @@ export function ClassDetailClient({ detail, libraryScenes }: Props) {
     <div className="flex flex-col gap-6">
       {/* En-tête de classe */}
       <div className="card flex flex-col gap-4 p-6 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="font-display text-3xl font-semibold text-[#211a26]">{klass.name}</h1>
-          {klass.description && <p className="text-sm text-[#5d5468]">{klass.description}</p>}
+        <div className="min-w-0 space-y-1">
+          <h1 className="font-display text-3xl font-semibold break-words text-[#211a26]">
+            {klass.name}
+          </h1>
+          {klass.description && (
+            <p className="text-sm break-words text-[#5d5468]">{klass.description}</p>
+          )}
         </div>
-        <div className="flex flex-col gap-2 rounded-2xl border border-dashed border-[#d8cfc0] bg-[#f9f6f0] px-4 py-3">
+        <div className="flex flex-col gap-2 rounded-2xl border border-dashed border-[#d8cfc0] bg-[#f9f6f0] px-4 py-3 sm:shrink-0">
           <span className="text-xs font-bold uppercase tracking-wider text-[#8a8093]">
             {t.teacher.class.inviteCode}
           </span>
@@ -122,8 +128,9 @@ export function ClassDetailClient({ detail, libraryScenes }: Props) {
               {copied ? t.teacher.class.copied : t.teacher.class.copyCode}
             </button>
           </div>
-          <p className="max-w-[260px] text-xs text-[#8a8093]">
-            {t.teacher.class.inviteHint} <span className="font-semibold">cote-cour.fr/rejoindre</span>
+          <p className="max-w-[260px] text-xs break-words text-[#8a8093]">
+            {t.teacher.class.inviteHint}{" "}
+            <span className="font-semibold">{displayUrl("/rejoindre")}</span>
           </p>
         </div>
       </div>
@@ -168,29 +175,39 @@ export function ClassDetailClient({ detail, libraryScenes }: Props) {
                 api(`/api/teacher/classes/${klass.id}/members`, "POST", { email, displayName })
               ).then(() => form.reset());
             }}
-            className="card flex flex-col gap-3 p-5 sm:flex-row sm:items-end"
+            className="card flex flex-col gap-3 p-5"
           >
-            <div className="flex-1">
-              <label className="label" htmlFor="member-email">{t.teacher.students.addTitle}</label>
-              <input
-                id="member-email"
-                name="email"
-                type="email"
-                required
-                placeholder={t.teacher.students.emailPlaceholder}
-                className="input"
-              />
+            <h2 className="font-display text-lg font-semibold text-[#3b1f4a]">
+              {t.teacher.students.addTitle}
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="label" htmlFor="member-email">{t.teacher.students.emailLabel}</label>
+                <input
+                  id="member-email"
+                  name="email"
+                  type="email"
+                  required
+                  placeholder={t.teacher.students.emailPlaceholder}
+                  className="input"
+                  aria-describedby="member-email-hint"
+                />
+                <p id="member-email-hint" className="hint">{t.teacher.students.emailHint}</p>
+              </div>
+              <div>
+                <label className="label" htmlFor="member-name">{t.teacher.students.nameLabel}</label>
+                <input
+                  id="member-name"
+                  name="displayName"
+                  type="text"
+                  placeholder={t.teacher.students.namePlaceholder}
+                  className="input"
+                  aria-describedby="member-name-hint"
+                />
+                <p id="member-name-hint" className="hint">{t.teacher.students.nameHint}</p>
+              </div>
             </div>
-            <div className="flex-1">
-              <input
-                name="displayName"
-                type="text"
-                placeholder={t.teacher.students.namePlaceholder}
-                className="input"
-                aria-label={t.teacher.students.namePlaceholder}
-              />
-            </div>
-            <button type="submit" disabled={busy} className="btn-primary">
+            <button type="submit" disabled={busy} className="btn-primary self-start">
               {t.teacher.students.addButton}
             </button>
           </form>
@@ -249,7 +266,7 @@ export function ClassDetailClient({ detail, libraryScenes }: Props) {
               {t.teacher.texts.addTitle}
             </h2>
             <p className="text-sm text-[#5d5468]">{t.teacher.texts.addHint}</p>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <AttachSceneSelect
                 libraryScenes={libraryScenes.filter((s) => !scenes.some((cs) => cs.id === s.id))}
                 disabled={busy}
@@ -269,11 +286,14 @@ export function ClassDetailClient({ detail, libraryScenes }: Props) {
             <div className="grid gap-3 sm:grid-cols-2">
               {scenes.map((s) => (
                 <div key={s.id} className="card flex flex-col gap-3 p-5">
-                  <div>
-                    <h3 className="font-display text-lg font-semibold text-[#211a26]">{s.title}</h3>
+                  <div className="min-w-0">
+                    <h3 className="font-display text-lg font-semibold break-words text-[#211a26]">
+                      {s.title}
+                    </h3>
                     <p className="text-xs text-[#8a8093]">
-                      {s.author || t.common.labels.auteurInconnu} · {s.lineCount}{" "}
-                      {t.teacher.texts.lines} · {s.characters.length} {t.teacher.texts.characters}
+                      {s.author || t.common.labels.auteurInconnu} ·{" "}
+                      {countLabel(s.lineCount, t.teacher.texts.lines)} ·{" "}
+                      {countLabel(s.characters.length, t.teacher.texts.characters)}
                     </p>
                   </div>
                   <div className="mt-auto flex flex-wrap items-center gap-2">
@@ -366,32 +386,35 @@ function AttachSceneSelect({
   const [selected, setSelected] = useState("");
 
   return (
-    <div className="flex flex-1 gap-2">
-      <select
-        value={selected}
-        onChange={(e) => setSelected(e.target.value)}
-        className="input flex-1"
-        aria-label={t.teacher.texts.selectPlaceholder}
-      >
-        <option value="">{t.teacher.texts.selectPlaceholder}</option>
-        {libraryScenes.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.title}
-            {s.author ? ` — ${s.author}` : ""}
-          </option>
-        ))}
-      </select>
-      <button
-        type="button"
-        disabled={disabled || !selected}
-        onClick={() => {
-          onAttach(selected);
-          setSelected("");
-        }}
-        className="btn-primary"
-      >
-        {t.teacher.texts.attachButton}
-      </button>
+    <div className="flex-1">
+      <label className="label" htmlFor="attach-scene">{t.teacher.texts.selectLabel}</label>
+      <div className="flex gap-2">
+        <select
+          id="attach-scene"
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
+          className="input flex-1"
+        >
+          <option value="">{t.teacher.texts.selectPlaceholder}</option>
+          {libraryScenes.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.title}
+              {s.author ? ` — ${s.author}` : ""}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          disabled={disabled || !selected}
+          onClick={() => {
+            onAttach(selected);
+            setSelected("");
+          }}
+          className="btn-primary"
+        >
+          {t.teacher.texts.attachButton}
+        </button>
+      </div>
     </div>
   );
 }
@@ -500,6 +523,7 @@ function CastingTab({
               onChange={(e) => setCharacterId(e.target.value)}
               className="input"
               disabled={!selectedScene}
+              aria-describedby="assign-character-hint"
             >
               <option value="">{t.teacher.casting.noCharacter}</option>
               {(selectedScene?.characters ?? []).map((c) => (
@@ -508,6 +532,11 @@ function CastingTab({
                 </option>
               ))}
             </select>
+            <p id="assign-character-hint" className="hint">
+              {selectedScene
+                ? t.teacher.casting.characterHintReady
+                : t.teacher.casting.characterHint}
+            </p>
           </div>
         </div>
         <div>
@@ -519,7 +548,9 @@ function CastingTab({
             onChange={(e) => setNote(e.target.value)}
             placeholder={t.teacher.casting.notePlaceholder}
             className="input"
+            aria-describedby="assign-note-hint"
           />
+          <p id="assign-note-hint" className="hint">{t.teacher.casting.noteHint}</p>
         </div>
         <button type="submit" disabled={busy || !memberId || !sceneId} className="btn-primary self-start">
           {t.teacher.casting.assignButton}
@@ -534,7 +565,9 @@ function CastingTab({
             .filter((s) => bySceneAssignments.has(s.id))
             .map((s) => (
               <div key={s.id} className="card p-5">
-                <h3 className="font-display text-lg font-semibold text-[#211a26]">{s.title}</h3>
+                <h3 className="font-display text-lg font-semibold break-words text-[#211a26]">
+                  {s.title}
+                </h3>
                 <ul className="mt-3 divide-y divide-[#efe9dd]">
                   {(bySceneAssignments.get(s.id) ?? []).map((a) => {
                     const character = s.characters.find((c) => c.id === a.character_id);
@@ -660,7 +693,7 @@ function ShowTab({
             />
           </div>
         </div>
-        <button type="submit" disabled={busy} className="btn-secondary self-start">
+        <button type="submit" disabled={busy} className="btn-primary self-start">
           {t.teacher.show.saveInfo}
         </button>
       </form>
@@ -726,6 +759,7 @@ function ShowTab({
               value={noteSceneId}
               onChange={(e) => setNoteSceneId(e.target.value)}
               className="input"
+              aria-describedby="note-scene-hint"
             >
               <option value="">{t.teacher.show.allScenes}</option>
               {scenes.map((s) => (
@@ -734,6 +768,7 @@ function ShowTab({
                 </option>
               ))}
             </select>
+            <p id="note-scene-hint" className="hint">{t.teacher.show.sceneHint}</p>
           </div>
           <div>
             <label className="label" htmlFor="note-member">{t.teacher.show.memberLabel}</label>
@@ -742,6 +777,7 @@ function ShowTab({
               value={noteMemberId}
               onChange={(e) => setNoteMemberId(e.target.value)}
               className="input"
+              aria-describedby="note-member-hint"
             >
               <option value="">{t.teacher.show.allClass}</option>
               {members.map((m) => (
@@ -750,6 +786,7 @@ function ShowTab({
                 </option>
               ))}
             </select>
+            <p id="note-member-hint" className="hint">{t.teacher.show.memberHint}</p>
           </div>
         </div>
         <div>
@@ -760,7 +797,9 @@ function ShowTab({
             onChange={(e) => setContent(e.target.value)}
             placeholder={t.teacher.show.contentPlaceholder}
             className="input min-h-[70px]"
+            aria-describedby="note-content-hint"
           />
+          <p id="note-content-hint" className="hint">{t.teacher.show.contentHint}</p>
         </div>
         <button type="submit" disabled={busy || !title.trim()} className="btn-primary self-start">
           {t.teacher.show.addButton}

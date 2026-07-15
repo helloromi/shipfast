@@ -66,7 +66,11 @@ export function CreateClassForm() {
           onChange={(e) => setDescription(e.target.value)}
           placeholder={t.teacher.dashboard.descriptionPlaceholder}
           className="input"
+          aria-describedby="class-description-hint"
         />
+        <p id="class-description-hint" className="hint">
+          {t.teacher.dashboard.descriptionHint}
+        </p>
       </div>
       {error && <p className="text-sm font-semibold text-[#e11d48]">{error}</p>}
       <button type="submit" disabled={loading || !name.trim()} className="btn-primary self-start">

@@ -77,7 +77,7 @@ export function SceneAnnotationsEditor({ classId, sceneId, lines, annotations }:
 
       {/* Note d'intention (niveau scène) */}
       <div className="card flex flex-col gap-3 p-5">
-        <h2 className="font-display text-lg font-semibold text-[#3b1f4a]">
+        <h2 id="scene-note-title" className="font-display text-lg font-semibold text-[#3b1f4a]">
           {t.teacher.annotations.sceneLevelTitle}
         </h2>
         {sceneAnnotations.map((a) => (
@@ -106,18 +106,25 @@ export function SceneAnnotationsEditor({ classId, sceneId, lines, annotations }:
               if (ok) setSceneDraft("");
             });
           }}
-          className="flex gap-2"
+          className="flex flex-col gap-2"
         >
-          <input
-            type="text"
-            value={sceneDraft}
-            onChange={(e) => setSceneDraft(e.target.value)}
-            placeholder={t.teacher.annotations.sceneLevelPlaceholder}
-            className="input flex-1"
-          />
-          <button type="submit" disabled={busy || !sceneDraft.trim()} className="btn-primary">
-            {t.teacher.annotations.save}
-          </button>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={sceneDraft}
+              onChange={(e) => setSceneDraft(e.target.value)}
+              placeholder={t.teacher.annotations.sceneLevelPlaceholder}
+              className="input flex-1"
+              aria-labelledby="scene-note-title"
+              aria-describedby="scene-note-hint"
+            />
+            <button type="submit" disabled={busy || !sceneDraft.trim()} className="btn-primary">
+              {t.teacher.annotations.save}
+            </button>
+          </div>
+          <p id="scene-note-hint" className="hint">
+            {t.teacher.annotations.sceneLevelHint}
+          </p>
         </form>
       </div>
 

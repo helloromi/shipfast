@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { CreateClassForm } from "@/components/teacher/create-class-form";
 import { fetchTeacherClasses } from "@/lib/queries/teacher";
 import { getSupabaseSessionUser } from "@/lib/queries/scenes";
+import { countLabel } from "@/lib/utils/plural";
 import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
 import { t } from "@/locales/fr";
 
@@ -52,10 +53,10 @@ export default async function TeacherDashboardPage() {
               )}
               <div className="mt-auto flex flex-wrap gap-3 text-xs font-semibold text-[#5d5468]">
                 <span className="rounded-full bg-[#f4c95d2e] px-3 py-1 text-[#3b1f4a]">
-                  {klass.memberCount} {t.teacher.dashboard.members}
+                  {countLabel(klass.memberCount, t.teacher.dashboard.members)}
                 </span>
                 <span className="rounded-full bg-[#ff6b6b1c] px-3 py-1 text-[#3b1f4a]">
-                  {klass.sceneCount} {t.teacher.dashboard.texts}
+                  {countLabel(klass.sceneCount, t.teacher.dashboard.texts)}
                 </span>
                 {klass.show_date && (
                   <span className="rounded-full bg-[#2cb67d1f] px-3 py-1 text-[#1c6b4f]">

@@ -108,9 +108,45 @@ button:active:not(:disabled),
   transform: translateY(0);
 }
 
-button:disabled {
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+}
+
+/* Boutons sans variante .btn-* (liens texte) : simple atténuation. */
+button:disabled:not([class*="btn-"]) {
+  opacity: 0.5;
+}
+
+/* Les variantes désactivées perdent toute couleur d'action : aplat neutre,
+   pas de dégradé, pas d'ombre portée.
+   Ces règles doivent rester hors @layer : une règle non-layerée l'emporte
+   toujours sur @layer components, où vivent .btn-primary et consorts. */
+.btn-primary:disabled,
+.btn-cta:disabled {
+  background: var(--paper-warm);
+  color: var(--faint);
+  box-shadow: none;
+  filter: none;
+}
+
+.btn-secondary:disabled {
+  background: var(--paper-warm);
+  color: var(--faint);
+  border-color: var(--stroke);
+  box-shadow: none;
+}
+
+.btn-ghost:disabled {
+  background: none;
+  color: var(--faint);
+}
+
+.input:disabled {
+  background: var(--paper-warm);
+  color: var(--faint);
 }
 
 ::selection {
@@ -268,6 +304,16 @@ button:disabled {
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted);
+  }
+
+  /* Aide persistante sous un champ : reste lisible une fois le champ rempli,
+     contrairement au placeholder, et se rattache au champ via aria-describedby. */
+  .hint {
+    display: block;
+    margin-top: 0.3rem;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--faint);
   }
 
   /* Section sombre "scène" : velours + projecteurs */
