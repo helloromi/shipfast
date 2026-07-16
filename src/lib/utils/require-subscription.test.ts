@@ -56,15 +56,15 @@ describe("requireSubscriptionOrRedirect", () => {
     expect(redirect).not.toHaveBeenCalled();
   });
 
-  it("redirige vers /onboarding sans aucun droit", async () => {
+  it("redirige vers /subscribe (paiement) sans aucun droit", async () => {
     setup({});
-    await expect(requireSubscriptionOrRedirect(USER)).rejects.toThrow("REDIRECT:/onboarding");
+    await expect(requireSubscriptionOrRedirect(USER)).rejects.toThrow("REDIRECT:/subscribe");
   });
 
   it("respecte la cible de redirection personnalisée", async () => {
     setup({});
-    await expect(requireSubscriptionOrRedirect(USER, "/subscribe")).rejects.toThrow(
-      "REDIRECT:/subscribe"
+    await expect(requireSubscriptionOrRedirect(USER, "/onboarding")).rejects.toThrow(
+      "REDIRECT:/onboarding"
     );
   });
 });

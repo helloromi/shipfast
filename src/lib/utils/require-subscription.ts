@@ -9,11 +9,16 @@ import { isAdmin } from "@/lib/utils/admin";
  * Enforce the paywall: admins, abonnés et membres d'une classe (élèves couverts
  * par le compte de leur professeur) accèdent aux pages protégées.
  * - If user is null: redirect to /login
- * - If not entitled: redirect to /onboarding (default)
+ * - If not entitled: redirect to /subscribe (default)
+ *
+ * NB : les seuls appelants restants gardent des actions payantes (import, edit,
+ * export, scène privée, espace prof). Un utilisateur qui les atteint sans droit
+ * tente explicitement du contenu payant → on l'envoie sur la page de paiement,
+ * pas sur l'onboarding.
  */
 export async function requireSubscriptionOrRedirect(
   user: User | null,
-  redirectTo: string = "/onboarding"
+  redirectTo: string = "/subscribe"
 ): Promise<void> {
   if (!user) redirect("/login");
 
