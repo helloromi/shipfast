@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { cache } from "react";
 
-import { fetchSceneWithRelationsBySlug } from "@/lib/queries/scenes";
+import { fetchSceneByPreviousSlug, fetchSceneWithRelationsByWorkAndSlug } from "@/lib/queries/scenes";
 import { buildSceneMetadata } from "@/lib/scenes/scene-metadata";
 import { slugify } from "@/lib/utils/slugify";
 import { SceneDetailView } from "@/components/scenes/scene-detail-view";
@@ -21,7 +21,7 @@ type Props = {
 };
 
 // Mémoïsé par requête : generateMetadata et la page partagent le même fetch.
-const getScene = cache(fetchSceneWithRelationsBySlug);
+const getScene = cache(fetchSceneWithRelationsByWorkAndSlug);
 
 /**
  * Seules les scènes publiques du domaine public ont un slug (cf. backfill) et
@@ -42,8 +42,8 @@ function canonicalPathFor(scene: SceneWithRelations): string {
 // dans le composant de page (cf. commentaire équivalent dans /scenes/[identifiant]/page.tsx).
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { identifiant: auteurSlug, piece: pieceSlug, scene: sceneSlug } = await params;
-  if (!sceneSlug) return {};
-  const scene = await getScene(sceneSlug);
+  if (!pieceSlug || !sceneSlug) return {};
+  const scene = await getScene(pieceSlug, sceneSlug);
   if (!scene || !isEligibleForSlugRoute(scene)) return {};
 
   const canonicalPath = canonicalPathFor(scene);
@@ -54,19 +54,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SceneDetailSlugPage({ params }: Props) {
   const { identifiant: auteurSlug, piece: pieceSlug, scene: sceneSlug } = await params;
-  if (!sceneSlug) {
+  if (!pieceSlug || !sceneSlug) {
     notFound();
   }
 
-  const scene = await getScene(sceneSlug);
-  if (!scene || !isEligibleForSlugRoute(scene)) {
-    notFound();
+  const scene = await getScene(pieceSlug, sceneSlug);
+  if (scene && isEligibleForSlugRoute(scene)) {
+    const canonicalPath = canonicalPathFor(scene);
+    if (canonicalPath !== `/scenes/${auteurSlug}/${pieceSlug}/${sceneSlug}`) {
+      permanentRedirect(canonicalPath);
+    }
+
+    return <SceneDetailView scene={scene} />;
   }
 
-  const canonicalPath = canonicalPathFor(scene);
-  if (canonicalPath !== `/scenes/${auteurSlug}/${pieceSlug}/${sceneSlug}`) {
-    permanentRedirect(canonicalPath);
+  // Slug de scène inconnu dans cette œuvre : peut-être un ancien slug déjà indexé
+  // (avant re-sluguage). On tente l'historique et on redirige en 301 vers le slug
+  // canonique. Sinon 404.
+  const renamed = await fetchSceneByPreviousSlug(pieceSlug, sceneSlug);
+  if (renamed && isEligibleForSlugRoute(renamed)) {
+    permanentRedirect(canonicalPathFor(renamed));
   }
 
-  return <SceneDetailView scene={scene} />;
+  notFound();
 }

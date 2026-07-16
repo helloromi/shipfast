@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "seed:scenes": "tsx supabase/seed/seed-scenes.ts",
     "seed:wikisource": "tsx supabase/seed/wikisource-fetch.ts --merge",
-    "backfill:scene-slugs": "tsx supabase/seed/backfill-scene-slugs.ts"
+    "backfill:scene-slugs": "tsx supabase/seed/backfill-scene-slugs.ts",
+    "reslug:scene-slugs": "tsx supabase/seed/reslug-scenes.ts"
   },
   "dependencies": {
     "@stripe/stripe-js": "^8.6.0",

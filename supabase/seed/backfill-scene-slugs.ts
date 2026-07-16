@@ -10,33 +10,10 @@
  * Prérequis : NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY.
  */
 
-import { createClient } from "@supabase/supabase-js";
-import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { slugify } from "@/lib/utils/slugify";
-
-/** Charge .env.local sans interpréter les virgules (ex. ADMIN_EMAILS). */
-function loadEnvLocal(rootDir: string) {
-  const envPath = join(rootDir, ".env.local");
-  if (!existsSync(envPath)) return;
-
-  for (const line of readFileSync(envPath, "utf8").split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq === -1) continue;
-    const key = trimmed.slice(0, eq).trim();
-    let value = trimmed.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    if (process.env[key] === undefined) process.env[key] = value;
-  }
-}
+import { createAdminClient, loadEnvLocal } from "./env";
 
 const ROOT = join(import.meta.dirname, "../..");
 loadEnvLocal(ROOT);
@@ -71,12 +48,7 @@ const CONFIG = {
 
 const APPLY = process.argv.includes("--apply");
 
-const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!url || !key) {
-  throw new Error("SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY requis dans l'environnement.");
-}
-const db = createClient(url, key, { auth: { persistSession: false } });
+const db = createAdminClient();
 
 type WorkRow = { id: string; title: string; author: string | null; slug: string | null };
 type SceneRow = {
@@ -152,14 +124,24 @@ async function main() {
     .returns<(SceneRow & { works: { is_public_domain: boolean } })[]>();
   if (scenesError) throw new Error(`Chargement des scènes : ${scenesError.message}`);
 
-  const takenSceneSlugs = new Set((scenes ?? []).map((s) => s.slug).filter((s): s is string => !!s));
+  // Dédup PAR ŒUVRE : le slug de scène n'a besoin d'être unique que dans son
+  // œuvre (la route résout par (works.slug, scenes.slug), contrainte composite
+  // (work_id, slug)). On maintient un Set de slugs pris par work_id, initialisé
+  // avec les slugs déjà en base pour cette œuvre.
   // Le titre est bien plus spécifique que le chapitre (ex. "Acte I, Scène I" vs
   // simplement "Acte I") : on l'utilise comme base pour minimiser les collisions.
-  const sceneAssignments = assignSlugs(
-    scenes ?? [],
-    (s) => slugify(s.title),
-    takenSceneSlugs
-  );
+  const scenesByWork = new Map<string, SceneRow[]>();
+  for (const s of scenes ?? []) {
+    const arr = scenesByWork.get(s.work_id) ?? [];
+    arr.push(s);
+    scenesByWork.set(s.work_id, arr);
+  }
+
+  const sceneAssignments: ReturnType<typeof assignSlugs> = [];
+  for (const [, workScenes] of scenesByWork) {
+    const takenForWork = new Set(workScenes.map((s) => s.slug).filter((s): s is string => !!s));
+    sceneAssignments.push(...assignSlugs(workScenes, (s) => slugify(s.title), takenForWork));
+  }
 
   console.log(`\nScènes (publiques, domaine public) : ${scenes?.length ?? 0} chargées, ${sceneAssignments.length} slug(s) à poser.`);
   for (const a of sceneAssignments) {

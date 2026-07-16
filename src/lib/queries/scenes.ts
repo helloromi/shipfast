@@ -107,7 +107,11 @@ export async function fetchUserPrivateScenes(userId: string): Promise<Scene[]> {
   }));
 }
 
-const SCENE_WITH_RELATIONS_SELECT = `
+// `works` en jointure simple (by-id) ou `works!inner` (résolution par slug d'œuvre :
+// on filtre sur works.slug, ce qui exige un inner join). Même liste de champs
+// partout pour garder un seul mappeur.
+function sceneWithRelationsSelect(innerWork: boolean): string {
+  return `
   id,
   work_id,
   title,
@@ -118,7 +122,7 @@ const SCENE_WITH_RELATIONS_SELECT = `
   owner_user_id,
   source_scene_id,
   slug,
-  works ( id, title, is_public_domain, slug, author ),
+  ${innerWork ? "works!inner" : "works"} ( id, title, is_public_domain, slug, author ),
   characters ( id, name ),
   lines (
     id,
@@ -128,6 +132,10 @@ const SCENE_WITH_RELATIONS_SELECT = `
     characters ( id, name )
   )
 `;
+}
+
+const SCENE_WITH_RELATIONS_SELECT = sceneWithRelationsSelect(false);
+const SCENE_WITH_RELATIONS_SELECT_INNER = sceneWithRelationsSelect(true);
 
 function mapSceneQueryResult(data: SceneQueryResult): SceneWithRelations {
   return {
@@ -160,17 +168,50 @@ export async function fetchSceneWithRelations(id: string): Promise<SceneWithRela
 }
 
 /**
- * Résolution par slug (route SEO /scenes/[auteur]/[piece]/[scene]). scenes.slug
- * est unique globalement en base : un seul segment suffit à retrouver la scène,
- * les segments auteur/piece ne servent qu'à valider/canonicaliser l'URL côté route.
+ * Résolution pour la route SEO /scenes/[auteur]/[piece]/[scene]. Le slug de scène
+ * n'est unique QUE dans son œuvre (contrainte composite (work_id, slug)) : on
+ * filtre donc sur (works.slug, scenes.slug). Le segment auteur ne sert qu'à
+ * valider/canonicaliser l'URL côté route.
  */
-export async function fetchSceneWithRelationsBySlug(sceneSlug: string): Promise<SceneWithRelations | null> {
+export async function fetchSceneWithRelationsByWorkAndSlug(
+  workSlug: string,
+  sceneSlug: string
+): Promise<SceneWithRelations | null> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("scenes")
-    .select(SCENE_WITH_RELATIONS_SELECT)
+    .select(SCENE_WITH_RELATIONS_SELECT_INNER)
+    .eq("works.slug", workSlug)
     .eq("slug", sceneSlug)
-    .single<SceneQueryResult>();
+    .maybeSingle<SceneQueryResult>();
+
+  if (error) {
+    console.error(error);
+    return null;
+  }
+
+  if (!data) return null;
+
+  return mapSceneQueryResult(data);
+}
+
+/**
+ * Résolution de secours pour les URLs déjà indexées. Après re-sluguage, l'ancien
+ * slug d'une scène est conservé dans previous_slugs : on retrouve la scène par
+ * son historique (dans la bonne œuvre) pour la rediriger en 301 vers son slug
+ * canonique. Retourne null si l'ancien slug n'est pas connu.
+ */
+export async function fetchSceneByPreviousSlug(
+  workSlug: string,
+  previousSceneSlug: string
+): Promise<SceneWithRelations | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("scenes")
+    .select(SCENE_WITH_RELATIONS_SELECT_INNER)
+    .eq("works.slug", workSlug)
+    .contains("previous_slugs", [previousSceneSlug])
+    .maybeSingle<SceneQueryResult>();
 
   if (error) {
     console.error(error);
