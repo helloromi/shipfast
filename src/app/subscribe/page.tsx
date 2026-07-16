@@ -68,13 +68,17 @@ export default async function SubscribePage() {
         </p>
       </div>
 
-      <div className="text-center text-sm text-[#524b5a]">
+      <div className="flex flex-col items-center gap-1.5 text-center text-sm text-[#524b5a]">
         <Link
-          href="/onboarding"
+          href="/home"
           className="font-semibold text-[#3b1f4a] underline underline-offset-4"
         >
-          ← Retour
+          Commencer gratuitement sans le pass
         </Link>
+        <p className="text-xs text-[#7a7184]">
+          Le pass ne sert qu&apos;à importer tes propres textes. Tout le
+          répertoire du domaine public reste accessible librement.
+        </p>
       </div>
     </div>
   );
