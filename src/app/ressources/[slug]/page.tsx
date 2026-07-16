@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!article) return {};
 
   const url = `${BASE_URL}/ressources/${slug}`;
-  const title = `${article.title} | Côté-Cour`;
+  const title = article.metaTitle ?? `${article.title} | Côté-Cour`;
 
   return {
     title,
@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description: article.description,
       url,
-      type: "article",
+      type: article.ogType ?? "article",
       locale: "fr_FR",
     },
   };
@@ -72,12 +72,28 @@ export default async function RessourceArticlePage({ params }: Props) {
               name: article.title,
               itemListOrder: "https://schema.org/ItemListOrderAscending",
               numberOfItems: article.listItems.length,
-              itemListElement: article.listItems.map((item, i) => ({
-                "@type": "ListItem",
-                position: i + 1,
-                name: item.name,
-                url: `${BASE_URL}${item.href}`,
-              })),
+              itemListElement: article.listItems.map((item, i) =>
+                item.author
+                  ? {
+                      "@type": "ListItem",
+                      position: i + 1,
+                      item: {
+                        "@type": "CreativeWork",
+                        name: item.name,
+                        url: `${BASE_URL}${item.href}`,
+                        author: { "@type": "Person", name: item.author },
+                        ...(item.work
+                          ? { isPartOf: { "@type": "CreativeWork", name: item.work } }
+                          : {}),
+                      },
+                    }
+                  : {
+                      "@type": "ListItem",
+                      position: i + 1,
+                      name: item.name,
+                      url: `${BASE_URL}${item.href}`,
+                    },
+              ),
             },
           ],
         }

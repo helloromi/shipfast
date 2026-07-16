@@ -16,26 +16,58 @@ import {
   monologues as monologuesHomme,
   slug as slugMonologuesHomme,
 } from "./quel-monologue-choisir-pour-une-audition-homme";
+import {
+  Body as BodyTiradesFemme,
+  meta as metaTiradesFemme,
+  slug as slugTiradesFemme,
+  tirades as tiradesFemme,
+} from "./tirades-monologues-femme-audition";
 
 export type ArticleMeta = {
   slug: string;
   title: string;
   description: string;
   publishedAt: Date;
+  /** <title> HTML si distinct du H1 (`title`). Défaut : `${title} | Côté-Cour`. */
+  metaTitle?: string;
 };
 
 /**
  * Une page liste (ex. sélection de monologues) fournit ses items pour émettre un
  * schema ItemList en plus de l'Article. Absent = page éditoriale simple (Article seul).
+ * `author`/`work` présents => l'item est émis en CreativeWork (author + isPartOf) ;
+ * sinon en ListItem simple (name + url).
  */
-export type ArticleListItem = { name: string; href: string };
+export type ArticleListItem = {
+  name: string;
+  href: string;
+  author?: string;
+  work?: string;
+};
 
 export type Article = ArticleMeta & {
   Body: () => ReactNode;
   listItems?: ArticleListItem[];
+  /** Type Open Graph. Défaut : "article". */
+  ogType?: "article" | "website";
 };
 
 const articles: Article[] = [
+  {
+    slug: slugTiradesFemme,
+    title: metaTiradesFemme.title,
+    metaTitle: metaTiradesFemme.metaTitle,
+    description: metaTiradesFemme.description,
+    publishedAt: metaTiradesFemme.publishedAt,
+    Body: BodyTiradesFemme,
+    ogType: "website",
+    listItems: tiradesFemme.map((t) => ({
+      name: t.name,
+      href: t.href,
+      author: t.author,
+      work: t.work,
+    })),
+  },
   {
     slug: slugMonologuesHomme,
     title: metaMonologuesHomme.title,
