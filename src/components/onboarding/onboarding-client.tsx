@@ -558,9 +558,17 @@ export default function OnboardingPageClient() {
                 Suivant
               </button>
             ) : (
-              <Link href="/subscribe" className="btn-primary !min-h-[48px] !px-7">
-                Découvrir les plans
-              </Link>
+              <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+                <Link href="/home" className="btn-primary !min-h-[48px] !px-7">
+                  Commencer gratuitement
+                </Link>
+                <Link
+                  href="/subscribe"
+                  className="text-center text-sm font-semibold text-[#3b1f4a] underline underline-offset-4 sm:px-3"
+                >
+                  Découvrir les plans
+                </Link>
+              </div>
             )}
           </div>
         </div>
@@ -585,13 +593,16 @@ export default function OnboardingPageClient() {
       {/* CTA sticky mobile - dernière étape */}
       {isLastStep && (
         <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#e7e0d4] bg-white/95 p-4 shadow-lg backdrop-blur-sm md:hidden">
-          <div className="mx-auto max-w-3xl">
-            <Link href="/subscribe" className="btn-primary !min-h-[52px] w-full">
+          <div className="mx-auto flex max-w-3xl flex-col gap-2">
+            <Link href="/home" className="btn-primary !min-h-[52px] w-full">
+              Commencer gratuitement
+            </Link>
+            <Link
+              href="/subscribe"
+              className="text-center text-sm font-semibold text-[#3b1f4a] underline underline-offset-4"
+            >
               Découvrir les plans
             </Link>
-            <p className="mt-2 text-center text-xs font-semibold text-green-600">
-              ✓ Garantie satisfait ou remboursé sous 14 jours
-            </p>
           </div>
         </div>
       )}

@@ -28,7 +28,10 @@ export default async function LearnPage({ params, searchParams }: Props) {
   if (!user && scene.is_private) {
     redirect("/login");
   }
-  if (user) {
+  // Le paywall ne concerne que le contenu privé importé. Sur une scène du domaine
+  // public, un utilisateur connecté a exactement le même accès qu'un visiteur
+  // anonyme — jamais moins. On ne garde donc l'abonnement que si is_private.
+  if (user && scene.is_private) {
     await requireSubscriptionOrRedirect(user);
   }
 

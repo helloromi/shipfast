@@ -4,7 +4,6 @@ import { fetchWorks, searchWorks, fetchUserWorkAverages } from "@/lib/queries/wo
 import { getSupabaseSessionUser, fetchUserPrivateScenes } from "@/lib/queries/scenes";
 import { SearchBar } from "@/components/works/search-bar";
 import { t } from "@/locales/fr";
-import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
 import { ScenesListSkeleton } from "@/components/works/scenes-list-skeleton";
 
 type Props = {
@@ -16,9 +15,6 @@ export default async function ScenesPage({ searchParams }: Props) {
   const query = params.q || "";
 
   const user = await getSupabaseSessionUser();
-  if (user) {
-    await requireSubscriptionOrRedirect(user);
-  }
 
   return (
     <div className="flex flex-col gap-6">

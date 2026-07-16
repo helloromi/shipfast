@@ -27,7 +27,10 @@ export async function SceneDetailView({ scene }: Props) {
   const id = scene.id;
 
   const user = await getSupabaseSessionUser();
-  if (user) {
+  // Le paywall ne concerne que le contenu privé importé. Sur une scène du domaine
+  // public, un utilisateur connecté a exactement le même accès qu'un visiteur
+  // anonyme — jamais moins (règle produit n°1). On ne garde l'abonnement que si is_private.
+  if (user && scene.is_private) {
     await requireSubscriptionOrRedirect(user);
   }
 

@@ -7,14 +7,12 @@ import { StatsSummaryCard } from "@/components/stats/stats-summary-card";
 import { SceneCard } from "@/components/home/scene-card";
 import { ActiveImportsSection } from "@/components/home/active-imports-section";
 import { t } from "@/locales/fr";
-import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
 
 export default async function HomePage() {
   const user = await getSupabaseSessionUser();
   if (!user) {
     redirect("/login");
   }
-  await requireSubscriptionOrRedirect(user);
 
   const [progresses, statsSummary] = await Promise.all([
     fetchUserProgressScenes(user.id),

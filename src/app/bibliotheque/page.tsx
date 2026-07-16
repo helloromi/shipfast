@@ -9,7 +9,6 @@ import {
 } from "@/lib/queries/scenes";
 import { SearchBar } from "@/components/works/search-bar";
 import { t } from "@/locales/fr";
-import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
 
 type Props = {
   searchParams: Promise<{ q?: string }>;
@@ -23,7 +22,6 @@ export default async function MesScenesPage({ searchParams }: Props) {
   if (!user) {
     redirect("/login");
   }
-  await requireSubscriptionOrRedirect(user);
 
   const [privateScenes, sharedScenesRaw, pendingImports, activeSceneIds] = await Promise.all([
     fetchUserPrivateScenes(user.id),
