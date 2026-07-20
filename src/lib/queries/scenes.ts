@@ -223,6 +223,38 @@ export async function fetchSceneByPreviousSlug(
   return mapSceneQueryResult(data);
 }
 
+export type WorkNavScene = {
+  id: string;
+  title: string;
+  chapter: string | null;
+  slug: string;
+};
+
+/**
+ * Scènes sœurs d'une œuvre pour le maillage interne (bloc navigation en bas de
+ * page scène). Restreint exactement à l'ensemble qui répond 200 sur la route
+ * slug : is_private=false ET slug non nul. L'appelant scope déjà sur une œuvre
+ * du domaine public à slug, donc ces deux filtres suffisent à reproduire la
+ * garde de route `isEligibleForSlugRoute`. Une seule requête pour tous les liens.
+ */
+export async function fetchWorkScenesForNav(workId: string): Promise<WorkNavScene[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("scenes")
+    .select("id, title, chapter, slug")
+    .eq("work_id", workId)
+    .eq("is_private", false)
+    .not("slug", "is", null)
+    .returns<WorkNavScene[]>();
+
+  if (error) {
+    console.error(error);
+    return [];
+  }
+
+  return data ?? [];
+}
+
 export async function fetchUserSceneAverages(userId: string): Promise<SceneAverage[]> {
   const supabase = await createSupabaseServerClient();
   const { data: sessions, error } = await supabase

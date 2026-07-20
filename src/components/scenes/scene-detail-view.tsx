@@ -6,6 +6,7 @@ import { fetchLineMastery, fetchSceneStats } from "@/lib/queries/stats";
 import { fetchUserLineHighlights } from "@/lib/queries/notes";
 import { fetchAnnotationsForScene } from "@/lib/queries/teacher";
 import { SceneDetailTabs } from "@/components/scenes/scene-detail-tabs";
+import { SceneNavBlock } from "@/components/scenes/scene-nav-block";
 import { TeacherAnnotationsPanel } from "@/components/classes/teacher-annotations-panel";
 import { t } from "@/locales/fr";
 import { hasAccess } from "@/lib/queries/access";
@@ -183,6 +184,10 @@ export async function SceneDetailView({ scene }: Props) {
           ← {t.scenes.bibliotheque.toutesLesScenes}
         </Link>
       </div>
+
+      {/* Maillage interne SEO : préc/suiv + scènes de l'œuvre, rendu serveur.
+          Ne rend rien pour les scènes privées/catalogue (garde interne). */}
+      <SceneNavBlock scene={scene} />
     </div>
   );
 }
