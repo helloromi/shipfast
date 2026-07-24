@@ -17,6 +17,13 @@ import {
   slug as slugMonologuesHomme,
 } from "./quel-monologue-choisir-pour-une-audition-homme";
 import {
+  Body as BodyScenesDeux,
+  duoSchemaName,
+  duos as duosScenesDeux,
+  meta as metaScenesDeux,
+  slug as slugScenesDeux,
+} from "./scenes-a-deux-personnages";
+import {
   Body as BodyTiradesFemme,
   meta as metaTiradesFemme,
   slug as slugTiradesFemme,
@@ -53,6 +60,21 @@ export type Article = ArticleMeta & {
 };
 
 const articles: Article[] = [
+  {
+    slug: slugScenesDeux,
+    title: metaScenesDeux.title,
+    metaTitle: metaScenesDeux.metaTitle,
+    description: metaScenesDeux.description,
+    publishedAt: metaScenesDeux.publishedAt,
+    Body: BodyScenesDeux,
+    ogType: "website",
+    listItems: duosScenesDeux.map((d) => ({
+      name: duoSchemaName(d),
+      href: d.href,
+      author: d.author,
+      work: d.work,
+    })),
+  },
   {
     slug: slugTiradesFemme,
     title: metaTiradesFemme.title,
