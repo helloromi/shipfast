@@ -23,6 +23,8 @@ export type Scene = {
   owner_user_id?: string | null;
   is_private?: boolean;
   slug?: string | null;
+  /** `scenes` n'a pas d'updated_at : sert de datePublished dans le JSON-LD. */
+  created_at?: string | null;
 };
 
 export type AccessType = "free_slot" | "purchased" | "private";

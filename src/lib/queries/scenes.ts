@@ -122,6 +122,7 @@ function sceneWithRelationsSelect(innerWork: boolean): string {
   owner_user_id,
   source_scene_id,
   slug,
+  created_at,
   ${innerWork ? "works!inner" : "works"} ( id, title, is_public_domain, slug, author ),
   characters ( id, name ),
   lines (

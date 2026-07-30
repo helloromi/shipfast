@@ -2,12 +2,20 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getArticlesList } from "@/content/ressources/articles";
+import { buildOpenGraph, buildTwitter } from "@/lib/seo/open-graph";
+
+const TITLE = "Ressources : guides pour apprendre son texte | Côté-Cour";
+const DESCRIPTION =
+  "Conseils et articles pour apprendre tes textes de théâtre, mémoriser tes répliques et progresser en cours de théâtre.";
 
 export const metadata: Metadata = {
-  title: "Ressources | Côté-Cour",
-  description:
-    "Conseils et articles pour apprendre tes textes de théâtre, mémoriser tes répliques et progresser en cours de théâtre.",
+  title: TITLE,
+  description: DESCRIPTION,
   alternates: { canonical: "/ressources" },
+  // Sans openGraph explicite, la page héritait des og:title/og:description du layout
+  // racine, qui ne correspondaient pas à son propre title.
+  openGraph: buildOpenGraph({ title: TITLE, description: DESCRIPTION, url: "/ressources" }),
+  twitter: buildTwitter({ title: TITLE, description: DESCRIPTION }),
 };
 
 export default function RessourcesPage() {

@@ -9,20 +9,20 @@ import { FAQSection } from "@/components/landing/faq-section";
 import { LandingCtaTrackedLink } from "@/components/landing/landing-cta-tracked-link";
 import { LandingViewTracker } from "@/components/landing/landing-view-tracker";
 import { PricingSection } from "@/components/pricing/pricing-section";
+import { buildOpenGraph, buildTwitter } from "@/lib/seo/open-graph";
+
+const TITLE = "Apprendre son texte de théâtre : méthode flashcards | Côté-Cour";
+const DESCRIPTION =
+  "Mémorise tes répliques réplique par réplique, avec des flashcards. Scènes du domaine public gratuites et sans compte : Molière, Racine, Corneille, Rostand.";
 
 export const metadata: Metadata = {
-  title: "Apprendre son texte de théâtre : méthode flashcards | Côté-Cour",
-  description:
-    "Mémorise tes répliques réplique par réplique, avec des flashcards. Scènes du domaine public gratuites et sans compte : Molière, Racine, Corneille, Rostand.",
+  title: TITLE,
+  description: DESCRIPTION,
   alternates: { canonical: "/landing" },
-  openGraph: {
-    // Next.js ne fusionne pas openGraph en profondeur avec le layout parent :
-    // type/locale doivent être répétés ici pour ne pas disparaître du HTML.
-    title: "Apprendre son texte de théâtre par cœur — Côté-Cour",
-    description: "La méthode flashcards pour mémoriser tes scènes. Gratuit sur le domaine public, sans compte.",
-    type: "website",
-    locale: "fr_FR",
-  },
+  // buildOpenGraph re-déclare type, locale ET images : un openGraph écrit à la main
+  // ici repartirait de zéro et perdrait l'image du fichier opengraph-image.tsx.
+  openGraph: buildOpenGraph({ title: TITLE, description: DESCRIPTION, url: "/landing" }),
+  twitter: buildTwitter({ title: TITLE, description: DESCRIPTION }),
 };
 
 /** Section pleine largeur qui s'échappe du conteneur du layout. */

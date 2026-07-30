@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -7,6 +8,14 @@ import { StatsSummaryCard } from "@/components/stats/stats-summary-card";
 import { SceneCard } from "@/components/home/scene-card";
 import { ActiveImportsSection } from "@/components/home/active-imports-section";
 import { t } from "@/locales/fr";
+
+// Tableau de bord d'un utilisateur connecté : redirige vers /login sans session, donc
+// rien à indexer. On ne déclare QUE `robots` : la fusion racine → enfant se fait champ
+// par champ au premier niveau, title/description/openGraph restent hérités intacts.
+export const metadata: Metadata = {
+  title: "Mon espace | Côté-Cour",
+  robots: { index: false, follow: true },
+};
 
 export default async function HomePage() {
   const user = await getSupabaseSessionUser();

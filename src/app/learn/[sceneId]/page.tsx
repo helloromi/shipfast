@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { LearnSession } from "@/components/learn/learn-session";
@@ -12,6 +13,16 @@ type Props = {
   params: Promise<{ sceneId: string }>;
   searchParams: Promise<{ character?: string; characterName?: string; startLine?: string; endLine?: string }>;
 };
+
+// Une session de flashcards n'est pas une page de contenu : elle n'a rien à
+// faire dans l'index (deux URLs /learn y étaient déjà). On ne déclare QUE
+// `robots` : la fusion racine → enfant se fait champ par champ au premier
+// niveau, donc title, description et openGraph restent hérités du layout
+// racine intacts. Ne pas ajouter d'objet `openGraph` ici sans y re-déclarer
+// `type` et `locale` : les objets imbriqués, eux, ne fusionnent pas.
+export async function generateMetadata(): Promise<Metadata> {
+  return { robots: { index: false, follow: false } };
+}
 
 export default async function LearnPage({ params, searchParams }: Props) {
   const { sceneId } = await params;

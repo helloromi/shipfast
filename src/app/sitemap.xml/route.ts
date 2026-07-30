@@ -41,6 +41,33 @@ export async function GET(request: NextRequest) {
     console.error("sitemap: failed to fetch public scenes", scenesError);
   }
 
+  // Pages œuvre (/scenes/[auteur]/[piece]) : même portée que les scènes ci-dessus.
+  // `!inner` sur scenes garantit qu'on n'émet pas l'URL d'une œuvre sans scène
+  // publiable — la route répondrait 404.
+  const { data: publicWorks, error: worksError } = await supabase
+    .from("works")
+    .select("slug, author, scenes!inner(id, is_private, slug)")
+    .eq("is_public_domain", true)
+    .not("slug", "is", null)
+    .eq("scenes.is_private", false)
+    .not("scenes.slug", "is", null)
+    .returns<{ slug: string; author: string | null; scenes: { id: string }[] }[]>();
+  if (worksError) {
+    console.error("sitemap: failed to fetch public works", worksError);
+  }
+
+  // `works` n'a pas de created_at exploitable ici : le lastmod d'une page œuvre est
+  // la date de la scène la plus récemment ajoutée à cette œuvre.
+  const latestSceneDateByWorkSlug = new Map<string, string>();
+  for (const scene of publicScenes ?? []) {
+    const workSlug = scene.works?.slug;
+    if (!workSlug) continue;
+    const date = String(scene.created_at ?? "").slice(0, 10);
+    if (!date) continue;
+    const current = latestSceneDateByWorkSlug.get(workSlug);
+    if (!current || date > current) latestSceneDateByWorkSlug.set(workSlug, date);
+  }
+
   const entries: { loc: string; lastmod: string; changefreq: string; priority: number }[] = [
     {
       loc: `${baseUrl}/landing`,
@@ -66,6 +93,14 @@ export async function GET(request: NextRequest) {
       changefreq: "weekly",
       priority: 0.9,
     },
+    // Palier œuvre : priorité entre la page liste (0.9) et les pages scènes (0.8).
+    ...(publicWorks ?? []).map((work) => ({
+      loc: `${baseUrl}/scenes/${encodeURIComponent(slugify(work.author ?? ""))}/${encodeURIComponent(work.slug)}`,
+      lastmod:
+        latestSceneDateByWorkSlug.get(work.slug) ?? new Date().toISOString().slice(0, 10),
+      changefreq: "monthly",
+      priority: 0.85,
+    })),
     ...(publicScenes ?? [])
       .filter((scene) => !!scene.works?.slug)
       .map((scene) => {

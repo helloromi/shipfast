@@ -76,10 +76,23 @@ const CONFIG = {
 
 const SEED_FILE = join(import.meta.dirname, "cote-cour-seed.json");
 
+/**
+ * Acte de la scène : champ explicite du seed en priorité, sinon déduit du
+ * titre (« Acte I, Scène III » → « Acte I ») pour les lots générés avant que
+ * wikisource-fetch ne pose `chapter`. null = indéterminé, et main() refuse
+ * alors d'insérer sans --allow-missing-chapter.
+ */
+function sceneChapter(scene: SeedScene): string | null {
+  if (scene.chapter != null) return scene.chapter;
+  return scene.title.match(/^Acte [IVXLC]+/i)?.[0] ?? null;
+}
+
+const ALLOW_MISSING_CHAPTER = process.argv.includes("--allow-missing-chapter");
+
 // ─────────────────────────────────────────────────────────────
 
 type SeedLine = { order: number; character: string; text: string };
-type SeedScene = { title: string; characters: string[]; lines: SeedLine[] };
+type SeedScene = { title: string; chapter?: string | null; characters: string[]; lines: SeedLine[] };
 type SeedWork = {
   title: string;
   author: string;
@@ -105,7 +118,7 @@ async function insertScene(work: SeedWork, workId: string, scene: SeedScene) {
       [C.scene.title]: scene.title,
       [C.scene.workId]: workId,
       [C.scene.author]: work.author,
-      [C.scene.chapter]: scene.title.match(/^Acte [IVXLC]+/i)?.[0] ?? null,
+      [C.scene.chapter]: sceneChapter(scene),
       [C.scene.isPrivate]: CONFIG.defaults.sceneIsPrivate,
       [C.scene.ownerUserId]: CONFIG.defaults.sceneOwnerUserId,
     })
@@ -145,6 +158,21 @@ async function main() {
   const raw = JSON.parse(readFileSync(SEED_FILE, "utf8")) as { works: SeedWork[] };
   const C = CONFIG.cols;
   const T = CONFIG.tables;
+
+  // Garde-fou : un acte indéterminé donne des scènes homonymes en base
+  // (« Scène II » ×5 pour une pièce en 5 actes) et un chapter null. On refuse
+  // le lot plutôt que d'insérer une valeur par défaut silencieuse.
+  const missing = raw.works.flatMap((w) =>
+    w.scenes.filter((s) => sceneChapter(s) === null).map((s) => `${w.title} — ${s.title}`)
+  );
+  if (missing.length > 0 && !ALLOW_MISSING_CHAPTER) {
+    throw new Error(
+      `${missing.length} scène(s) sans acte déterminable :\n` +
+        missing.map((m) => `  · ${m}`).join("\n") +
+        `\n\nRegénérer ces scènes avec wikisource-fetch (qui pose "chapter"), ou relancer ` +
+        `avec --allow-missing-chapter pour les insérer avec chapter = null.`
+    );
+  }
 
   for (const work of raw.works) {
     const { data: existingRows, error: existingErr } = await db
