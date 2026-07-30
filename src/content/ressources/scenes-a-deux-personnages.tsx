@@ -92,7 +92,7 @@ export const duos: Duo[] = [
     author: "Jean Racine",
     sceneLabel: "Acte I, scène 3",
     characters: "Phèdre / Œnone",
-    href: "/scenes/jean-racine/phedre/acte-i-scene-3",
+    href: "/scenes/jean-racine/phedre/acte-i-scene-iii",
     registre: "Tragédie",
   },
   {

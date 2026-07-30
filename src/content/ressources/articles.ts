@@ -24,6 +24,27 @@ import {
   slug as slugScenesDeux,
 } from "./scenes-a-deux-personnages";
 import {
+  Body as BodyScenesTrois,
+  meta as metaScenesTrois,
+  slug as slugScenesTrois,
+  trios,
+  triosSchemaName,
+} from "./scenes-de-theatre-a-3-personnages";
+import {
+  Body as BodyScenesCourtes,
+  courtes,
+  courtesSchemaName,
+  meta as metaScenesCourtes,
+  slug as slugScenesCourtes,
+} from "./scenes-de-theatre-courtes";
+import {
+  Body as BodyDeuxFemmes,
+  duosFeminins,
+  duosFemininsSchemaName,
+  meta as metaDeuxFemmes,
+  slug as slugDeuxFemmes,
+} from "./scenes-de-theatre-deux-femmes";
+import {
   Body as BodyTiradesFemme,
   meta as metaTiradesFemme,
   slug as slugTiradesFemme,
@@ -73,6 +94,51 @@ const articles: Article[] = [
       href: d.href,
       author: d.author,
       work: d.work,
+    })),
+  },
+  {
+    slug: slugScenesTrois,
+    title: metaScenesTrois.title,
+    metaTitle: metaScenesTrois.metaTitle,
+    description: metaScenesTrois.description,
+    publishedAt: metaScenesTrois.publishedAt,
+    Body: BodyScenesTrois,
+    ogType: "website",
+    listItems: trios.map((s) => ({
+      name: triosSchemaName(s),
+      href: s.href,
+      author: s.author,
+      work: s.work,
+    })),
+  },
+  {
+    slug: slugScenesCourtes,
+    title: metaScenesCourtes.title,
+    metaTitle: metaScenesCourtes.metaTitle,
+    description: metaScenesCourtes.description,
+    publishedAt: metaScenesCourtes.publishedAt,
+    Body: BodyScenesCourtes,
+    ogType: "website",
+    listItems: courtes.map((s) => ({
+      name: courtesSchemaName(s),
+      href: s.href,
+      author: s.author,
+      work: s.work,
+    })),
+  },
+  {
+    slug: slugDeuxFemmes,
+    title: metaDeuxFemmes.title,
+    metaTitle: metaDeuxFemmes.metaTitle,
+    description: metaDeuxFemmes.description,
+    publishedAt: metaDeuxFemmes.publishedAt,
+    Body: BodyDeuxFemmes,
+    ogType: "website",
+    listItems: duosFeminins.map((s) => ({
+      name: duosFemininsSchemaName(s),
+      href: s.href,
+      author: s.author,
+      work: s.work,
     })),
   },
   {

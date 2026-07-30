@@ -40,7 +40,7 @@ export const monologues: Monologue[] = [
   },
   {
     name: "Le monologue de Figaro — Le Mariage de Figaro (Beaumarchais)",
-    href: "/scenes/beaumarchais/le-mariage-de-figaro/acte-v-scene-3",
+    href: "/scenes/beaumarchais/le-mariage-de-figaro/acte-v-scene-3-monologue-de-figaro",
     linkLabel: "Lire et apprendre le monologue de Figaro",
     blurb: (
       <>
