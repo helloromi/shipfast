@@ -52,7 +52,8 @@ type RawLine = { character: string; text: string };
 type ParseStrategy = "templates" | "bold_names" | "plain_caps" | "html_render" | "none";
 
 type SeedLine = { order: number; character: string; text: string };
-type SeedScene = { title: string; characters: string[]; lines: SeedLine[] };
+/** chapter : acte canonique (« Acte II »), null si la source ne le donne pas. */
+type SeedScene = { title: string; chapter: string | null; characters: string[]; lines: SeedLine[] };
 type SeedWork = {
   title: string;
   author: string;
@@ -378,9 +379,13 @@ function parseHtmlSectionByCaps(html: string): RawLine[] {
   return parsePlainCaps(text.split("\n").map((l) => l.replace(/\s+/g, " ").trim()));
 }
 
-type ParsedScene = { label: string; lines: RawLine[]; strategy: ParseStrategy };
+type ParsedScene = { label: string; act: string | null; lines: RawLine[]; strategy: ParseStrategy };
 
-/** Découpe le HTML rendu par titres h2-h4 « Scène N » et parse chaque section. */
+/**
+ * Découpe le HTML rendu par titres h2-h4 « Scène N » et parse chaque section.
+ * Les entêtes d'acte (h2 « ACTE II. ») ne sont pas des scènes mais portent
+ * l'acte des scènes qui les suivent : on les retient au lieu de les jeter.
+ */
 function parseHtmlDocument(rawHtml: string, pageLabel: string): ParsedScene[] {
   const html = stripHtmlNoise(rawHtml);
   const headingPattern = /<h([2-4])[^>]*>([\s\S]*?)<\/h\1>/gi;
@@ -390,26 +395,39 @@ function parseHtmlDocument(rawHtml: string, pageLabel: string): ParsedScene[] {
     marks.push({ label: htmlToPlainText(m[2] ?? ""), start: m.index, contentStart: m.index + m[0].length });
   }
 
-  const parseSection = (section: string, label: string): ParsedScene | null => {
+  const parseSection = (section: string, label: string, act: string | null): ParsedScene | null => {
     const byClass = parseHtmlSection(section);
-    if (byClass.length >= 2) return { label, lines: byClass, strategy: "html_render" };
+    if (byClass.length >= 2) return { label, act, lines: byClass, strategy: "html_render" };
     const byCaps = parseHtmlSectionByCaps(section);
-    if (byCaps.length >= 2) return { label, lines: byCaps, strategy: "html_render" };
+    if (byCaps.length >= 2) return { label, act, lines: byCaps, strategy: "html_render" };
     return null;
   };
 
-  const sceneMarks = marks
-    .map((mark, i) => ({ ...mark, end: marks[i + 1]?.start ?? html.length }))
-    .filter((mark) => /sc[èe]ne/i.test(mark.label));
+  const bounded = marks.map((mark, i) => ({ ...mark, end: marks[i + 1]?.start ?? html.length }));
+  const sceneMarks = bounded.filter((mark) => isSceneHeading(mark.label));
 
   if (sceneMarks.length === 0) {
-    const whole = parseSection(html, pageLabel);
+    const whole = parseSection(html, pageLabel, normalizeActLabel(pageLabel));
     return whole ? [whole] : [];
   }
 
+  /** Dernier entête « Acte N » situé avant la scène — sinon l'acte de la page. */
+  const actBefore = (start: number): string | null => {
+    let act = normalizeActLabel(pageLabel);
+    for (const mark of bounded) {
+      if (mark.start >= start) break;
+      act = normalizeActLabel(mark.label) ?? act;
+    }
+    return act;
+  };
+
   const scenes: ParsedScene[] = [];
   for (const mark of sceneMarks) {
-    const scene = parseSection(html.slice(mark.contentStart, mark.end), mark.label.replace(/\.\s*$/, ""));
+    const scene = parseSection(
+      html.slice(mark.contentStart, mark.end),
+      mark.label.replace(/\.\s*$/, ""),
+      actBefore(mark.start)
+    );
     if (scene) scenes.push(scene);
   }
   return scenes;
@@ -436,7 +454,7 @@ function parseDocument(wikitext: string, html: string, pageLabel: string): Parse
   const wikiScenes: ParsedScene[] = [];
   for (const section of splitScenes(wikitext, pageLabel)) {
     const { lines, strategy } = parseWikitextChunk(section.wikitext);
-    if (lines.length >= 2) wikiScenes.push({ label: section.label, lines, strategy });
+    if (lines.length >= 2) wikiScenes.push({ label: section.label, act: section.act, lines, strategy });
   }
   const htmlScenes = html ? parseHtmlDocument(html, pageLabel) : [];
 
@@ -469,23 +487,73 @@ function sceneNumberFromLabel(label: string): number | null {
   return Number.isNaN(arabic) ? romanToInt(m[1]) : arabic;
 }
 
-type SectionChunk = { label: string; wikitext: string };
+const ROMAN_OUT = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
-/** Découpe le wikitext en sections « Scène N ». Sans titres, tout est une section. */
+/** Les éditions écrivent l'acte en toutes lettres aussi bien qu'en chiffres. */
+const ACT_ORDINALS: Record<string, number> = {
+  premier: 1, premiere: 1,
+  second: 2, seconde: 2, deuxieme: 2,
+  troisieme: 3,
+  quatrieme: 4,
+  cinquieme: 5,
+};
+
+const deaccent = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+
+/**
+ * Entête d'acte → forme canonique « Acte II ». Accepte « ACTE II. »,
+ * « Acte 2 », « ACTE SECOND », « ACTE PREMIER ».
+ * Renvoie null si ce n'est pas un acte identifiable : l'appelant doit alors
+ * signaler l'acte comme indéterminé, jamais inventer une valeur.
+ */
+function normalizeActLabel(raw: string): string | null {
+  const m = raw.match(/acte\s+([^\s.,;:]+)/i);
+  if (!m?.[1]) return null;
+  const token = m[1].replace(/[.,;:]+$/, "");
+
+  const roman = /^[IVXLC]+$/i.test(token) ? romanToInt(token) : null;
+  const arabic = parseInt(token, 10);
+  const ordinal = ACT_ORDINALS[deaccent(token)];
+  const n = roman ?? (Number.isNaN(arabic) ? undefined : arabic) ?? ordinal;
+
+  return n && n >= 1 && n < ROMAN_OUT.length ? `Acte ${ROMAN_OUT[n]}` : null;
+}
+
+const isSceneHeading = (label: string) => /sc[èe]ne/i.test(label);
+
+type SectionChunk = { label: string; act: string | null; wikitext: string };
+
+/**
+ * Découpe le wikitext en sections « Scène N », en retenant le dernier entête
+ * « Acte N » rencontré : sur une page qui porte la pièce entière, c'est la
+ * seule source de l'acte. Sans titres, tout est une section.
+ */
 function splitScenes(wikitext: string, pageLabel: string): SectionChunk[] {
-  const headingPattern = /^=+\s*([^=\n]*sc[èe]ne[^=\n]*)\s*=+\s*$/gim;
+  const headingPattern = /^=+\s*([^=\n]+?)\s*=+\s*$/gim;
   const headings: Array<{ label: string; index: number }> = [];
   let m: RegExpExecArray | null;
   while ((m = headingPattern.exec(wikitext)) !== null) {
     headings.push({ label: stripMarkup(m[1] ?? "").trim(), index: m.index });
   }
-  if (headings.length === 0) {
-    return [{ label: pageLabel, wikitext }];
+  if (!headings.some((h) => isSceneHeading(h.label))) {
+    return [{ label: pageLabel, act: normalizeActLabel(pageLabel), wikitext }];
   }
-  return headings.map((h, i) => ({
-    label: h.label || `Scène ${i + 1}`,
-    wikitext: wikitext.slice(h.index, headings[i + 1]?.index ?? wikitext.length),
-  }));
+
+  const chunks: SectionChunk[] = [];
+  let act = normalizeActLabel(pageLabel);
+  for (const [i, h] of headings.entries()) {
+    const asAct = normalizeActLabel(h.label);
+    if (!isSceneHeading(h.label)) {
+      if (asAct) act = asAct;
+      continue;
+    }
+    chunks.push({
+      label: h.label || `Scène ${i + 1}`,
+      act: asAct ?? act,
+      wikitext: wikitext.slice(h.index, headings[i + 1]?.index ?? wikitext.length),
+    });
+  }
+  return chunks;
 }
 
 /** Sous-pages « …/Scène N » listées dans une page d'acte quasi vide. */
@@ -578,7 +646,7 @@ function splitSpeech(text: string, maxLen: number): string[] {
 
 // ─── Assemblage ─────────────────────────────────────────────────────────────
 
-function buildScene(label: string, parsed: RawLine[], maxLen: number): SeedScene {
+function buildScene(label: string, act: string | null, parsed: RawLine[], maxLen: number): SeedScene {
   let order = 1;
   const lines: SeedLine[] = [];
   for (const { character, text } of parsed) {
@@ -587,7 +655,7 @@ function buildScene(label: string, parsed: RawLine[], maxLen: number): SeedScene
     }
   }
   const characters = [...new Set(parsed.map((l) => l.character))];
-  return { title: label, characters, lines };
+  return { title: label, chapter: act, characters, lines };
 }
 
 function sanityWarnings(scene: SeedScene): string[] {
@@ -727,10 +795,18 @@ async function processPage(input: string, opts: CliOptions): Promise<{ work: See
   const scenes: SeedScene[] = [];
   const warnings: string[] = [];
   for (const parsed of parsedScenes) {
-    const sceneLabel = /sc[èe]ne/i.test(parsed.label) && !/acte/i.test(parsed.label)
-      ? `${actLabel.match(/Acte\s+[IVXLC\d]+/i)?.[0] ?? actLabel}, ${parsed.label}`
-      : parsed.label;
-    const scene = buildScene(sceneLabel, parsed.lines, opts.maxLen);
+    const needsActPrefix = isSceneHeading(parsed.label) && !/acte/i.test(parsed.label);
+    // Acte inconnu : on préfixe avec le titre de page (« Britannicus (1670) »),
+    // ce qui rend plusieurs scènes homonymes et laisse chapter à null. On
+    // titre donc sans préfixe et on le signale — jamais de préfixe deviné.
+    if (needsActPrefix && !parsed.act) {
+      warnings.push(
+        `"${parsed.label}" : acte indéterminé — aucun entête « Acte N » avant cette scène. ` +
+          `Titre sans acte et chapter null : préciser --act, ou pointer la page d'acte.`
+      );
+    }
+    const sceneLabel = needsActPrefix && parsed.act ? `${parsed.act}, ${parsed.label}` : parsed.label;
+    const scene = buildScene(sceneLabel, parsed.act, parsed.lines, opts.maxLen);
     log(`   ✓ ${sceneLabel} — ${scene.lines.length} cartes, ${scene.characters.length} personnage(s) [${parsed.strategy}]`);
     warnings.push(...sanityWarnings(scene).map((w) => `"${sceneLabel}" : ${w}`));
     scenes.push(scene);

@@ -9,6 +9,8 @@ import { SceneDetailTabs } from "@/components/scenes/scene-detail-tabs";
 import { SceneNavBlock } from "@/components/scenes/scene-nav-block";
 import { TeacherAnnotationsPanel } from "@/components/classes/teacher-annotations-panel";
 import { t } from "@/locales/fr";
+import { buildBreadcrumbJsonLd, buildSceneJsonLd } from "@/lib/seo/json-ld";
+import { scenePathFor, workPathForScene } from "@/lib/seo/urls";
 import { hasAccess } from "@/lib/queries/access";
 import { ensurePersonalSceneForCurrentUser } from "@/lib/utils/personal-scene";
 import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
@@ -71,26 +73,32 @@ export async function SceneDetailView({ scene }: Props) {
     user ? fetchAnnotationsForScene(id) : Promise.resolve([]),
   ]);
 
-  const jsonLd = scene.is_private
-    ? null
-    : {
-        "@context": "https://schema.org",
-        "@type": "CreativeWork",
-        name: scene.title,
-        ...(scene.author ? { author: { "@type": "Person", name: scene.author } } : {}),
-        ...(scene.work?.title
-          ? { isPartOf: { "@type": "CreativeWork", name: scene.work.title } }
-          : {}),
-        inLanguage: "fr",
-        ...(scene.characters.length > 0
-          ? {
-              character: scene.characters.map((c) => ({
-                "@type": "Person",
-                name: c.name,
-              })),
-            }
-          : {}),
-      };
+  // Chemins canoniques. Null pour une copie privée ou une scène non sluggée : dans ce
+  // cas ni JSON-LD ni fil d'Ariane (l'URL servie n'est pas une URL canonique).
+  const canonicalPath = scenePathFor(scene);
+  const workPath = workPathForScene(scene);
+
+  const jsonLd =
+    scene.is_private || !canonicalPath
+      ? null
+      : buildSceneJsonLd({
+          title: scene.title,
+          canonicalPath,
+          author: scene.author ?? scene.work?.author ?? null,
+          summary: scene.summary,
+          characters: scene.characters,
+          work: scene.work?.title ? { title: scene.work.title, path: workPath } : null,
+          datePublished: scene.created_at ?? null,
+        });
+
+  const breadcrumb =
+    canonicalPath && workPath && scene.work?.title
+      ? [
+          { name: "Scènes", path: "/scenes" },
+          { name: scene.work.title, path: workPath },
+          { name: scene.title, path: canonicalPath },
+        ]
+      : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -98,6 +106,12 @@ export async function SceneDetailView({ scene }: Props) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
+      {breadcrumb && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(buildBreadcrumbJsonLd(breadcrumb)) }}
         />
       )}
       {user && (
@@ -124,6 +138,36 @@ export async function SceneDetailView({ scene }: Props) {
             )}
           </div>
         </div>
+      )}
+
+      {/* Fil d'Ariane rendu côté serveur : c'était le seul lien manquant entre une page
+          scène et la page de son œuvre. Absent pour les copies privées (pas d'URL
+          canonique, et rien à relier dans le catalogue public). */}
+      {breadcrumb && (
+        <nav aria-label="Fil d'Ariane" className="text-sm text-[#7a7184]">
+          <ol className="flex flex-wrap items-center gap-2">
+            {breadcrumb.map((item, i) => {
+              const isLast = i === breadcrumb.length - 1;
+              return (
+                <li key={item.path} className="flex items-center gap-2">
+                  {i > 0 && <span aria-hidden>›</span>}
+                  {isLast ? (
+                    <span aria-current="page" className="font-semibold text-[#3b1f4a]">
+                      {item.name}
+                    </span>
+                  ) : (
+                    <Link
+                      href={item.path}
+                      className="underline underline-offset-4 hover:text-[#3b1f4a]"
+                    >
+                      {item.name}
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
       )}
 
       <div className="flex flex-col gap-2">

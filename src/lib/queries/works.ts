@@ -2,6 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { Scene, Work, WorkWithScenes } from "@/types/scenes";
 import { weightedAverageScoreByRecency } from "@/lib/utils/score";
 import { sortScenesDramaturgical } from "@/lib/utils/scene-order";
+import { slugify } from "@/lib/utils/slugify";
 
 type WorkQueryResult = Work & {
   scenes: Scene[];
@@ -33,6 +34,7 @@ export async function fetchWorks(
       title,
       author,
       summary,
+      slug,
       scenes!inner (id)
       `
     )
@@ -68,6 +70,7 @@ export async function fetchWorks(
     title: work.title,
     author: work.author,
     summary: work.summary,
+    slug: work.slug,
     scenesCount: Array.isArray(work.scenes) ? work.scenes.length : 0,
   }));
 
@@ -99,6 +102,7 @@ export async function searchWorks(
       title,
       author,
       summary,
+      slug,
       scenes!inner (id)
       `
     )
@@ -130,6 +134,7 @@ export async function searchWorks(
     title: work.title,
     author: work.author,
     summary: work.summary,
+    slug: work.slug,
     scenesCount: Array.isArray(work.scenes) ? work.scenes.length : 0,
   }));
 
@@ -138,6 +143,87 @@ export async function searchWorks(
   }
 
   return works;
+}
+
+export type PublicWorkWithScenes = {
+  id: string;
+  title: string;
+  author: string | null;
+  summary: string | null;
+  slug: string;
+  scenes: { id: string; title: string; chapter: string | null; slug: string }[];
+};
+
+/**
+ * Œuvre du domaine public résolue par son slug, avec ses scènes publiques déjà
+ * sluggées, dans l'ordre dramaturgique.
+ *
+ * Portée volontairement identique au sitemap et à la route scène : `is_public_domain`,
+ * `is_private = false`, `slug` non nul des deux côtés. Une œuvre qui ne satisfait pas
+ * ces conditions n'a pas de page indexable, la route renvoie 404.
+ */
+export async function fetchPublicWorkBySlug(workSlug: string): Promise<PublicWorkWithScenes | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("works")
+    .select("id, title, author, summary, slug, scenes(id, title, chapter, slug, is_private)")
+    .eq("slug", workSlug)
+    .eq("is_public_domain", true)
+    .maybeSingle<{
+      id: string;
+      title: string;
+      author: string | null;
+      summary: string | null;
+      slug: string;
+      scenes: { id: string; title: string; chapter: string | null; slug: string | null; is_private: boolean }[];
+    }>();
+
+  if (error) {
+    console.error(error);
+    return null;
+  }
+  if (!data) return null;
+
+  const scenes = (data.scenes ?? [])
+    .filter((s): s is typeof s & { slug: string } => !s.is_private && !!s.slug)
+    .map(({ id, title, chapter, slug }) => ({ id, title, chapter, slug }));
+
+  // Une œuvre sans aucune scène publiable n'a rien à afficher ni à indexer.
+  if (scenes.length === 0) return null;
+
+  return {
+    id: data.id,
+    title: data.title,
+    author: data.author,
+    summary: data.summary,
+    slug: data.slug,
+    scenes: sortScenesDramaturgical(scenes),
+  };
+}
+
+/**
+ * Chemin canonique de la page œuvre correspondant à un UUID d'œuvre, ou null si
+ * l'œuvre n'a pas de page indexable (hors domaine public, ou pas encore sluggée).
+ *
+ * Sert au 308 de /works/[id] : cette route était indexable sur URL UUID, sans
+ * canonical, avec le title du layout racine, et recevait les 22 liens de la page
+ * liste. Un seul SELECT, pas de chargement de scènes ni de stats.
+ */
+export async function fetchWorkCanonicalPath(workId: string): Promise<string | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("works")
+    .select("slug, author, is_public_domain")
+    .eq("id", workId)
+    .maybeSingle<{ slug: string | null; author: string | null; is_public_domain: boolean | null }>();
+
+  if (error) {
+    console.error(error);
+    return null;
+  }
+  if (!data?.slug || data.is_public_domain !== true) return null;
+
+  return `/scenes/${slugify(data.author ?? "")}/${data.slug}`;
 }
 
 export async function fetchWorkWithScenes(workId: string): Promise<WorkWithScenes | null> {

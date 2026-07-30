@@ -2,25 +2,23 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { t } from "@/locales/fr";
+import { buildOpenGraph, buildTwitter } from "@/lib/seo/open-graph";
 
 const BASE_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.cote-cour.studio").replace(/\/$/, "");
 const PAGE_URL = `${BASE_URL}/professeurs`;
 
+// Sans le suffixe de marque : avec, le title faisait 65 caractères et Google le coupait.
+const TITLE = "Espace professeur : distribue les textes de ta classe";
+const DESCRIPTION =
+  "Crée ta classe, invite tes élèves par un code, distribue à chacun son texte et son personnage. Gratuit pour les textes du domaine public.";
+
 export const metadata: Metadata = {
-  title: "Espace professeur : distribue les textes de ta classe | Côté-Cour",
-  description:
-    "Crée ta classe, invite tes élèves par un code, distribue à chacun son texte et son personnage. Gratuit pour les textes du domaine public.",
+  title: TITLE,
+  description: DESCRIPTION,
   alternates: { canonical: PAGE_URL },
-  openGraph: {
-    // Next.js ne fusionne pas openGraph en profondeur avec le layout parent :
-    // type/locale doivent être répétés ici pour ne pas disparaître du HTML.
-    title: "Espace professeur : distribue les textes de ta classe | Côté-Cour",
-    description:
-      "Crée ta classe, invite tes élèves par un code, distribue à chacun son texte et son personnage. Gratuit pour les textes du domaine public.",
-    url: PAGE_URL,
-    type: "website",
-    locale: "fr_FR",
-  },
+  // buildOpenGraph re-déclare type, locale ET images (cf. src/lib/seo/open-graph.ts).
+  openGraph: buildOpenGraph({ title: TITLE, description: DESCRIPTION, url: PAGE_URL }),
+  twitter: buildTwitter({ title: TITLE, description: DESCRIPTION }),
 };
 
 /** Section pleine largeur qui s'échappe du conteneur du layout. */

@@ -2,16 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { getArticleBySlug, getArticlesList } from "@/content/ressources/articles";
+import { getArticleBySlug } from "@/content/ressources/articles";
+import { buildOpenGraph, buildTwitter } from "@/lib/seo/open-graph";
+import { firstThatFits, TITLE_MAX } from "@/lib/seo/text";
 
 const BASE_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.cote-cour.studio").replace(/\/$/, "");
 
 type Props = { params: Promise<{ slug: string }> };
 
-export async function generateStaticParams() {
-  const articles = getArticlesList();
-  return articles.map((a) => ({ slug: a.slug }));
-}
+// Pas de generateStaticParams ici : le layout racine lit les cookies, donc l'arbre
+// entier est rendu dynamiquement et la fonction n'avait aucun effet (aucune entrée
+// dans .next/prerender-manifest.json). Elle était par ailleurs la seule différence
+// structurelle de cette route avec le reste du site, dont les métadonnées, elles,
+// arrivent bien dans le <head>.
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -19,21 +22,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!article) return {};
 
   const url = `${BASE_URL}/ressources/${slug}`;
-  const title = article.metaTitle ?? `${article.title} | Côté-Cour`;
+  // Le suffixe de marque n'est ajouté que s'il tient dans la limite affichée par
+  // Google : « Comment apprendre son texte de théâtre : la méthode flashcard | Côté-Cour »
+  // faisait 73 caractères, le suffixe était donc coupé de toute façon.
+  const title =
+    article.metaTitle ?? firstThatFits([`${article.title} | Côté-Cour`, article.title], TITLE_MAX);
 
   return {
     title,
     description: article.description,
     alternates: { canonical: url },
-    openGraph: {
-      // Next.js ne fusionne pas openGraph en profondeur avec le layout parent :
-      // type/locale doivent être répétés ici pour ne pas disparaître du HTML.
+    // buildOpenGraph re-déclare type, locale ET images : Next ne fusionne pas
+    // openGraph en profondeur avec le layout parent (cf. src/lib/seo/open-graph.ts).
+    openGraph: buildOpenGraph({
       title,
       description: article.description,
       url,
       type: article.ogType ?? "article",
-      locale: "fr_FR",
-    },
+    }),
+    twitter: buildTwitter({ title, description: article.description }),
   };
 }
 

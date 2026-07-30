@@ -7,6 +7,7 @@ import { Suspense } from "react";
 
 import { Header } from "@/components/header";
 import { JsonLdSoftwareApplication } from "@/components/seo/json-ld-software-application";
+import { buildOpenGraph, buildTwitter } from "@/lib/seo/open-graph";
 import { SupabaseProvider } from "@/components/supabase-provider";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getSupabaseSessionUser } from "@/lib/queries/scenes";
@@ -26,20 +27,18 @@ const fraunces = Fraunces({
   axes: ["opsz"],
 });
 
+const ROOT_TITLE = "Apprendre son texte de théâtre – Mémorisation répliques | Côté-Cour";
+const ROOT_DESCRIPTION =
+  "Application pour comédiens : apprends ton texte de théâtre et mémorise tes répliques 3x plus vite. Importe ta scène, révèle tes répliques, reçois un feedback instantané.";
+
 export const metadata: Metadata = {
   // Domaine canonique = www (cote-cour.studio nu 307-redirige vers www) :
   // le fallback doit matcher, sinon tous les canonicals pointent vers un redirect.
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://www.cote-cour.studio"),
-  title: "Apprendre son texte de théâtre – Mémorisation répliques | Côté-Cour",
-  description:
-    "Application pour comédiens : apprends ton texte de théâtre et mémorise tes répliques 3x plus vite. Importe ta scène, révèle tes répliques, reçois un feedback instantané.",
-  openGraph: {
-    title: "Apprendre son texte de théâtre – Mémorisation répliques | Côté-Cour",
-    description:
-      "Application pour comédiens : apprends ton texte de théâtre et mémorise tes répliques 3x plus vite. Importe ta scène, révèle tes répliques, reçois un feedback instantané.",
-    type: "website",
-    locale: "fr_FR",
-  },
+  title: ROOT_TITLE,
+  description: ROOT_DESCRIPTION,
+  openGraph: buildOpenGraph({ title: ROOT_TITLE, description: ROOT_DESCRIPTION }),
+  twitter: buildTwitter({ title: ROOT_TITLE, description: ROOT_DESCRIPTION }),
   icons: {
     icon: [
       { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },

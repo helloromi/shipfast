@@ -4,9 +4,8 @@ import { cache } from "react";
 
 import { fetchSceneByPreviousSlug, fetchSceneWithRelationsByWorkAndSlug } from "@/lib/queries/scenes";
 import { buildSceneMetadata } from "@/lib/scenes/scene-metadata";
-import { slugify } from "@/lib/utils/slugify";
+import { isEligibleForSlugRoute, scenePathFor } from "@/lib/seo/urls";
 import { SceneDetailView } from "@/components/scenes/scene-detail-view";
-import { SceneWithRelations } from "@/types/scenes";
 
 // Next.js App Router refuse deux enfants dynamiques différents au même niveau
 // d'un même parent : /scenes/[id]/edit et /scenes/[id]/export existent déjà,
@@ -23,19 +22,10 @@ type Props = {
 // Mémoïsé par requête : generateMetadata et la page partagent le même fetch.
 const getScene = cache(fetchSceneWithRelationsByWorkAndSlug);
 
-/**
- * Seules les scènes publiques du domaine public ont un slug (cf. backfill) et
- * vivent sur cette route. Toute autre scène (privée, catalogue payant) 404 ici
- * en défense en profondeur, même si elle ne devrait jamais avoir de slug.
- */
-function isEligibleForSlugRoute(scene: SceneWithRelations): boolean {
-  return !scene.is_private && scene.work?.is_public_domain === true && !!scene.slug && !!scene.work.slug;
-}
-
-function canonicalPathFor(scene: SceneWithRelations): string {
-  const authorSlug = slugify(scene.author ?? scene.work?.author ?? "");
-  return `/scenes/${authorSlug}/${scene.work?.slug}/${scene.slug}`;
-}
+// isEligibleForSlugRoute et scenePathFor vivent dans @/lib/seo/urls : les mêmes règles
+// servent au sitemap, à la route UUID, au bloc de navigation et au JSON-LD. Seules les
+// scènes publiques du domaine public sluggées vivent sur cette route ; toute autre
+// scène (privée, catalogue payant) 404 ici, en défense en profondeur.
 
 // Sur Next.js 16.0.10, permanentRedirect() appelé depuis generateMetadata ne
 // produit PAS un vrai statut HTTP (vérifié empiriquement). Le redirect reste
@@ -46,7 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const scene = await getScene(pieceSlug, sceneSlug);
   if (!scene || !isEligibleForSlugRoute(scene)) return {};
 
-  const canonicalPath = canonicalPathFor(scene);
+  const canonicalPath = scenePathFor(scene)!;
   if (canonicalPath !== `/scenes/${auteurSlug}/${pieceSlug}/${sceneSlug}`) return {};
 
   return buildSceneMetadata(scene, canonicalPath);
@@ -60,7 +50,7 @@ export default async function SceneDetailSlugPage({ params }: Props) {
 
   const scene = await getScene(pieceSlug, sceneSlug);
   if (scene && isEligibleForSlugRoute(scene)) {
-    const canonicalPath = canonicalPathFor(scene);
+    const canonicalPath = scenePathFor(scene)!;
     if (canonicalPath !== `/scenes/${auteurSlug}/${pieceSlug}/${sceneSlug}`) {
       permanentRedirect(canonicalPath);
     }
@@ -73,7 +63,7 @@ export default async function SceneDetailSlugPage({ params }: Props) {
   // canonique. Sinon 404.
   const renamed = await fetchSceneByPreviousSlug(pieceSlug, sceneSlug);
   if (renamed && isEligibleForSlugRoute(renamed)) {
-    permanentRedirect(canonicalPathFor(renamed));
+    permanentRedirect(scenePathFor(renamed)!);
   }
 
   notFound();

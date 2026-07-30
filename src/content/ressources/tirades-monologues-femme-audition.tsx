@@ -8,7 +8,7 @@ export const meta = {
   title: "Tirades et monologues de femme pour préparer une audition",
   // <title> HTML : distinct du H1, construit sur la requête cible. Utilisé
   // verbatim (sans suffixe de marque) car c'est de la copy validée.
-  metaTitle: "Tirades et monologues de femme pour audition : 4 textes classiques",
+  metaTitle: "Monologues de femme pour audition : 4 textes classiques",
   description:
     "4 tirades féminines du domaine public pour préparer une audition : Phèdre, Agrippine, Junie. Texte intégral et mode flashcard sans compte.",
   publishedAt: new Date("2026-07-16"),

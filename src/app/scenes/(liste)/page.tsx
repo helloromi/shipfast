@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { fetchWorks, searchWorks, fetchUserWorkAverages } from "@/lib/queries/works";
@@ -5,6 +6,23 @@ import { getSupabaseSessionUser, fetchUserPrivateScenes } from "@/lib/queries/sc
 import { SearchBar } from "@/components/works/search-bar";
 import { t } from "@/locales/fr";
 import { ScenesListSkeleton } from "@/components/works/scenes-list-skeleton";
+import { buildOpenGraph, buildTwitter } from "@/lib/seo/open-graph";
+import { slugify } from "@/lib/utils/slugify";
+
+const TITLE = "Scènes de théâtre à apprendre : le catalogue | Côté-Cour";
+const DESCRIPTION =
+  "Molière, Racine, Corneille, Musset, Hugo : le texte intégral de chaque scène, gratuit et sans compte, avec le mode flashcard pour l'apprendre.";
+
+// Cette page n'avait aucune metadata propre : elle servait le title et la description
+// du layout racine, à l'identique de / et /home (trois pages, un seul title), et sans
+// canonical. C'est pourtant l'entrée du catalogue, en priorité 0.9 au sitemap.
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: "/scenes" },
+  openGraph: buildOpenGraph({ title: TITLE, description: DESCRIPTION, url: "/scenes" }),
+  twitter: buildTwitter({ title: TITLE, description: DESCRIPTION }),
+};
 
 type Props = {
   searchParams: Promise<{ q?: string }>;
@@ -125,10 +143,16 @@ async function ScenesList({ query, userId }: { query: string; userId: string | n
             work.scenesCount === 1
               ? t.scenes.works.bibliotheque.scenesCount
               : t.scenes.works.bibliotheque.scenesCountPlural;
+          // URL slug de la page œuvre : /works/[uuid] n'est plus qu'une redirection
+          // 308. Lier l'UUID depuis la page liste faisait passer chaque scène par
+          // deux sauts et une redirection avant d'être atteinte.
+          const href = work.slug
+            ? `/scenes/${slugify(work.author ?? "")}/${work.slug}`
+            : `/works/${work.id}`;
           return (
             <Link
               key={work.id}
-              href={`/works/${work.id}`}
+              href={href}
               className="group flex h-full flex-col gap-3 rounded-2xl border border-[#e7e1d9] bg-white/92 p-5 shadow-sm shadow-[#3b1f4a14] transition hover:-translate-y-[1px] hover:border-[#3b1f4a33] hover:shadow-lg"
             >
               <div className="flex items-center justify-between gap-2">
