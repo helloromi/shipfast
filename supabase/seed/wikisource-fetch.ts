@@ -359,7 +359,17 @@ function parseHtmlSection(html: string): RawLine[] {
       // Didascalie : rattachée à la réplique en cours ; l'entête de scène
       // (liste des personnages, avant toute réplique) est ignorée.
       const d = htmlToPlainText(m[2]);
-      if (current && d) parts.push(`(${d})`);
+      if (current && d) {
+        parts.push(`(${d})`);
+      } else if (d) {
+        // Aucun locuteur encore connu : dans les scènes à un seul personnage, les
+        // éditions l'annoncent dans la didascalie d'ouverture — « FIGARO, seul, se
+        // promenant dans l'obscurité ». Le nom est la tête, avant la première
+        // virgule. Sans ce rattrapage la scène entière est perdue faute de locuteur,
+        // ce qui coûtait le monologue de Figaro (Le Mariage de Figaro V,3).
+        const name = normalizeCharacter(d.split(",")[0] ?? "");
+        if (isPlausibleCharacter(name)) current = name;
+      }
     } else if (m[3] !== undefined) {
       const p = htmlToPlainText(m[3]);
       if (current && p) parts.push(p);
@@ -397,9 +407,27 @@ function parseHtmlDocument(rawHtml: string, pageLabel: string): ParsedScene[] {
 
   const parseSection = (section: string, label: string, act: string | null): ParsedScene | null => {
     const byClass = parseHtmlSection(section);
-    if (byClass.length >= 2) return { label, act, lines: byClass, strategy: "html_render" };
     const byCaps = parseHtmlSectionByCaps(section);
+    // <span class="personnage"> est un marqueur explicite posé par l'édition : une
+    // seule réplique détectée suffit à valider la section. C'est ce qui rattrape les
+    // scènes à un seul personnage — les monologues, que le seuil de 2 faisait
+    // silencieusement disparaître (Andromaque V,1 et V,4 par exemple).
+    // L'heuristique par MAJUSCULES, elle, peut prendre du bruit pour un nom : on lui
+    // garde 2 répliques corroborantes.
+    if (byCaps.length > byClass.length && byCaps.length >= 2) {
+      return { label, act, lines: byCaps, strategy: "html_render" };
+    }
+    if (byClass.length >= 1) return { label, act, lines: byClass, strategy: "html_render" };
     if (byCaps.length >= 2) return { label, act, lines: byCaps, strategy: "html_render" };
+    // Dernier recours pour les monologues des éditions sans marqueur de personnage :
+    // une seule réplique retenue par l'heuristique MAJUSCULES. On n'arrive ici que
+    // sous un entête « Scène N » déjà validé, donc le risque n'est pas de fabriquer
+    // une scène mais de garder du bruit ; la longueur du texte sert de garde-fou.
+    // Sans ça, Le Cid I,4 (« Ô rage ! ô désespoir ! ») et le monologue de Figaro V,3
+    // — deux des passages les plus recherchés du répertoire — sont perdus en silence.
+    if (byCaps.length === 1 && (byCaps[0]?.text.length ?? 0) >= MIN_SOLO_LINE_CHARS) {
+      return { label, act, lines: byCaps, strategy: "html_render" };
+    }
     return null;
   };
 
@@ -435,13 +463,33 @@ function parseHtmlDocument(rawHtml: string, pageLabel: string): ParsedScene[] {
 
 // ─── Choix de la meilleure route ────────────────────────────────────────────
 
+/**
+ * Nombre minimal de répliques pour retenir une section, par stratégie. Le modèle
+ * {{Personnage}} est explicite : une réplique suffit (scène à un seul personnage).
+ * Les heuristiques par gras et par MAJUSCULES devinent, et exigent une corroboration.
+ */
+/**
+ * Longueur minimale d'une réplique unique retenue sans corroboration (monologue
+ * détecté par la seule heuristique MAJUSCULES). Un entête ou une didascalie isolée
+ * n'atteint pas cette taille ; une tirade, toujours.
+ */
+const MIN_SOLO_LINE_CHARS = 200;
+
+const MIN_LINES: Record<ParseStrategy, number> = {
+  templates: 1,
+  html_render: 1,
+  bold_names: 2,
+  plain_caps: 2,
+  none: Infinity,
+};
+
 function parseWikitextChunk(wikitext: string): { lines: RawLine[]; strategy: ParseStrategy } {
   const templates = parseTemplates(wikitext);
-  if (templates.length >= 2) return { lines: templates, strategy: "templates" };
+  if (templates.length >= MIN_LINES.templates) return { lines: templates, strategy: "templates" };
   const bold = parseBoldNames(wikitext);
-  if (bold.length >= 2) return { lines: bold, strategy: "bold_names" };
+  if (bold.length >= MIN_LINES.bold_names) return { lines: bold, strategy: "bold_names" };
   const caps = parsePlainCaps(wikitext.split("\n"));
-  if (caps.length >= 2) return { lines: caps, strategy: "plain_caps" };
+  if (caps.length >= MIN_LINES.plain_caps) return { lines: caps, strategy: "plain_caps" };
   return { lines: [], strategy: "none" };
 }
 
@@ -454,7 +502,9 @@ function parseDocument(wikitext: string, html: string, pageLabel: string): Parse
   const wikiScenes: ParsedScene[] = [];
   for (const section of splitScenes(wikitext, pageLabel)) {
     const { lines, strategy } = parseWikitextChunk(section.wikitext);
-    if (lines.length >= 2) wikiScenes.push({ label: section.label, act: section.act, lines, strategy });
+    if (lines.length >= MIN_LINES[strategy]) {
+      wikiScenes.push({ label: section.label, act: section.act, lines, strategy });
+    }
   }
   const htmlScenes = html ? parseHtmlDocument(html, pageLabel) : [];
 

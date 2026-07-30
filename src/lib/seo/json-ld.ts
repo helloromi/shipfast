@@ -43,7 +43,8 @@ export function buildSceneJsonLd({
     "@id": url,
     url,
     name: title,
-    ...(summary ? { description: summary } : {}),
+    // La fiche est stockée en paragraphes ; `description` est un champ texte plat.
+    ...(summary ? { description: summary.replace(/\s*\n\s*/g, " ").trim() } : {}),
     ...(author ? { author: { "@type": "Person", name: author } } : {}),
     ...(work
       ? {

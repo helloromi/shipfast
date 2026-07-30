@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { buildOpenGraph, buildTwitter } from "@/lib/seo/open-graph";
 import { firstThatFits, TITLE_MAX } from "@/lib/seo/text";
+import { isThinScene } from "@/lib/seo/thin-scenes";
 import { SceneWithRelations } from "@/types/scenes";
 
 /**
@@ -70,5 +71,10 @@ export function buildSceneMetadata(scene: SceneWithRelations, canonicalPath: str
     alternates: { canonical: canonicalPath },
     openGraph: buildOpenGraph({ title, description, url: canonicalPath, type: "article" }),
     twitter: buildTwitter({ title, description }),
+    // Scène trop courte pour porter autre chose qu'un texte disponible partout
+    // ailleurs : on ne demande pas son indexation, mais `follow` laisse le crawl
+    // suivre ses liens (scènes sœurs, page œuvre). Même critère que le sitemap,
+    // cf. @/lib/seo/thin-scenes.
+    ...(isThinScene(scene) ? { robots: { index: false, follow: true } } : {}),
   };
 }

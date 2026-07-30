@@ -91,6 +91,12 @@ export async function SceneDetailView({ scene }: Props) {
           datePublished: scene.created_at ?? null,
         });
 
+  // Les fiches sont stockées en paragraphes séparés par une ligne vide.
+  const summaryParagraphs = (scene.summary ?? "")
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
   const breadcrumb =
     canonicalPath && workPath && scene.work?.title
       ? [
@@ -178,8 +184,18 @@ export async function SceneDetailView({ scene }: Props) {
         <p className="text-sm text-[#524b5a] leading-relaxed">
           {scene.author ? `${t.common.labels.par} ${scene.author}` : t.common.labels.auteurInconnu}
         </p>
-        {scene.summary && (
-          <p className="text-sm text-[#1c1b1f] leading-relaxed">{scene.summary}</p>
+        {/* La fiche éditoriale : le seul contenu de cette page qui n'existe pas déjà
+            mot pour mot sur Wikisource. Rendue côté serveur, en paragraphes séparés
+            par une ligne vide en base — un bloc de 150 mots dans un seul <p> serait
+            illisible sur un écran de 375px. */}
+        {summaryParagraphs.length > 0 && (
+          <div className="mt-1 flex flex-col gap-3 border-l-2 border-[#e7e1d9] pl-4">
+            {summaryParagraphs.map((paragraph) => (
+              <p key={paragraph} className="text-sm leading-relaxed text-[#1c1b1f]">
+                {paragraph}
+              </p>
+            ))}
+          </div>
         )}
         {scene.chapter && (
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[#7a7184]">

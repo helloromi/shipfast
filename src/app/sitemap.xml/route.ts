@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getArticlesList } from "@/content/ressources/articles";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { isThinScene } from "@/lib/seo/thin-scenes";
 import { slugify } from "@/lib/utils/slugify";
 
 function getBaseUrl(request: NextRequest): string {
@@ -29,17 +30,32 @@ export async function GET(request: NextRequest) {
   // lecture anonyme sur is_private = false). URLs slug uniquement : les UUID
   // redirigent en 308 depuis /scenes/[identifiant] et n'ont rien à faire dans le sitemap.
   // `scenes` n'a pas de colonne updated_at : created_at sert de lastmod.
+  // `lines(text)` est chargé pour appliquer le seuil de contenu mince : une scène
+  // écartée par isThinScene se sert en noindex, elle n'a donc rien à faire ici.
+  // Sans ce join, sitemap et metadata trancheraient sur des critères différents.
   const supabase = await createSupabaseServerClient();
   const { data: publicScenes, error: scenesError } = await supabase
     .from("scenes")
-    .select("slug, author, created_at, works!inner(slug, is_public_domain)")
+    .select("slug, author, summary, created_at, works!inner(slug, is_public_domain), lines(text)")
     .eq("is_private", false)
     .eq("works.is_public_domain", true)
     .not("slug", "is", null)
-    .returns<{ slug: string; author: string | null; created_at: string | null; works: { slug: string | null } }[]>();
+    .returns<
+      {
+        slug: string;
+        author: string | null;
+        summary: string | null;
+        created_at: string | null;
+        works: { slug: string | null };
+        lines: { text: string | null }[];
+      }[]
+    >();
   if (scenesError) {
     console.error("sitemap: failed to fetch public scenes", scenesError);
   }
+  const indexableScenes = (publicScenes ?? []).filter(
+    (scene) => !isThinScene({ lines: scene.lines ?? [], summary: scene.summary })
+  );
 
   // Pages œuvre (/scenes/[auteur]/[piece]) : même portée que les scènes ci-dessus.
   // `!inner` sur scenes garantit qu'on n'émet pas l'URL d'une œuvre sans scène
@@ -55,6 +71,13 @@ export async function GET(request: NextRequest) {
   if (worksError) {
     console.error("sitemap: failed to fetch public works", worksError);
   }
+
+  // Une œuvre dont toutes les scènes sont écartées comme trop minces n'a rien à
+  // faire au sitemap non plus : sa page ne listerait que des URLs en noindex.
+  // Cas réel : Roméo & Juliette, une seule scène de 4 répliques.
+  const workSlugsWithIndexableScene = new Set(
+    indexableScenes.map((scene) => scene.works?.slug).filter((slug): slug is string => !!slug)
+  );
 
   // `works` n'a pas de created_at exploitable ici : le lastmod d'une page œuvre est
   // la date de la scène la plus récemment ajoutée à cette œuvre.
@@ -94,14 +117,16 @@ export async function GET(request: NextRequest) {
       priority: 0.9,
     },
     // Palier œuvre : priorité entre la page liste (0.9) et les pages scènes (0.8).
-    ...(publicWorks ?? []).map((work) => ({
-      loc: `${baseUrl}/scenes/${encodeURIComponent(slugify(work.author ?? ""))}/${encodeURIComponent(work.slug)}`,
-      lastmod:
-        latestSceneDateByWorkSlug.get(work.slug) ?? new Date().toISOString().slice(0, 10),
-      changefreq: "monthly",
-      priority: 0.85,
-    })),
-    ...(publicScenes ?? [])
+    ...(publicWorks ?? [])
+      .filter((work) => workSlugsWithIndexableScene.has(work.slug))
+      .map((work) => ({
+        loc: `${baseUrl}/scenes/${encodeURIComponent(slugify(work.author ?? ""))}/${encodeURIComponent(work.slug)}`,
+        lastmod:
+          latestSceneDateByWorkSlug.get(work.slug) ?? new Date().toISOString().slice(0, 10),
+        changefreq: "monthly",
+        priority: 0.85,
+      })),
+    ...indexableScenes
       .filter((scene) => !!scene.works?.slug)
       .map((scene) => {
         const authorSlug = slugify(scene.author ?? "");
