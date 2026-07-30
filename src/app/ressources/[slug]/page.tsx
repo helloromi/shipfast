@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { getArticleBySlug } from "@/content/ressources/articles";
+import { getArticleBySlug, getArticlesList } from "@/content/ressources/articles";
 import { buildOpenGraph, buildTwitter } from "@/lib/seo/open-graph";
 import { firstThatFits, TITLE_MAX } from "@/lib/seo/text";
 
@@ -10,11 +10,12 @@ const BASE_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.cote-cour.stud
 
 type Props = { params: Promise<{ slug: string }> };
 
-// Pas de generateStaticParams ici : le layout racine lit les cookies, donc l'arbre
-// entier est rendu dynamiquement et la fonction n'avait aucun effet (aucune entrée
-// dans .next/prerender-manifest.json). Elle était par ailleurs la seule différence
-// structurelle de cette route avec le reste du site, dont les métadonnées, elles,
-// arrivent bien dans le <head>.
+// Le layout racine ne lit plus les cookies : generateStaticParams a de nouveau un
+// effet réel (il n'en avait aucun tant que tout l'arbre était rendu dynamiquement).
+// Les 5 articles vivent dans le code, sans I/O : ils sont prérendus au build.
+export function generateStaticParams() {
+  return getArticlesList().map((article) => ({ slug: article.slug }));
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;

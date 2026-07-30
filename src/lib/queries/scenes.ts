@@ -1,6 +1,7 @@
 import { cache } from "react";
 
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { createSupabasePublicClient } from "@/lib/supabase-public";
 import { Character, Scene, SceneWithRelations } from "@/types/scenes";
 import { weightedAverageScoreByRecency } from "@/lib/utils/score";
 
@@ -173,12 +174,16 @@ export async function fetchSceneWithRelations(id: string): Promise<SceneWithRela
  * n'est unique QUE dans son œuvre (contrainte composite (work_id, slug)) : on
  * filtre donc sur (works.slug, scenes.slug). Le segment auteur ne sert qu'à
  * valider/canonicaliser l'URL côté route.
+ *
+ * Client sans cookies : cette route ne sert QUE des scènes publiques du domaine
+ * public (la garde `isEligibleForSlugRoute` 404 tout le reste), donc la session
+ * n'entre pas dans le résultat et la lecture ne doit pas rendre la page dynamique.
  */
 export async function fetchSceneWithRelationsByWorkAndSlug(
   workSlug: string,
   sceneSlug: string
 ): Promise<SceneWithRelations | null> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicClient();
   const { data, error } = await supabase
     .from("scenes")
     .select(SCENE_WITH_RELATIONS_SELECT_INNER)
@@ -201,12 +206,15 @@ export async function fetchSceneWithRelationsByWorkAndSlug(
  * slug d'une scène est conservé dans previous_slugs : on retrouve la scène par
  * son historique (dans la bonne œuvre) pour la rediriger en 301 vers son slug
  * canonique. Retourne null si l'ancien slug n'est pas connu.
+ *
+ * Client sans cookies, même raison que ci-dessus : cette résolution ne concerne que
+ * des URLs publiques du catalogue.
  */
 export async function fetchSceneByPreviousSlug(
   workSlug: string,
   previousSceneSlug: string
 ): Promise<SceneWithRelations | null> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicClient();
   const { data, error } = await supabase
     .from("scenes")
     .select(SCENE_WITH_RELATIONS_SELECT_INNER)

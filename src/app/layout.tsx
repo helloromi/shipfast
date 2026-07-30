@@ -9,8 +9,6 @@ import { Header } from "@/components/header";
 import { JsonLdSoftwareApplication } from "@/components/seo/json-ld-software-application";
 import { buildOpenGraph, buildTwitter } from "@/lib/seo/open-graph";
 import { SupabaseProvider } from "@/components/supabase-provider";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { getSupabaseSessionUser } from "@/lib/queries/scenes";
 import "./globals.css";
 
 const karla = Karla({
@@ -49,32 +47,26 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // getSupabaseSessionUser est mémoïsé par requête (React cache) : le layout et
-  // les pages partagent le même appel auth.getUser(). getSession lit le cookie
-  // localement (pas d'appel réseau).
-  const supabase = await createSupabaseServerClient();
-  const [user, sessionResult] = await Promise.all([
-    getSupabaseSessionUser(),
-    supabase.auth.getSession(),
-  ]);
-  const {
-    data: { session: rawSession },
-  } = sessionResult;
-
-  const session = rawSession
-    ? ({ ...rawSession, user } as typeof rawSession)
-    : null;
-
+  // Le layout ne lit PAS la session. C'était la cause racine du point A1 de l'audit :
+  // lire les cookies ici bascule tout l'arbre en rendu dynamique, y compris les pages
+  // qui n'ont que du contenu public à servir — d'où `Cache-Control: private, no-store`
+  // sur l'intégralité du site et un rendu serveur complet à chaque passage de crawler.
+  //
+  // SupabaseProvider hydrate déjà la session côté client (auth.getUser +
+  // onAuthStateChange), et Header est un composant client qui la lit par contexte :
+  // rien n'a besoin de la session au moment du rendu serveur du layout. Le seul effet
+  // visible est un premier paint en état déconnecté avant hydratation, sur des pages
+  // dont le contenu, lui, ne dépend pas de l'utilisateur.
   return (
     <html lang="fr">
       <body className={`${karla.variable} ${fraunces.variable} antialiased`}>
         <JsonLdSoftwareApplication />
-        <SupabaseProvider initialSession={session}>
+        <SupabaseProvider initialSession={null}>
           <div className="flex min-h-screen flex-col bg-[radial-gradient(circle_at_20%_20%,#F4C95D22,transparent_25%),radial-gradient(circle_at_80%_10%,#FF6B6B22,transparent_22%),radial-gradient(circle_at_80%_80%,#3B1F4A18,transparent_28%),#F9F7F3] text-[#1C1B1F]">
             <Suspense fallback={null}>
               <Header />

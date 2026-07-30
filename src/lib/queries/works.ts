@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { createSupabasePublicClient } from "@/lib/supabase-public";
 import { Scene, Work, WorkWithScenes } from "@/types/scenes";
 import { weightedAverageScoreByRecency } from "@/lib/utils/score";
 import { sortScenesDramaturgical } from "@/lib/utils/scene-order";
@@ -163,7 +164,9 @@ export type PublicWorkWithScenes = {
  * ces conditions n'a pas de page indexable, la route renvoie 404.
  */
 export async function fetchPublicWorkBySlug(workSlug: string): Promise<PublicWorkWithScenes | null> {
-  const supabase = await createSupabaseServerClient();
+  // Catalogue du domaine public : aucune session en jeu, donc client sans cookies —
+  // c'est ce qui rend la page œuvre cachable (cf. @/lib/supabase-public).
+  const supabase = createSupabasePublicClient();
   const { data, error } = await supabase
     .from("works")
     .select("id, title, author, summary, slug, scenes(id, title, chapter, slug, is_private)")
@@ -476,3 +479,27 @@ export async function fetchWorksWithActiveScenes(userId: string): Promise<Set<st
 
 
 
+
+/**
+ * Slugs des œuvres publiables, pour le prérendu des pages œuvre au build.
+ * Même portée que le sitemap : domaine public, sluggée, avec au moins une scène
+ * publique sluggée — sinon la route 404 et on prérendrait une page morte.
+ */
+export async function fetchPublicWorkSlugs(): Promise<{ slug: string; author: string | null }[]> {
+  const supabase = createSupabasePublicClient();
+  const { data, error } = await supabase
+    .from("works")
+    .select("slug, author, scenes!inner(id)")
+    .eq("is_public_domain", true)
+    .not("slug", "is", null)
+    .eq("scenes.is_private", false)
+    .not("scenes.slug", "is", null)
+    .returns<{ slug: string; author: string | null }[]>();
+
+  if (error) {
+    console.error("fetchPublicWorkSlugs", error);
+    return [];
+  }
+  // `!inner` renvoie une ligne par scène : on dédoublonne sur le slug d'œuvre.
+  return [...new Map((data ?? []).map((w) => [w.slug, w])).values()];
+}

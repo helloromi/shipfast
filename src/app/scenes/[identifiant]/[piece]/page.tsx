@@ -3,7 +3,11 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { cache } from "react";
 
-import { fetchPublicWorkBySlug, type PublicWorkWithScenes } from "@/lib/queries/works";
+import {
+  fetchPublicWorkBySlug,
+  fetchPublicWorkSlugs,
+  type PublicWorkWithScenes,
+} from "@/lib/queries/works";
 import { buildBreadcrumbJsonLd, buildWorkJsonLd } from "@/lib/seo/json-ld";
 import { buildOpenGraph, buildTwitter } from "@/lib/seo/open-graph";
 import { firstThatFits, truncate, TITLE_MAX } from "@/lib/seo/text";
@@ -29,6 +33,20 @@ type Props = {
 
 // Mémoïsé par requête : generateMetadata et la page partagent le même fetch.
 const getWork = cache(fetchPublicWorkBySlug);
+
+/**
+ * Le catalogue du domaine public ne bouge qu'aux seeds : la page est mise en cache
+ * et revalidée à l'heure, au lieu d'être re-rendue à chaque passage de crawler.
+ * Depuis que fetchPublicWorkBySlug lit sans cookies, plus rien ici n'oblige au
+ * rendu dynamique. Une œuvre seedée après le build est rendue à la demande puis
+ * mise en cache à son tour (dynamicParams par défaut).
+ */
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  const works = await fetchPublicWorkSlugs();
+  return works.map((work) => ({ identifiant: slugify(work.author ?? ""), piece: work.slug }));
+}
 
 function canonicalPathFor(work: PublicWorkWithScenes): string {
   return `/scenes/${slugify(work.author ?? "")}/${work.slug}`;
