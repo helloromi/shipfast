@@ -67,44 +67,56 @@ export default async function RessourceArticlePage({ params }: Props) {
     mainEntityOfPage: { "@type": "WebPage", "@id": pageUrl },
   };
 
-  // Page liste : on ajoute un ItemList (chaque monologue → sa page scène) à côté de
-  // l'Article. Article seul pour une page éditoriale classique.
-  const jsonLd =
-    article.listItems && article.listItems.length > 0
-      ? {
-          "@context": "https://schema.org",
-          "@graph": [
-            articleNode,
-            {
-              "@type": "ItemList",
-              name: article.title,
-              itemListOrder: "https://schema.org/ItemListOrderAscending",
-              numberOfItems: article.listItems.length,
-              itemListElement: article.listItems.map((item, i) =>
-                item.author
-                  ? {
-                      "@type": "ListItem",
-                      position: i + 1,
-                      item: {
-                        "@type": "CreativeWork",
-                        name: item.name,
-                        url: `${BASE_URL}${item.href}`,
-                        author: { "@type": "Person", name: item.author },
-                        ...(item.work
-                          ? { isPartOf: { "@type": "CreativeWork", name: item.work } }
-                          : {}),
-                      },
-                    }
-                  : {
-                      "@type": "ListItem",
-                      position: i + 1,
-                      name: item.name,
-                      url: `${BASE_URL}${item.href}`,
-                    },
-              ),
+  // Une page de collection ajoute un ItemList (chaque scène → sa page), un guide
+  // ajoute une FAQPage. Les deux sont optionnels et cumulables ; sans l'un ni
+  // l'autre, l'Article est émis seul.
+  const nodes: Record<string, unknown>[] = [articleNode];
+
+  if (article.listItems && article.listItems.length > 0) {
+    nodes.push({
+      "@type": "ItemList",
+      name: article.title,
+      itemListOrder: "https://schema.org/ItemListOrderAscending",
+      numberOfItems: article.listItems.length,
+      itemListElement: article.listItems.map((item, i) =>
+        item.author
+          ? {
+              "@type": "ListItem",
+              position: i + 1,
+              item: {
+                "@type": "CreativeWork",
+                name: item.name,
+                url: `${BASE_URL}${item.href}`,
+                author: { "@type": "Person", name: item.author },
+                ...(item.work
+                  ? { isPartOf: { "@type": "CreativeWork", name: item.work } }
+                  : {}),
+              },
+            }
+          : {
+              "@type": "ListItem",
+              position: i + 1,
+              name: item.name,
+              url: `${BASE_URL}${item.href}`,
             },
-          ],
-        }
+      ),
+    });
+  }
+
+  if (article.faq && article.faq.length > 0) {
+    nodes.push({
+      "@type": "FAQPage",
+      mainEntity: article.faq.map((entry) => ({
+        "@type": "Question",
+        name: entry.question,
+        acceptedAnswer: { "@type": "Answer", text: entry.answer },
+      })),
+    });
+  }
+
+  const jsonLd =
+    nodes.length > 1
+      ? { "@context": "https://schema.org", "@graph": nodes }
       : { "@context": "https://schema.org", ...articleNode };
 
   return (
@@ -141,6 +153,24 @@ export default async function RessourceArticlePage({ params }: Props) {
         <div className="flex flex-col gap-3">
           <Body />
         </div>
+
+        {/* La FAQ est rendue côté serveur, pas seulement déclarée en JSON-LD :
+            Google exige que le contenu d'une FAQPage soit visible sur la page. */}
+        {article.faq && article.faq.length > 0 && (
+          <section className="flex flex-col gap-4">
+            <h2 className="font-display mt-8 text-xl font-semibold text-[#3b1f4a]">
+              Questions fréquentes
+            </h2>
+            <dl className="flex flex-col gap-4">
+              {article.faq.map((entry) => (
+                <div key={entry.question} className="flex flex-col gap-1">
+                  <dt className="text-sm font-semibold text-[#1c1b1f]">{entry.question}</dt>
+                  <dd className="text-sm leading-relaxed text-[#524b5a]">{entry.answer}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )}
       </article>
     </div>
   );

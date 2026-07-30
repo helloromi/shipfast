@@ -10,7 +10,9 @@ export const meta = {
   metaTitle: "Scènes de théâtre à 3 personnages : 20 extraits à jouer en trio",
   description:
     "20 scènes de théâtre à trois personnages pour un cours ou un atelier : Molière, Racine, Corneille. Texte intégral et mode flashcard, gratuit et sans compte.",
-  publishedAt: new Date("2026-07-30"),
+  // Date de publication éditoriale, choisie pour étaler la parution des pages —
+  // ce n'est pas un horodatage de création de fichier.
+  publishedAt: new Date("2026-07-27"),
 };
 
 type Groupe = "Comédie" | "Tragédie";

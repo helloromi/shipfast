@@ -10,7 +10,9 @@ export const meta = {
   metaTitle: "Scènes de théâtre courtes : 18 extraits de moins de 5 minutes",
   description:
     "18 scènes de théâtre courtes à jouer en cours ou en atelier, de 2 à 3 personnages : Molière, Racine, Musset. Texte intégral et mode flashcard, sans compte.",
-  publishedAt: new Date("2026-07-30"),
+  // Date de publication éditoriale, choisie pour étaler la parution des pages —
+  // ce n'est pas un horodatage de création de fichier.
+  publishedAt: new Date("2026-07-29"),
 };
 
 type Groupe = "Moins de 2 minutes" | "2 à 3 minutes";
