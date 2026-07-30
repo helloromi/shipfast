@@ -701,7 +701,12 @@ function buildScene(label: string, act: string | null, parsed: RawLine[], maxLen
   const lines: SeedLine[] = [];
   for (const { character, text } of parsed) {
     for (const chunk of splitSpeech(text, maxLen)) {
-      if (chunk.length > 5) lines.push({ order: order++, character, text: chunk });
+      // Seuil à 1 caractère : au théâtre « Oui. », « Non. », « Ah ! » sont des
+      // répliques à part entière, et les jeter décale le dialogue tout en démentant
+      // le « texte intégral » annoncé par la page. L'ancien seuil de 5 caractères
+      // les supprimait en silence — relevé sur la leçon de prose du Bourgeois
+      // gentilhomme, où le « Oui. » du maître de philosophie manquait.
+      if (chunk.length > 1) lines.push({ order: order++, character, text: chunk });
     }
   }
   const characters = [...new Set(parsed.map((l) => l.character))];
