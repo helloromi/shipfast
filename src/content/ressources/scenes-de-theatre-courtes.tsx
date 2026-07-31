@@ -110,12 +110,12 @@ export const courtes: Scene[] = [
     group: "Moins de 2 minutes",
   },
   {
-    work: "Lorenzaccio",
-    author: "Alfred de Musset",
-    sceneLabel: "Acte III, scène 3",
-    characters: "Lorenzo / Philippe",
-    lines: 7,
-    href: "/scenes/alfred-de-musset/lorenzaccio/acte-iii-scene-3",
+    work: "Britannicus",
+    author: "Jean Racine",
+    sceneLabel: "Acte III, scène V",
+    characters: "Britannicus / Agrippine",
+    lines: 11,
+    href: "/scenes/jean-racine/britannicus/acte-iii-scene-v",
     group: "Moins de 2 minutes",
   },
   {
