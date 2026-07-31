@@ -29,27 +29,45 @@ export async function GET(request: NextRequest) {
   // Toutes les scènes publiques du domaine public, avec slug (RLS autorise la
   // lecture anonyme sur is_private = false). URLs slug uniquement : les UUID
   // redirigent en 308 depuis /scenes/[identifiant] et n'ont rien à faire dans le sitemap.
-  // `scenes` n'a pas de colonne updated_at : created_at sert de lastmod.
+  // `lastmod` = updated_at, tenu à jour par trigger — y compris quand seules les
+  // répliques changent (re-sourcing de texte), cf. migration 20260731130000.
+  // created_at sert de repli pour une ligne antérieure à la colonne.
   // `lines(text)` est chargé pour appliquer le seuil de contenu mince : une scène
   // écartée par isThinScene se sert en noindex, elle n'a donc rien à faire ici.
   // Sans ce join, sitemap et metadata trancheraient sur des critères différents.
   const supabase = await createSupabaseServerClient();
-  const { data: publicScenes, error: scenesError } = await supabase
-    .from("scenes")
-    .select("slug, author, summary, created_at, works!inner(slug, is_public_domain), lines(text)")
-    .eq("is_private", false)
-    .eq("works.is_public_domain", true)
-    .not("slug", "is", null)
-    .returns<
-      {
-        slug: string;
-        author: string | null;
-        summary: string | null;
-        created_at: string | null;
-        works: { slug: string | null };
-        lines: { text: string | null }[];
-      }[]
-    >();
+
+  type SceneRow = {
+    slug: string;
+    author: string | null;
+    summary: string | null;
+    created_at: string | null;
+    updated_at?: string | null;
+    works: { slug: string | null };
+    lines: { text: string | null }[];
+  };
+
+  const sceneColumns = (withUpdatedAt: boolean) =>
+    `slug, author, summary, created_at${withUpdatedAt ? ", updated_at" : ""}, works!inner(slug, is_public_domain), lines(text)`;
+
+  const fetchScenes = (withUpdatedAt: boolean) =>
+    supabase
+      .from("scenes")
+      .select(sceneColumns(withUpdatedAt))
+      .eq("is_private", false)
+      .eq("works.is_public_domain", true)
+      .not("slug", "is", null)
+      .returns<SceneRow[]>();
+
+  let { data: publicScenes, error: scenesError } = await fetchScenes(true);
+  if (scenesError) {
+    // La colonne updated_at arrive par migration : si le code est déployé avant
+    // qu'elle soit appliquée, PostgREST rejette la requête entière et le sitemap
+    // se viderait. On retombe sur created_at le temps que la migration passe,
+    // plutôt que de créer une dépendance d'ordre entre deploy et migration.
+    console.warn("sitemap: retry sans updated_at (migration pas encore appliquée ?)", scenesError);
+    ({ data: publicScenes, error: scenesError } = await fetchScenes(false));
+  }
   if (scenesError) {
     console.error("sitemap: failed to fetch public scenes", scenesError);
   }
@@ -85,7 +103,7 @@ export async function GET(request: NextRequest) {
   for (const scene of publicScenes ?? []) {
     const workSlug = scene.works?.slug;
     if (!workSlug) continue;
-    const date = String(scene.created_at ?? "").slice(0, 10);
+    const date = String(scene.updated_at ?? scene.created_at ?? "").slice(0, 10);
     if (!date) continue;
     const current = latestSceneDateByWorkSlug.get(workSlug);
     if (!current || date > current) latestSceneDateByWorkSlug.set(workSlug, date);
@@ -132,7 +150,9 @@ export async function GET(request: NextRequest) {
         const authorSlug = slugify(scene.author ?? "");
         return {
           loc: `${baseUrl}/scenes/${encodeURIComponent(authorSlug)}/${encodeURIComponent(scene.works.slug!)}/${encodeURIComponent(scene.slug)}`,
-          lastmod: String(scene.created_at ?? "").slice(0, 10) || new Date().toISOString().slice(0, 10),
+          lastmod:
+            String(scene.updated_at ?? scene.created_at ?? "").slice(0, 10) ||
+            new Date().toISOString().slice(0, 10),
           changefreq: "monthly",
           priority: 0.8,
         };
