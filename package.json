@@ -12,7 +12,8 @@
     "seed:scenes": "tsx supabase/seed/seed-scenes.ts",
     "seed:wikisource": "tsx supabase/seed/wikisource-fetch.ts --merge",
     "backfill:scene-slugs": "tsx supabase/seed/backfill-scene-slugs.ts",
-    "reslug:scene-slugs": "tsx supabase/seed/reslug-scenes.ts"
+    "reslug:scene-slugs": "tsx supabase/seed/reslug-scenes.ts",
+    "prospection": "tsx scripts/prospection-kit.ts"
   },
   "dependencies": {
     "@stripe/stripe-js": "^8.6.0",
