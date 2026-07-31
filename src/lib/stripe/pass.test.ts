@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { buildPassBillingRow, computePassPeriodEnd, PASS_DURATION_MONTHS } from "./pass";
+import {
+  buildPassBillingRow,
+  computePassPeriodEnd,
+  isCheckoutSettled,
+  PASS_DURATION_MONTHS,
+} from "./pass";
 
 describe("computePassPeriodEnd", () => {
   it("ajoute 3 mois à la date de paiement", () => {
@@ -44,5 +49,26 @@ describe("buildPassBillingRow", () => {
     const a = buildPassBillingRow({ checkoutSessionId: "cs_x", userId: "u", paidAtUnixSeconds: paidAt });
     const b = buildPassBillingRow({ checkoutSessionId: "cs_x", userId: "u", paidAtUnixSeconds: paidAt });
     expect(a.current_period_end).toBe(b.current_period_end);
+  });
+});
+
+describe("isCheckoutSettled", () => {
+  it("accepte un paiement normal", () => {
+    expect(isCheckoutSettled("paid")).toBe(true);
+  });
+
+  it("accepte une session à 0 € (code promo à -100 %)", () => {
+    // Stripe ne marque JAMAIS `paid` une session sans paiement : sans ce cas, un
+    // code offert n'accorderait aucun pass.
+    expect(isCheckoutSettled("no_payment_required")).toBe(true);
+  });
+
+  it("refuse une session impayée", () => {
+    expect(isCheckoutSettled("unpaid")).toBe(false);
+  });
+
+  it("refuse un statut absent plutôt que de l'interpréter", () => {
+    expect(isCheckoutSettled(null)).toBe(false);
+    expect(isCheckoutSettled(undefined)).toBe(false);
   });
 });

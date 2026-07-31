@@ -3,7 +3,7 @@ import { getStripe } from "@/lib/stripe/client";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import Stripe from "stripe";
 import { sendPaymentThankYouEmailIfNeeded } from "@/lib/resend/automation";
-import { buildPassBillingRow } from "@/lib/stripe/pass";
+import { buildPassBillingRow, isCheckoutSettled } from "@/lib/stripe/pass";
 
 function getWebhookSecret(): string {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -119,7 +119,12 @@ export async function POST(request: NextRequest) {
         // Pass 3 mois (mode "payment") : pas de subscription Stripe, l'accès
         // est une ligne billing_subscriptions expirant 3 mois après paiement.
         if (session.mode === "payment") {
-          if (session.payment_status !== "paid") {
+          // `no_payment_required` est le statut d'une session à 0 € — le cas d'un code
+          // promo à -100 %. Stripe ne la marque JAMAIS `paid`, puisqu'aucun paiement
+          // n'a lieu. Sans ce cas, un code offert encaisserait zéro et n'accorderait
+          // rien : le client repart les mains vides. Les codes partiels, eux, passent
+          // par `paid` comme un achat normal.
+          if (!isCheckoutSettled(session.payment_status)) {
             console.error("[WEBHOOK] ERREUR: session payment non payée:", session.payment_status);
             return NextResponse.json({ error: "Session not paid" }, { status: 400 });
           }

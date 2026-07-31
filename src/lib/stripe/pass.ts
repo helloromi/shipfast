@@ -36,3 +36,18 @@ export function buildPassBillingRow(params: {
     updated_at: new Date().toISOString(),
   };
 }
+
+/**
+ * Une session de paiement est-elle réglée, au sens « on peut accorder le pass » ?
+ *
+ * Deux statuts valent règlement. `paid` est le cas courant. `no_payment_required`
+ * est celui d'une session à 0 € — un code promo à -100 % : Stripe ne la marque
+ * jamais `paid` puisqu'aucun paiement n'a lieu. Sans ce second cas, un code offert
+ * n'accorderait rien et le client repartirait les mains vides.
+ *
+ * Partagé par le webhook et le fallback de la route success : les deux doivent
+ * trancher pareil, sinon le filet laisse passer exactement ce qu'il rattrape.
+ */
+export function isCheckoutSettled(paymentStatus: string | null | undefined): boolean {
+  return paymentStatus === "paid" || paymentStatus === "no_payment_required";
+}

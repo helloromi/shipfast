@@ -77,6 +77,11 @@ export async function POST(request: NextRequest) {
       customer: stripeCustomerId,
       line_items: [{ price: getPriceId(selectedPlan), quantity: 1 }],
       mode: isPass ? "payment" : "subscription",
+      // Affiche le champ « Code promo » sur la page de paiement. Sans ça, un code
+      // créé dans le dashboard Stripe est inutilisable : le client n'a nulle part où
+      // le saisir. Nécessaire pour la prospection (cf. PROSPECTION.md §3).
+      // Incompatible avec le paramètre `discounts`, qu'on ne passe pas ici.
+      allow_promotion_codes: true,
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: {

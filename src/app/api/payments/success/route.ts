@@ -4,7 +4,7 @@ import { getStripe } from "@/lib/stripe/client";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import Stripe from "stripe";
-import { buildPassBillingRow } from "@/lib/stripe/pass";
+import { buildPassBillingRow, isCheckoutSettled } from "@/lib/stripe/pass";
 
 type SubscriptionPeriodFields = {
   current_period_end?: number | null;
@@ -59,7 +59,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Fallback pass 3 mois (mode payment) : même écriture idempotente que le webhook.
-    if (session.mode === "payment" && userId && customerId && session.payment_status === "paid") {
+    // `no_payment_required` couvre la session à 0 € d'un code promo à -100 %, que
+    // Stripe ne marque jamais `paid` — même règle que le webhook, sinon ce filet
+    // laisserait passer précisément le cas qu'il est censé rattraper.
+    if (session.mode === "payment" && userId && customerId && isCheckoutSettled(session.payment_status)) {
       const adminSupabase = createSupabaseAdminClient();
 
       const { error: customerWriteError } = await adminSupabase

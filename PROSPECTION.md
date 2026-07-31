@@ -70,9 +70,11 @@ Créer la classe, y déposer les scènes qu'ils montent cette saison, leur envoy
 
 Pour les élèves qui veulent importer leurs propres textes.
 
-> ⚠️ **Bloqué techniquement aujourd'hui.** `src/app/api/payments/create-checkout/route.ts` ne passe pas `allow_promotion_codes: true` à la session Stripe : même en créant un code promo dans le dashboard, le client n'a aucun champ pour le saisir au paiement.
->
-> Le correctif est d'une ligne, mais le CLAUDE.md interdit de toucher au flux Stripe sans plan de test sandbox explicite. À faire avant de promettre un code à qui que ce soit — promettre une réduction inutilisable est le meilleur moyen de perdre un contact acquis.
+Le champ « Code promo » est actif sur la page de paiement depuis le 31/07/2026 : il suffit de créer le code dans le dashboard Stripe (Produits → Coupons → Codes promotionnels), aucune manipulation côté site.
+
+Les codes à **-100 %** fonctionnent aussi : une session à 0 € est acceptée comme réglée. C'est un cas que Stripe ne marque jamais `paid`, et qui aurait sinon encaissé zéro sans accorder le pass.
+
+> ⚠️ **Le parcours complet n'a jamais été exécuté avec un vrai code.** Le premier code créé doit être testé de bout en bout par toi — créer le code, aller sur `/subscribe`, payer avec une carte de test, vérifier que la ligne apparaît dans `billing_subscriptions`. Avant de le donner à un contact.
 
 ---
 
@@ -209,7 +211,7 @@ Relever ces deux chiffres **une fois par mois**, pas plus souvent : en dessous, 
 
 ## 8. Ce qui reste à faire avant de lancer
 
-- [ ] **Activer `allow_promotion_codes`** sur la session Stripe, avec test sandbox — sinon ne pas promettre de code de réduction (§3, niveau 3).
+- [ ] **Créer le premier code promo** dans le dashboard Stripe et le tester de bout en bout (§3, niveau 3). Le champ de saisie est en place, le parcours réel n'a pas encore été exécuté.
 - [ ] Constituer la première liste de 10 cibles.
 - [ ] Relever l'état Search Console du jour, pour avoir un point de comparaison propre dans un mois.
 
