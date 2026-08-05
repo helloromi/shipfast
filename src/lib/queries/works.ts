@@ -3,6 +3,7 @@ import { createSupabasePublicClient } from "@/lib/supabase-public";
 import { Scene, Work, WorkWithScenes } from "@/types/scenes";
 import { weightedAverageScoreByRecency } from "@/lib/utils/score";
 import { sortScenesDramaturgical } from "@/lib/utils/scene-order";
+import { isThinScene } from "@/lib/seo/thin-scenes";
 import { slugify } from "@/lib/utils/slugify";
 
 type WorkQueryResult = Work & {
@@ -502,4 +503,74 @@ export async function fetchPublicWorkSlugs(): Promise<{ slug: string; author: st
   }
   // `!inner` renvoie une ligne par scène : on dédoublonne sur le slug d'œuvre.
   return [...new Map((data ?? []).map((w) => [w.slug, w])).values()];
+}
+
+export type SceneForDistribution = {
+  id: string;
+  slug: string;
+  title: string;
+  nickname: string | null;
+  chapter: string | null;
+  /** Nombre de rôles de la scène, rôles muets compris. */
+  characterCount: number;
+  work: { slug: string; title: string; author: string | null };
+};
+
+/**
+ * Toutes les scènes publiables du catalogue, avec leur nombre de rôles.
+ *
+ * Sert les pages de distribution (/scenes/monologues, .../scenes-a-4-personnages…).
+ * Même portée que le sitemap, aux mêmes conditions : domaine public, non privée,
+ * sluggée des deux côtés, et écartée si `isThinScene` la juge trop mince. Cette
+ * dernière règle est la raison pour laquelle on charge `lines(text)` — sans elle, une
+ * page de distribution listerait des URLs qui se servent elles-mêmes en noindex, et
+ * sitemap et listing trancheraient sur des critères différents.
+ *
+ * Client sans cookies : la route reste cachable (cf. @/lib/supabase-public).
+ */
+export async function fetchScenesForDistribution(): Promise<SceneForDistribution[]> {
+  const supabase = createSupabasePublicClient();
+  const { data, error } = await supabase
+    .from("scenes")
+    .select(
+      "id, slug, title, nickname, chapter, summary, characters(id), lines(text), works!inner(slug, title, author, is_public_domain)"
+    )
+    .eq("is_private", false)
+    .eq("works.is_public_domain", true)
+    .not("slug", "is", null)
+    .returns<
+      {
+        id: string;
+        slug: string;
+        title: string;
+        nickname: string | null;
+        chapter: string | null;
+        summary: string | null;
+        characters: { id: string }[];
+        lines: { text: string | null }[];
+        works: { slug: string | null; title: string; author: string | null };
+      }[]
+    >();
+
+  if (error) {
+    console.error("fetchScenesForDistribution", error);
+    return [];
+  }
+
+  return (data ?? [])
+    .filter((scene) => !!scene.works?.slug)
+    .filter((scene) => !isThinScene({ lines: scene.lines ?? [], summary: scene.summary }))
+    .map((scene) => ({
+      id: scene.id,
+      slug: scene.slug,
+      title: scene.title,
+      nickname: scene.nickname,
+      chapter: scene.chapter,
+      characterCount: (scene.characters ?? []).length,
+      work: {
+        slug: scene.works.slug!,
+        title: scene.works.title,
+        author: scene.works.author,
+      },
+    }));
 }

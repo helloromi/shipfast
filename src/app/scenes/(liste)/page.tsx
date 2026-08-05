@@ -7,6 +7,7 @@ import { SearchBar } from "@/components/works/search-bar";
 import { t } from "@/locales/fr";
 import { ScenesListSkeleton } from "@/components/works/scenes-list-skeleton";
 import { buildOpenGraph, buildTwitter } from "@/lib/seo/open-graph";
+import { distributionPath } from "@/lib/seo/distributions";
 import { slugify } from "@/lib/utils/slugify";
 
 const TITLE = "Scènes de théâtre à apprendre : le catalogue | Côté-Cour";
@@ -47,6 +48,35 @@ export default async function ScenesPage({ searchParams }: Props) {
           {t.scenes.bibliotheque.description}
         </p>
       </div>
+
+      {/* Entrée par distribution. /scenes est le hub de ces pages : sans ce bloc elles
+          ne seraient liées que depuis le sitemap, donc orphelines dans le maillage.
+          Les paliers 2 et 3 personnages renvoient aux guides /ressources existants,
+          qui les couvrent déjà et sont les meilleures pages du site — on les lie plutôt
+          que d'en générer des doublons. */}
+      <nav aria-label="Parcourir par distribution" className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">
+          Par distribution
+        </h2>
+        <ul className="flex flex-wrap gap-2">
+          {[
+            { href: distributionPath("monologues"), label: "Monologues" },
+            { href: "/ressources/scenes-a-deux-personnages", label: "2 personnages" },
+            { href: "/ressources/scenes-de-theatre-a-3-personnages", label: "3 personnages" },
+            { href: distributionPath("scenes-a-4-personnages"), label: "4 personnages" },
+            { href: distributionPath("scenes-a-5-personnages-et-plus"), label: "5 et plus" },
+          ].map((item) => (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                className="inline-flex rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:-translate-y-[1px] hover:border-[#3b1f4a66]"
+              >
+                {item.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <SearchBar />

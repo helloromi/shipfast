@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getArticlesList } from "@/content/ressources/articles";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { DISTRIBUTIONS, distributionPath } from "@/lib/seo/distributions";
 import { isThinScene } from "@/lib/seo/thin-scenes";
 import { slugify } from "@/lib/utils/slugify";
 
@@ -191,6 +192,14 @@ export async function GET(request: NextRequest) {
       changefreq: "weekly",
       priority: 0.9,
     },
+    // Pages de distribution : elles listent le catalogue, donc leur date est celle du
+    // contenu le plus récent, comme /scenes.
+    ...DISTRIBUTIONS.map((distribution) => ({
+      loc: `${baseUrl}${distributionPath(distribution.slug)}`,
+      lastmod: latestSceneDate ?? STATIC_PAGE_LASTMOD.scenes,
+      changefreq: "weekly",
+      priority: 0.85,
+    })),
     // Palier œuvre : priorité entre la page liste (0.9) et les pages scènes (0.8).
     ...(publicWorks ?? [])
       .filter((work) => workSlugsWithIndexableScene.has(work.slug))
