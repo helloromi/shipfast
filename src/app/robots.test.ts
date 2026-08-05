@@ -26,6 +26,8 @@ describe("robots.txt", () => {
   it("laisse crawler les pages publiques du funnel", () => {
     for (const path of [
       "/",
+      // Ancienne URL de l'accueil : elle redirige en 308 vers `/`, donc elle doit
+      // rester crawlable pour que la redirection soit lue et le signal transféré.
       "/landing",
       "/scenes",
       "/scenes/moliere/les-fourberies-de-scapin",

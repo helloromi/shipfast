@@ -27,7 +27,8 @@ function getBaseUrl(request: NextRequest): string {
  * Valeurs initiales = date du dernier commit ayant touché chaque page.
  */
 const STATIC_PAGE_LASTMOD = {
-  landing: "2026-07-30",
+  // Déplacée de /landing à / le 05/08/2026 : nouvelle URL, donc nouvelle date.
+  accueil: "2026-08-05",
   professeurs: "2026-07-30",
   ressources: "2026-07-30",
   scenes: "2026-07-30",
@@ -159,10 +160,18 @@ export async function GET(request: NextRequest) {
     priority: number;
   }[] = [
     {
-      loc: `${baseUrl}/landing`,
-      lastmod: STATIC_PAGE_LASTMOD.landing,
+      // L'accueil vit sur `/` depuis le 05/08/2026 ; `/landing` y redirige en 308 et
+      // n'a donc plus rien à faire dans un sitemap — on n'y déclare que des URLs
+      // canoniques. Priorité 1 : c'est la racine du domaine.
+      //
+      // Sans slash final : c'est la forme exacte que Next donne au canonical de la page
+      // en résolvant `alternates: { canonical: "/" }` contre metadataBase. Les deux
+      // formes sont équivalentes pour un crawler, mais déclarer l'URL d'une façon dans
+      // le sitemap et d'une autre dans la page n'a aucune raison d'être.
+      loc: baseUrl,
+      lastmod: STATIC_PAGE_LASTMOD.accueil,
       changefreq: "monthly",
-      priority: 0.9,
+      priority: 1,
     },
     {
       loc: `${baseUrl}/professeurs`,

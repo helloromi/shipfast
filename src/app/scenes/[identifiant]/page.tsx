@@ -22,8 +22,8 @@ const getScene = cache(fetchSceneWithRelations);
 // Sur Next.js 16.0.10, permanentRedirect() appelé depuis generateMetadata ne
 // produit PAS un vrai statut HTTP (200 streamé + redirect côté client
 // seulement) — vérifié empiriquement (test isolé + cette route). Le redirect
-// doit rester dans le composant de page, comme le fait déjà /src/app/page.tsx
-// pour son propre redirect() vers /landing.
+// doit rester dans le composant de page, comme le fait déjà /src/app/landing/page.tsx
+// pour son 308 vers l'accueil.
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { identifiant: id } = await params;
   if (!id) return {};

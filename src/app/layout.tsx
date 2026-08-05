@@ -84,7 +84,7 @@ export default function RootLayout({
                   </p>
                 </div>
                 <nav className="grid grid-cols-2 gap-x-10 gap-y-2 sm:text-right">
-                  <Link href="/landing" className="transition underline-offset-4 hover:text-[#3b1f4a] hover:underline">
+                  <Link href="/" className="transition underline-offset-4 hover:text-[#3b1f4a] hover:underline">
                     Découvrir
                   </Link>
                   <Link href="/scenes" className="transition underline-offset-4 hover:text-[#3b1f4a] hover:underline">

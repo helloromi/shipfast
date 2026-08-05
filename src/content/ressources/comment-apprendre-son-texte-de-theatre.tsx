@@ -127,7 +127,7 @@ export function Body() {
 
       <H2>Comment appliquer cette méthode simplement</H2>
       <P>
-        C’est exactement ce que fait <InternalLink href="/landing">Côté-Cour</InternalLink> : tes
+        C’est exactement ce que fait <InternalLink href="/">Côté-Cour</InternalLink> : tes
         répliques sont masquées, tu les révèles une à une, l’application repère automatiquement où
         tu hésites et te les représente plus souvent. Le catalogue de scènes du domaine public —
         Molière, Racine, Corneille, Rostand — est accessible gratuitement et sans compte, en mode

@@ -145,7 +145,7 @@ export function AccountPageClient({ userEmail }: AccountPageClientProps) {
         // ignore
       }
 
-      router.replace("/landing");
+      router.replace("/");
       router.refresh();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Erreur inconnue.");
