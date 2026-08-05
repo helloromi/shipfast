@@ -16,6 +16,12 @@ export type Scene = {
   id: string;
   work_id: string | null;
   title: string;
+  /**
+   * Nom d'usage d'une scène célèbre (« La tirade du nez »). NULL pour la grande
+   * majorité des scènes : c'est ce que les gens tapent, pas « Acte I, scène 4 ».
+   * Cf. supabase/migrations/20260805120000_add_scenes_nickname.sql.
+   */
+  nickname?: string | null;
   author: string | null;
   summary: string | null;
   chapter: string | null;

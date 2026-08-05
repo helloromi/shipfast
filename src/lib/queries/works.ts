@@ -152,7 +152,7 @@ export type PublicWorkWithScenes = {
   author: string | null;
   summary: string | null;
   slug: string;
-  scenes: { id: string; title: string; chapter: string | null; slug: string }[];
+  scenes: { id: string; title: string; nickname: string | null; chapter: string | null; slug: string }[];
 };
 
 /**
@@ -169,7 +169,7 @@ export async function fetchPublicWorkBySlug(workSlug: string): Promise<PublicWor
   const supabase = createSupabasePublicClient();
   const { data, error } = await supabase
     .from("works")
-    .select("id, title, author, summary, slug, scenes(id, title, chapter, slug, is_private)")
+    .select("id, title, author, summary, slug, scenes(id, title, nickname, chapter, slug, is_private)")
     .eq("slug", workSlug)
     .eq("is_public_domain", true)
     .maybeSingle<{
@@ -178,7 +178,7 @@ export async function fetchPublicWorkBySlug(workSlug: string): Promise<PublicWor
       author: string | null;
       summary: string | null;
       slug: string;
-      scenes: { id: string; title: string; chapter: string | null; slug: string | null; is_private: boolean }[];
+      scenes: { id: string; title: string; nickname: string | null; chapter: string | null; slug: string | null; is_private: boolean }[];
     }>();
 
   if (error) {
@@ -189,7 +189,7 @@ export async function fetchPublicWorkBySlug(workSlug: string): Promise<PublicWor
 
   const scenes = (data.scenes ?? [])
     .filter((s): s is typeof s & { slug: string } => !s.is_private && !!s.slug)
-    .map(({ id, title, chapter, slug }) => ({ id, title, chapter, slug }));
+    .map(({ id, title, nickname, chapter, slug }) => ({ id, title, nickname, chapter, slug }));
 
   // Une œuvre sans aucune scène publiable n'a rien à afficher ni à indexer.
   if (scenes.length === 0) return null;

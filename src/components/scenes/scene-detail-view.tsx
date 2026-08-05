@@ -7,6 +7,7 @@ import { fetchUserLineHighlights } from "@/lib/queries/notes";
 import { fetchAnnotationsForScene } from "@/lib/queries/teacher";
 import { SceneDetailTabs } from "@/components/scenes/scene-detail-tabs";
 import { SceneNavBlock } from "@/components/scenes/scene-nav-block";
+import { sceneDisplayName } from "@/lib/scenes/scene-display";
 import { TeacherAnnotationsPanel } from "@/components/classes/teacher-annotations-panel";
 import { t } from "@/locales/fr";
 import { buildBreadcrumbJsonLd, buildSceneJsonLd } from "@/lib/seo/json-ld";
@@ -78,11 +79,15 @@ export async function SceneDetailView({ scene }: Props) {
   const canonicalPath = scenePathFor(scene);
   const workPath = workPathForScene(scene);
 
+  // Un seul calcul du nom affiché, partagé avec le <title> et le JSON-LD.
+  const displayName = sceneDisplayName(scene);
+
   const jsonLd =
     scene.is_private || !canonicalPath
       ? null
       : buildSceneJsonLd({
-          title: scene.title,
+          title: displayName.heading,
+          alternateName: displayName.coordinate,
           canonicalPath,
           author: scene.author ?? scene.work?.author ?? null,
           summary: scene.summary,
@@ -102,7 +107,7 @@ export async function SceneDetailView({ scene }: Props) {
       ? [
           { name: "Scènes", path: "/scenes" },
           { name: scene.work.title, path: workPath },
-          { name: scene.title, path: canonicalPath },
+          { name: displayName.heading, path: canonicalPath },
         ]
       : null;
 
@@ -179,8 +184,13 @@ export async function SceneDetailView({ scene }: Props) {
       <div className="flex flex-col gap-2">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3b1f4a]">{t.scenes.detail.sectionLabel}</p>
         <h1 className="font-display text-3xl font-semibold text-[#1c1b1f]">
-          {scene.title}
+          {displayName.heading}
         </h1>
+        {/* La coordonnée n'apparaît que si le H1 porte un nom d'usage : sinon elle EST
+            le H1. Elle reste visible parce qu'on la cherche aussi (« le cid acte 4 »). */}
+        {displayName.coordinate && (
+          <p className="text-sm font-medium text-[#7a7184]">{displayName.coordinate}</p>
+        )}
         <p className="text-sm text-[#524b5a] leading-relaxed">
           {scene.author ? `${t.common.labels.par} ${scene.author}` : t.common.labels.auteurInconnu}
         </p>

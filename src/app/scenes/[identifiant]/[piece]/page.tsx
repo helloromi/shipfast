@@ -8,9 +8,10 @@ import {
   fetchPublicWorkSlugs,
   type PublicWorkWithScenes,
 } from "@/lib/queries/works";
+import { sceneDisplayName } from "@/lib/scenes/scene-display";
 import { buildBreadcrumbJsonLd, buildWorkJsonLd } from "@/lib/seo/json-ld";
 import { buildOpenGraph, buildTwitter } from "@/lib/seo/open-graph";
-import { firstThatFits, truncate, TITLE_MAX } from "@/lib/seo/text";
+import { DESCRIPTION_MAX, firstThatFits, leadSentences, truncate, TITLE_MAX } from "@/lib/seo/text";
 import { slugify } from "@/lib/utils/slugify";
 
 /**
@@ -48,6 +49,18 @@ export async function generateStaticParams() {
   return works.map((work) => ({ identifiant: slugify(work.author ?? ""), piece: work.slug }));
 }
 
+/** Promesse accolée à la fiche dans la description, cf. SUMMARY_TAIL des pages scènes. */
+const WORK_SUMMARY_TAIL = " Toutes les scènes, texte intégral et gratuit.";
+
+/**
+ * Minuscule initiale, uniquement sur un mot ordinaire (« Comédie » → « comédie »).
+ * Un nom propre ou un sigle en tête de phrase est laissé intact : la fiche de Roméo &
+ * Juliette pourrait très bien commencer par « Tragédie », mais une autre par « Molière ».
+ */
+function lowerFirst(text: string): string {
+  return /^[A-ZÀ-Ý][a-zà-ÿ]/.test(text) ? text[0]!.toLowerCase() + text.slice(1) : text;
+}
+
 function canonicalPathFor(work: PublicWorkWithScenes): string {
   return `/scenes/${slugify(work.author ?? "")}/${work.slug}`;
 }
@@ -63,11 +76,30 @@ function buildWorkCopy(work: PublicWorkWithScenes) {
     ],
     TITLE_MAX
   );
-  const description = truncate(
+  // Même raisonnement que sur les pages scènes : la fiche d'abord, le gabarit ensuite.
+  // Le gabarit ne varie que par le titre et le nombre de scènes — c'est mieux que rien,
+  // mais ça ne dit pas au lecteur ce qu'il trouvera sur la page.
+  //
+  // Le titre de l'œuvre préfixe la fiche : toutes les fiches ouvrent sur la forme et la
+  // date (« Comédie en trois actes et en prose, créée en 1671. »), ce qui décrirait
+  // aussi bien vingt autres pièces. Une description qui ne nomme pas son sujet ne sert
+  // à rien dans une page de résultats.
+  const prefix = `${work.title} : `;
+  const summaryText = (work.summary ?? "").replace(/\s*\n\s*/g, " ").trim();
+  const summaryLead = summaryText
+    ? leadSentences(summaryText, DESCRIPTION_MAX - WORK_SUMMARY_TAIL.length - prefix.length)
+    : "";
+  const fallback = truncate(
     `${work.title}${work.author ? ` (${work.author})` : ""} : ${scenesLabel} au texte intégral, ` +
       `à lire et à apprendre en mode flashcard. Gratuit, sans compte.`,
-    155
+    DESCRIPTION_MAX
   );
+  const description = summaryLead
+    ? `${prefix}${lowerFirst(summaryLead)}${WORK_SUMMARY_TAIL}`
+    : summaryText
+      ? leadSentences(summaryText, DESCRIPTION_MAX) || truncate(summaryText, DESCRIPTION_MAX)
+      : fallback;
+
   return { title, description, scenesLabel };
 }
 
@@ -109,6 +141,17 @@ export default async function WorkScenesPage({ params }: Props) {
   const { scenesLabel } = buildWorkCopy(work);
   const hrefFor = (sceneSlug: string) => `${canonicalPath}/${sceneSlug}`;
 
+  // Les fiches sont stockées en paragraphes séparés par une ligne vide (même
+  // convention que scenes.summary).
+  const summaryParagraphs = (work.summary ?? "")
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  const namedScenes = work.scenes.filter(
+    (scene): scene is typeof scene & { nickname: string } => !!scene.nickname?.trim()
+  );
+
   // Regroupement par acte. sortScenesDramaturgical (appliqué dans la requête) trie
   // d'abord par acte, donc les scènes d'un même acte sont déjà contiguës.
   const groups: { chapter: string; scenes: PublicWorkWithScenes["scenes"] }[] = [];
@@ -124,7 +167,11 @@ export default async function WorkScenesPage({ params }: Props) {
     canonicalPath,
     author: work.author,
     summary: work.summary,
-    scenes: work.scenes.map((scene) => ({ title: scene.title, path: hrefFor(scene.slug) })),
+    // Même nom dans l'ItemList que dans le lien rendu juste en dessous.
+    scenes: work.scenes.map((scene) => ({
+      title: sceneDisplayName(scene).heading,
+      path: hrefFor(scene.slug),
+    })),
   });
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "Scènes", path: "/scenes" },
@@ -164,26 +211,72 @@ export default async function WorkScenesPage({ params }: Props) {
         <p className="text-sm text-[#524b5a]">
           {scenesLabel} au texte intégral, gratuites et sans compte.
         </p>
-        {work.summary && (
-          <p className="max-w-2xl text-sm leading-relaxed text-[#1c1b1f]">{work.summary}</p>
+        {/* La fiche œuvre, rendue côté serveur et en paragraphes. C'est le seul contenu
+            de cette page qui n'existe pas déjà sur un site de textes : sans elle, la
+            page se réduit à un sommaire de liens — c'est ce qui la tenait entre les
+            positions 33 et 48 alors que ses pages scènes sortent entre 5 et 10. */}
+        {summaryParagraphs.length > 0 && (
+          <div className="mt-2 flex max-w-2xl flex-col gap-3">
+            {summaryParagraphs.map((paragraph) => (
+              <p key={paragraph} className="text-sm leading-relaxed text-[#1c1b1f]">
+                {paragraph}
+              </p>
+            ))}
+          </div>
         )}
       </header>
+
+      {/* Scènes célèbres : les scènes de l'œuvre qui portent un nom d'usage. Aucune
+          rédaction supplémentaire — la donnée existe déjà (scenes.nickname) — et ça
+          donne à la page œuvre un bloc de liens dont l'ancre est ce que les gens
+          tapent réellement (« le récit de Rodrigue » plutôt que « Acte IV, Scène III »). */}
+      {namedScenes.length > 0 && (
+        <section className="flex flex-col gap-3 rounded-2xl border border-[#e7e1d9] bg-white/70 p-5">
+          <h2 className="font-display text-xl font-semibold text-[#3b1f4a]">
+            {namedScenes.length === 1 ? "Scène célèbre" : "Scènes célèbres"}
+          </h2>
+          <ul className="flex flex-col gap-2">
+            {namedScenes.map((scene) => (
+              <li key={scene.id}>
+                <Link
+                  href={hrefFor(scene.slug)}
+                  className="text-sm font-semibold text-[#3b1f4a] underline underline-offset-4"
+                >
+                  {scene.nickname}
+                </Link>
+                <span className="ml-2 text-xs text-[#7a7184]">{scene.title}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="flex flex-col gap-6">
         {groups.map((group) => (
           <section key={group.chapter} className="flex flex-col gap-2">
             <h2 className="font-display text-xl font-semibold text-[#3b1f4a]">{group.chapter}</h2>
             <ol className="flex flex-col gap-1">
-              {group.scenes.map((scene) => (
-                <li key={scene.id}>
-                  <Link
-                    href={hrefFor(scene.slug)}
-                    className="block rounded-xl border border-transparent px-3 py-2 text-sm text-[#524b5a] underline underline-offset-4 transition hover:border-[#e7e1d9] hover:bg-white hover:text-[#3b1f4a]"
-                  >
-                    {scene.title}
-                  </Link>
-                </li>
-              ))}
+              {group.scenes.map((scene) => {
+                // Ancre de lien : le nom d'usage quand il existe, la coordonnée en
+                // complément. « Acte IV, Scène III » seul ne dit à personne — ni au
+                // lecteur, ni à Google — que c'est le récit de Rodrigue.
+                const { heading, coordinate } = sceneDisplayName(scene);
+                return (
+                  <li key={scene.id}>
+                    <Link
+                      href={hrefFor(scene.slug)}
+                      className="block rounded-xl border border-transparent px-3 py-2 text-sm text-[#524b5a] underline underline-offset-4 transition hover:border-[#e7e1d9] hover:bg-white hover:text-[#3b1f4a]"
+                    >
+                      {heading}
+                      {coordinate && (
+                        <span className="ml-2 text-xs text-[#7a7184] no-underline">
+                          {coordinate}
+                        </span>
+                      )}
+                    </Link>
+                  </li>
+                );
+              })}
             </ol>
           </section>
         ))}

@@ -116,6 +116,7 @@ function sceneWithRelationsSelect(innerWork: boolean): string {
   id,
   work_id,
   title,
+  nickname,
   author,
   summary,
   chapter,

@@ -17,6 +17,12 @@ const PUBLISHER = {
 
 type SceneJsonLdInput = {
   title: string;
+  /**
+   * Second nom de la scène, quand elle en a deux : `name` porte le nom d'usage
+   * (« Le récit de Rodrigue ») et celui-ci la coordonnée (« Acte IV, Scène III »).
+   * Les deux sont cherchés, autant les déclarer tous les deux.
+   */
+  alternateName?: string | null;
   /** Chemin canonique de la page scène. */
   canonicalPath: string;
   author: string | null;
@@ -29,6 +35,7 @@ type SceneJsonLdInput = {
 
 export function buildSceneJsonLd({
   title,
+  alternateName,
   canonicalPath,
   author,
   summary,
@@ -43,6 +50,7 @@ export function buildSceneJsonLd({
     "@id": url,
     url,
     name: title,
+    ...(alternateName ? { alternateName } : {}),
     // La fiche est stockée en paragraphes ; `description` est un champ texte plat.
     ...(summary ? { description: summary.replace(/\s*\n\s*/g, " ").trim() } : {}),
     ...(author ? { author: { "@type": "Person", name: author } } : {}),

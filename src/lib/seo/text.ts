@@ -31,3 +31,44 @@ export function firstThatFits(candidates: string[], max: number): string {
 
 /** Cible confortable pour un title affiché en entier par Google. */
 export const TITLE_MAX = 60;
+
+/** Cible confortable pour une description affichée en entier par Google. */
+export const DESCRIPTION_MAX = 155;
+
+/**
+ * Découpe un texte en phrases.
+ *
+ * La ponctuation finale est conservée, et un guillemet fermant reste attaché à la
+ * phrase qu'il termine. En typographie française il est précédé d'une espace
+ * (« …c'est un cap ! »), donc couper sur la seule ponctuation laissait un « » »
+ * orphelin en tête de la phrase suivante : d'où l'espace optionnelle dans le
+ * lookbehind, et le lookahead qui interdit de couper juste avant le guillemet.
+ *
+ * Une abréviation en milieu de phrase (« M. Dupont ») serait prise pour une fin de
+ * phrase. Les fiches n'en contiennent pas, et le pire cas est une description plus
+ * courte que nécessaire — jamais une phrase coupée.
+ */
+function splitSentences(text: string): string[] {
+  return text
+    .split(/(?<=[.!?…](?:\s?[»"'’])?)\s+(?![»"'’])/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Retient les premières phrases entières de `text` qui tiennent dans `max`.
+ *
+ * Sert à fabriquer une description à partir d'une fiche rédigée : une description
+ * coupée en plein milieu d'une phrase se fait réécrire par Google, une ou deux
+ * phrases complètes non. Renvoie "" si même la première phrase dépasse `max` —
+ * c'est à l'appelant de décider s'il tronque ou s'il replie sur autre chose.
+ */
+export function leadSentences(text: string, max: number): string {
+  let lead = "";
+  for (const sentence of splitSentences(text)) {
+    const next = lead ? `${lead} ${sentence}` : sentence;
+    if (next.length > max) break;
+    lead = next;
+  }
+  return lead;
+}
