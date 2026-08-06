@@ -7,7 +7,7 @@ type Params = { params: Promise<{ id: string }> };
 const UPDATABLE_FIELDS = ["name", "description", "show_title", "show_date", "show_venue"] as const;
 
 export async function PATCH(request: NextRequest, { params }: Params) {
-  const auth = await requireAuth(request, { key: (id) => `teacher_class_update:${id}`, max: 60 });
+  const auth = await requireAuth(request, { key: (id) => `teacher_class_update:${id}`, max: 60 }, { requireClassOwner: true });
   if (!auth.ok) return auth.response;
   const { supabase } = auth;
   const { id } = await params;
@@ -51,7 +51,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(request: NextRequest, { params }: Params) {
-  const auth = await requireAuth(request, { key: (id) => `teacher_class_delete:${id}`, max: 20 });
+  const auth = await requireAuth(request, { key: (id) => `teacher_class_delete:${id}`, max: 20 }, { requireClassOwner: true });
   if (!auth.ok) return auth.response;
   const { supabase } = auth;
   const { id } = await params;

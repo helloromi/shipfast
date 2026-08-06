@@ -89,7 +89,25 @@ Trois chantiers, dans cet ordre. Chacun lève une objection précise qui sera re
 
 `/scenes/*/export` reste en disallow dans `robots.ts` : c'est une vue par utilisateur, pas une page de contenu.
 
-### Chantier 3 — Le parcours professeur en autonomie (~1,5 jour)
+### Chantier 3 — Le parcours professeur en autonomie ✅ livré le 06/08/2026
+
+**Décision de modèle.** Le paywall reste **en amont** : tenir une classe demande le pass. L'alternative — classe gratuite, pass pour distribuer un texte importé — a été écartée. Conséquence assumée : le professeur paie avant d'avoir rien vu, donc le mail du 24/08 doit faire le travail de conviction que le produit ne fera pas.
+
+**La faille trouvée en chemin.** L'espace professeur était intégralement ouvert :
+
+- les **15 handlers** de `src/app/api/teacher/**` ne vérifiaient que l'authentification — le paywall ne vivait que sur les pages, exactement comme pour l'import ;
+- `has_class_membership` renvoie vrai pour tout membre de n'importe quelle classe, sans regarder le professeur.
+
+Combinés, ces deux points formaient un contournement complet du pass : créer une classe par l'API, diffuser le code, et tout le monde obtenait les fonctions payantes.
+
+**Ce qui a été fait.**
+- `canOwnClass` (admin ou pass actif) — **volontairement plus strict** que `isEntitledToPaidFeatures` : l'appartenance à une classe donne les fonctions payantes mais jamais le droit d'en créer une, sinon un seul professeur payant amorce une chaîne sans fin.
+- Option `requireClassOwner` sur `requireAuth`, appliquée aux 15 handlers ; réponse 402 pour que le client renvoie sur `/subscribe`.
+- `requireClassOwnerOrRedirect` sur les trois pages `/professeur/**`, qui laissaient entrer un élève.
+- `next` traverse désormais la connexion **et** le paiement (`/subscribe?next=`, métadonnée jusqu'à `/api/payments/success`) : un professeur qui paie retombe dans son espace, plus sur `/home`.
+- `/professeurs` annonçait « Créer ma classe **gratuitement** · aucune carte bancaire requise » et pointait sur `/login`. C'était faux sous ce modèle et se serait retourné contre toi dès le premier prof démarché. La page annonce le prix, pointe sur le pass, et la FAQ distingue ce qui est gratuit (les élèves, toujours) de ce qui ne l'est pas (ton espace).
+
+**Reste ouvert.** `has_class_membership` ignore toujours l'état du pass du professeur : les élèves d'un professeur dont le pass a expiré gardent les fonctions payantes indéfiniment. Fermer ça demande la migration écartée ici. À revoir avant le premier renouvellement, soit fin novembre.
 
 **Pourquoi.** C'est le chantier qui fixe le plafond. `PROSPECTION.md` niveau 2 prévoit que Paul paramètre la classe à la main : dix minutes par prospect. Ça tient jusqu'à cinq professeurs, pas au-delà, et ça ne survit pas au 5 septembre où il repartira avec quinze contacts.
 

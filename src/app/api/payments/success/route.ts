@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import Stripe from "stripe";
 import { buildPassBillingRow, isCheckoutSettled } from "@/lib/stripe/pass";
+import { safeInternalPath } from "@/lib/utils/safe-path";
 
 type SubscriptionPeriodFields = {
   current_period_end?: number | null;
@@ -14,6 +15,10 @@ type SubscriptionPeriodFields = {
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const sessionId = searchParams.get("session_id");
+  // Destination posée par create-checkout : un professeur qui vient de payer
+  // retombe dans son espace plutôt que sur l'accueil. Re-validé ici, le
+  // paramètre ayant fait l'aller-retour par Stripe.
+  const nextPath = safeInternalPath(searchParams.get("next"), "/home");
 
   if (!sessionId) {
     redirect("/subscribe");
@@ -89,7 +94,7 @@ export async function GET(request: NextRequest) {
         console.warn("[SUCCESS] ⚠️ Erreur upsert pass billing_subscriptions:", passWriteError);
       }
 
-      redirect("/home");
+      redirect(nextPath);
     }
 
     // Fallback: attempt to upsert billing snapshot directly (in case webhook is delayed)
@@ -137,7 +142,7 @@ export async function GET(request: NextRequest) {
       console.warn("[SUCCESS] ⚠️ Metadata/customer/subscription incomplets, fallback billing ignoré");
     }
 
-    redirect("/home");
+    redirect(nextPath);
   } catch (error) {
     // Les redirect() de Next lancent une exception : ne pas les avaler ici.
     unstable_rethrow(error);

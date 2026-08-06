@@ -18,7 +18,10 @@ vi.mock("@/lib/queries/access", () => ({ hasActiveSubscription }));
 vi.mock("@/lib/queries/teacher", () => ({ hasClassMembership }));
 vi.mock("next/navigation", () => ({ redirect }));
 
-import { requireSubscriptionOrRedirect } from "./require-subscription";
+import {
+  requireClassOwnerOrRedirect,
+  requireSubscriptionOrRedirect,
+} from "./require-subscription";
 
 const USER = { id: "user-1" } as User;
 
@@ -66,5 +69,38 @@ describe("requireSubscriptionOrRedirect", () => {
     await expect(requireSubscriptionOrRedirect(USER, "/onboarding")).rejects.toThrow(
       "REDIRECT:/onboarding"
     );
+  });
+});
+
+describe("requireClassOwnerOrRedirect", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("redirige vers /login sans utilisateur", async () => {
+    setup({});
+    await expect(requireClassOwnerOrRedirect(null)).rejects.toThrow("REDIRECT:/login");
+  });
+
+  it.each([
+    ["admin", { admin: true }],
+    ["abonné", { subscribed: true }],
+  ])("laisse passer un %s", async (_label, opts) => {
+    setup(opts);
+    await expect(requireClassOwnerOrRedirect(USER)).resolves.toBeUndefined();
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  // L'espace professeur est plus fermé que le paywall général : un élève couvert
+  // par le compte de son prof n'a rien à faire dans l'administration des classes.
+  it("renvoie un membre de classe sans pass vers /subscribe", async () => {
+    setup({ inClass: true });
+    await expect(requireSubscriptionOrRedirect(USER)).resolves.toBeUndefined();
+    await expect(requireClassOwnerOrRedirect(USER)).rejects.toThrow("REDIRECT:/subscribe");
+  });
+
+  it("renvoie vers /subscribe sans aucun droit", async () => {
+    setup({});
+    await expect(requireClassOwnerOrRedirect(USER)).rejects.toThrow("REDIRECT:/subscribe");
   });
 });

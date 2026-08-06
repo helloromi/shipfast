@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { assertSameOrigin } from "@/lib/utils/csrf";
 import { checkRateLimit } from "@/lib/utils/rate-limit";
 import { isAdmin } from "@/lib/utils/admin";
+import { canOwnClass } from "@/lib/utils/entitlement";
 
 type RateLimitConfig = {
   key: string | ((userId: string) => string);
@@ -14,7 +15,18 @@ type RateLimitConfig = {
 type ApiAuthOptions = {
   skipCsrf?: boolean;
   requireAdmin?: boolean;
+  /**
+   * Exige le droit de tenir une classe (admin ou pass actif). À poser sur toute
+   * route qui crée ou administre une classe : le paywall de l'espace professeur
+   * ne vivait que sur les pages, donc l'API entière était ouverte à tout inscrit.
+   */
+  requireClassOwner?: boolean;
 };
+
+export const CLASS_OWNER_REQUIRED = {
+  error: "L'espace professeur demande un pass actif.",
+  code: "CLASS_OWNER_REQUIRED",
+} as const;
 
 export type ApiAuthSuccess = { ok: true; user: User; supabase: SupabaseClient };
 export type ApiAuthError = { ok: false; response: NextResponse };
@@ -69,6 +81,15 @@ export async function requireAuth(
         response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
       };
     }
+  }
+
+  // 402 et non 403 : ce n'est pas un défaut de permission mais un paywall, et le
+  // client s'en sert pour envoyer sur /subscribe plutôt qu'afficher une erreur.
+  if (options?.requireClassOwner && !(await canOwnClass(user.id))) {
+    return {
+      ok: false,
+      response: NextResponse.json(CLASS_OWNER_REQUIRED, { status: 402 }),
+    };
   }
 
   if (rateLimit) {

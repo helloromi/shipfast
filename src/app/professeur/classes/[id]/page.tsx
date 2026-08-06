@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { ClassDetailClient } from "@/components/teacher/class-detail-client";
 import { fetchClassDetail } from "@/lib/queries/teacher";
 import { fetchUserPrivateScenes, getSupabaseSessionUser } from "@/lib/queries/scenes";
-import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
+import { requireClassOwnerOrRedirect } from "@/lib/utils/require-subscription";
 import { t } from "@/locales/fr";
 
 export const metadata: Metadata = {
@@ -22,7 +22,7 @@ export default async function TeacherClassPage({ params }: Props) {
   if (!user) {
     redirect("/login");
   }
-  await requireSubscriptionOrRedirect(user);
+  await requireClassOwnerOrRedirect(user);
 
   const [detail, libraryScenes] = await Promise.all([
     fetchClassDetail(id, user.id),

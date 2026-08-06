@@ -10,7 +10,7 @@ type Params = { params: Promise<{ id: string }> };
  * Crée aussi l'accès en lecture (user_work_access 'private') si l'élève a un compte lié.
  */
 export async function POST(request: NextRequest, { params }: Params) {
-  const auth = await requireAuth(request, { key: (id) => `teacher_assign:${id}`, max: 120 });
+  const auth = await requireAuth(request, { key: (id) => `teacher_assign:${id}`, max: 120 }, { requireClassOwner: true });
   if (!auth.ok) return auth.response;
   const { supabase } = auth;
   const { id: classId } = await params;
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(request: NextRequest, { params }: Params) {
-  const auth = await requireAuth(request, { key: (id) => `teacher_unassign:${id}`, max: 120 });
+  const auth = await requireAuth(request, { key: (id) => `teacher_unassign:${id}`, max: 120 }, { requireClassOwner: true });
   if (!auth.ok) return auth.response;
   const { supabase } = auth;
   const { id: classId } = await params;

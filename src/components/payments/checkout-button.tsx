@@ -7,12 +7,19 @@ type CheckoutButtonProps = {
   className?: string;
   children: React.ReactNode;
   plan: "monthly" | "quarterly" | "yearly";
+  /**
+   * Où renvoyer l'utilisateur une fois le paiement encaissé. Un professeur qui
+   * paie pour tenir une classe doit retomber dans son espace, pas sur l'accueil :
+   * sans ça, il vient de payer et doit deviner où aller.
+   */
+  next?: string;
 };
 
 export function CheckoutButton({
   className,
   children,
   plan,
+  next,
 }: CheckoutButtonProps) {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -27,7 +34,7 @@ export function CheckoutButton({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, next }),
       });
 
       const data = await response.json();

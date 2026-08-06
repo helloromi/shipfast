@@ -6,11 +6,21 @@ import { getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { hasActiveSubscription } from "@/lib/queries/access";
 import { isAdmin } from "@/lib/utils/admin";
 import { t } from "@/locales/fr";
+import { safeInternalPath } from "@/lib/utils/safe-path";
 
-export default async function SubscribePage() {
+type Props = {
+  searchParams: Promise<{ next?: string }>;
+};
+
+export default async function SubscribePage({ searchParams }: Props) {
+  // `next` traverse la connexion ET le paiement : c'est ce qui permet à un
+  // professeur venu de /professeurs d'atterrir dans son espace une fois payé,
+  // au lieu de se retrouver sur l'accueil sans savoir quoi faire.
+  const next = safeInternalPath((await searchParams).next, "/home");
+
   const user = await getSupabaseSessionUser();
   if (!user) {
-    redirect("/login");
+    redirect(`/login?redirect=${encodeURIComponent(`/subscribe?next=${next}`)}`);
   }
 
   const [admin, subscribed] = await Promise.all([
@@ -19,7 +29,7 @@ export default async function SubscribePage() {
   ]);
 
   if (admin || subscribed) {
-    redirect("/home");
+    redirect(next);
   }
 
   return (
@@ -51,6 +61,7 @@ export default async function SubscribePage() {
 
           <CheckoutButton
             plan="quarterly"
+            next={next}
             className="w-full rounded-full bg-gradient-to-r from-[#ff6b6b] to-[#c74884] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-[1px]"
           >
             {t.pricing.passCheckout.cta}

@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/utils/api-auth";
 
 /** Annotations du professeur, visibles par toute la classe (RLS: écriture prof uniquement). */
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request, { key: (id) => `teacher_annotation:${id}`, max: 240 });
+  const auth = await requireAuth(request, { key: (id) => `teacher_annotation:${id}`, max: 240 }, { requireClassOwner: true });
   if (!auth.ok) return auth.response;
   const { supabase } = auth;
 
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireAuth(request, { key: (id) => `teacher_annotation:${id}`, max: 240 });
+  const auth = await requireAuth(request, { key: (id) => `teacher_annotation:${id}`, max: 240 }, { requireClassOwner: true });
   if (!auth.ok) return auth.response;
   const { supabase } = auth;
 
@@ -75,7 +75,7 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const auth = await requireAuth(request, { key: (id) => `teacher_annotation:${id}`, max: 240 });
+  const auth = await requireAuth(request, { key: (id) => `teacher_annotation:${id}`, max: 240 }, { requireClassOwner: true });
   if (!auth.ok) return auth.response;
   const { supabase } = auth;
 

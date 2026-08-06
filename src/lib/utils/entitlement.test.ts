@@ -14,7 +14,7 @@ vi.mock("@/lib/utils/admin", () => ({ isAdmin }));
 vi.mock("@/lib/queries/access", () => ({ hasActiveSubscription }));
 vi.mock("@/lib/queries/teacher", () => ({ hasClassMembership }));
 
-import { canAccessPrivateScene, isEntitledToPaidFeatures } from "./entitlement";
+import { canAccessPrivateScene, canOwnClass, isEntitledToPaidFeatures } from "./entitlement";
 
 function setup(opts: { admin?: boolean; subscribed?: boolean; inClass?: boolean }) {
   isAdmin.mockResolvedValue(opts.admin ?? false);
@@ -42,6 +42,47 @@ describe("isEntitledToPaidFeatures", () => {
   it("refuse un compte sans aucun droit", async () => {
     setup({});
     await expect(isEntitledToPaidFeatures("user-1")).resolves.toBe(false);
+  });
+});
+
+describe("canOwnClass", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("laisse un pass actif tenir une classe", async () => {
+    setup({ subscribed: true });
+    await expect(canOwnClass("user-1")).resolves.toBe(true);
+  });
+
+  it("laisse un admin tenir une classe", async () => {
+    setup({ admin: true });
+    await expect(canOwnClass("user-1")).resolves.toBe(true);
+  });
+
+  // Le test qui compte : sans lui, un élève habilité par sa classe pourrait créer
+  // la sienne, dont les membres seraient habilités à leur tour — le pass ne
+  // vaudrait plus rien au bout de deux sauts.
+  it("refuse à un membre de classe sans pass de créer la sienne", async () => {
+    setup({ inClass: true });
+    // Le même utilisateur est habilité aux fonctions payantes...
+    await expect(isEntitledToPaidFeatures("user-1")).resolves.toBe(true);
+    // ...mais n'a pas le droit de tenir une classe.
+    await expect(canOwnClass("user-1")).resolves.toBe(false);
+  });
+
+  it("n'interroge même pas l'appartenance à une classe", async () => {
+    setup({ inClass: true });
+    await canOwnClass("user-1");
+    expect(hasClassMembership).not.toHaveBeenCalled();
+  });
+
+  it("refuse un compte sans aucun droit", async () => {
+    setup({});
+    await expect(canOwnClass("user-1")).resolves.toBe(false);
+  });
+
+  it("refuse sans identifiant", async () => {
+    setup({ admin: true });
+    await expect(canOwnClass("")).resolves.toBe(false);
   });
 });
 

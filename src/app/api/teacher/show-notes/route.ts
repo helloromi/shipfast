@@ -7,7 +7,7 @@ const STATUSES = ["todo", "in_progress", "done"];
 
 /** Préparation du spectacle : éléments de mise en scène, costumes, décors, etc. */
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request, { key: (id) => `teacher_show_note:${id}`, max: 240 });
+  const auth = await requireAuth(request, { key: (id) => `teacher_show_note:${id}`, max: 240 }, { requireClassOwner: true });
   if (!auth.ok) return auth.response;
   const { supabase } = auth;
 
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireAuth(request, { key: (id) => `teacher_show_note:${id}`, max: 240 });
+  const auth = await requireAuth(request, { key: (id) => `teacher_show_note:${id}`, max: 240 }, { requireClassOwner: true });
   if (!auth.ok) return auth.response;
   const { supabase } = auth;
 
@@ -100,7 +100,7 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const auth = await requireAuth(request, { key: (id) => `teacher_show_note:${id}`, max: 240 });
+  const auth = await requireAuth(request, { key: (id) => `teacher_show_note:${id}`, max: 240 }, { requireClassOwner: true });
   if (!auth.ok) return auth.response;
   const { supabase } = auth;
 

@@ -30,7 +30,12 @@ function FullBleed({ children, className }: { children: React.ReactNode; classNa
   );
 }
 
-const FAQ_ITEMS = [t.professeurs.faq.items.q1, t.professeurs.faq.items.q2, t.professeurs.faq.items.q3];
+const FAQ_ITEMS = [
+  t.professeurs.faq.items.q1,
+  t.professeurs.faq.items.q2,
+  t.professeurs.faq.items.q3,
+  t.professeurs.faq.items.q4,
+];
 
 const STEPS = [
   t.professeurs.howItWorks.steps.step1,
@@ -78,7 +83,12 @@ export default async function ProfesseursPage() {
             {t.professeurs.hero.subtitle}
           </p>
           <div className="reveal reveal-4 flex flex-wrap items-center gap-3">
-            <Link href="/login" className="btn-primary !min-h-[52px] !px-8 text-base">
+            {/* Vers le pass, pas vers /login : la connexion seule ne débloque rien
+                ici, et `next` ramène le prof dans son espace une fois payé. */}
+            <Link
+              href="/subscribe?next=/professeur"
+              className="btn-primary !min-h-[52px] !px-8 text-base"
+            >
               {t.professeurs.hero.ctaPrimary}
             </Link>
             <Link

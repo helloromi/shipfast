@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/utils/api-auth";
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAuth(request, { key: (id) => `teacher_class_create:${id}`, max: 20 });
+  const auth = await requireAuth(request, { key: (id) => `teacher_class_create:${id}`, max: 20 }, { requireClassOwner: true });
   if (!auth.ok) return auth.response;
   const { user, supabase } = auth;
 

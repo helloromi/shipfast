@@ -7,7 +7,7 @@ type Params = { params: Promise<{ id: string }> };
 
 /** Rattache une scène (texte) à la classe. */
 export async function POST(request: NextRequest, { params }: Params) {
-  const auth = await requireAuth(request, { key: (id) => `teacher_scene_attach:${id}`, max: 60 });
+  const auth = await requireAuth(request, { key: (id) => `teacher_scene_attach:${id}`, max: 60 }, { requireClassOwner: true });
   if (!auth.ok) return auth.response;
   const { supabase } = auth;
   const { id: classId } = await params;
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
 /** Retire une scène de la classe (et la distribution associée). */
 export async function DELETE(request: NextRequest, { params }: Params) {
-  const auth = await requireAuth(request, { key: (id) => `teacher_scene_detach:${id}`, max: 60 });
+  const auth = await requireAuth(request, { key: (id) => `teacher_scene_detach:${id}`, max: 60 }, { requireClassOwner: true });
   if (!auth.ok) return auth.response;
   const { supabase } = auth;
   const { id: classId } = await params;

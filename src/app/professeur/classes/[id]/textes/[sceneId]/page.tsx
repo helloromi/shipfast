@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { SceneAnnotationsEditor } from "@/components/teacher/scene-annotations-editor";
 import { fetchClassAnnotations, fetchClassDetail } from "@/lib/queries/teacher";
 import { fetchSceneWithRelations, getSupabaseSessionUser } from "@/lib/queries/scenes";
-import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
+import { requireClassOwnerOrRedirect } from "@/lib/utils/require-subscription";
 import { t } from "@/locales/fr";
 
 export const metadata: Metadata = {
@@ -22,7 +22,7 @@ export default async function TeacherSceneAnnotationsPage({ params }: Props) {
   if (!user) {
     redirect("/login");
   }
-  await requireSubscriptionOrRedirect(user);
+  await requireClassOwnerOrRedirect(user);
 
   const detail = await fetchClassDetail(classId, user.id);
   if (!detail || !detail.scenes.some((s) => s.id === sceneId)) {

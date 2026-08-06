@@ -10,7 +10,7 @@ type Params = { params: Promise<{ id: string }> };
  * Si un compte existe déjà avec cet email, le membre est lié immédiatement.
  */
 export async function POST(request: NextRequest, { params }: Params) {
-  const auth = await requireAuth(request, { key: (id) => `teacher_member_add:${id}`, max: 60 });
+  const auth = await requireAuth(request, { key: (id) => `teacher_member_add:${id}`, max: 60 }, { requireClassOwner: true });
   if (!auth.ok) return auth.response;
   const { supabase } = auth;
   const { id: classId } = await params;
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(request: NextRequest, { params }: Params) {
-  const auth = await requireAuth(request, { key: (id) => `teacher_member_remove:${id}`, max: 60 });
+  const auth = await requireAuth(request, { key: (id) => `teacher_member_remove:${id}`, max: 60 }, { requireClassOwner: true });
   if (!auth.ok) return auth.response;
   const { supabase } = auth;
   const { id: classId } = await params;

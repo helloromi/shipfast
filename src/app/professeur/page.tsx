@@ -6,7 +6,7 @@ import { CreateClassForm } from "@/components/teacher/create-class-form";
 import { fetchTeacherClasses } from "@/lib/queries/teacher";
 import { getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { countLabel } from "@/lib/utils/plural";
-import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
+import { requireClassOwnerOrRedirect } from "@/lib/utils/require-subscription";
 import { t } from "@/locales/fr";
 
 export const metadata: Metadata = {
@@ -18,7 +18,7 @@ export default async function TeacherDashboardPage() {
   if (!user) {
     redirect("/login");
   }
-  await requireSubscriptionOrRedirect(user);
+  await requireClassOwnerOrRedirect(user);
 
   const classes = await fetchTeacherClasses(user.id);
 

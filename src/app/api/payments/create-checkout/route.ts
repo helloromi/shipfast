@@ -3,6 +3,7 @@ import { getStripe } from "@/lib/stripe/client";
 import { getOrCreateStripeCustomer } from "@/lib/stripe/customer";
 import { getSiteUrl } from "@/lib/url";
 import { requireAuth } from "@/lib/utils/api-auth";
+import { safeInternalPath } from "@/lib/utils/safe-path";
 
 // "quarterly" est le pass 3 mois : paiement unique (mode "payment"), price
 // one-time dédié. monthly/yearly restent des abonnements legacy (plus aucune
@@ -68,7 +69,15 @@ export async function POST(request: NextRequest) {
     const { stripeCustomerId } = customerResult;
 
     const siteUrl = getSiteUrl();
-    const successUrl = `${siteUrl}/api/payments/success?session_id={CHECKOUT_SESSION_ID}`;
+    // `next` porte l'intention d'achat jusqu'après l'encaissement : un professeur
+    // qui paie pour tenir une classe retombe dans son espace, pas sur l'accueil.
+    // safeInternalPath refuse tout ce qui n'est pas un chemin interne — ce
+    // paramètre finit dans une URL de redirection, il ne doit jamais sortir du site.
+    const nextPath = safeInternalPath(
+      typeof body.next === "string" ? body.next : null,
+      "/home"
+    );
+    const successUrl = `${siteUrl}/api/payments/success?session_id={CHECKOUT_SESSION_ID}&next=${encodeURIComponent(nextPath)}`;
     const cancelUrl = `${siteUrl}/subscribe`;
 
     const isPass = selectedPlan === "quarterly";

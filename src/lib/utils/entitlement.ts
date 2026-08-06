@@ -33,6 +33,27 @@ export const isEntitledToPaidFeatures = cache(async (userId: string): Promise<bo
 });
 
 /**
+ * Le droit de tenir une classe : admin ou pass actif. **Volontairement plus strict
+ * que `isEntitledToPaidFeatures`, dont il n'est pas un alias.**
+ *
+ * L'appartenance à une classe donne les fonctions payantes, mais ne doit surtout
+ * pas donner le droit d'en créer une : sinon un seul professeur payant amorce une
+ * chaîne sans fin — son élève est habilité, donc il crée sa classe, dont les
+ * membres sont habilités à leur tour, et le pass ne vaut plus rien. Toute route
+ * qui crée ou administre une classe passe par ici, jamais par la matrice large.
+ */
+export const canOwnClass = cache(async (userId: string): Promise<boolean> => {
+  if (!userId) return false;
+
+  const [admin, subscribed] = await Promise.all([
+    isAdmin(userId),
+    hasActiveSubscription(userId),
+  ]);
+
+  return admin || subscribed;
+});
+
+/**
  * Accès à une scène privée (texte importé).
  *
  * **On est toujours chez soi.** Le propriétaire d'un texte importé peut le lire,
