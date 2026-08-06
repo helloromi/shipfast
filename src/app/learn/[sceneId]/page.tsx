@@ -7,7 +7,7 @@ import { t } from "@/locales/fr";
 import { hasAccess } from "@/lib/queries/access";
 import { ensurePersonalSceneForCurrentUser } from "@/lib/utils/personal-scene";
 import { fetchUserLineNotes } from "@/lib/queries/notes";
-import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
+import { canAccessPrivateScene } from "@/lib/utils/entitlement";
 
 type Props = {
   params: Promise<{ sceneId: string }>;
@@ -42,8 +42,10 @@ export default async function LearnPage({ params, searchParams }: Props) {
   // Le paywall ne concerne que le contenu privé importé. Sur une scène du domaine
   // public, un utilisateur connecté a exactement le même accès qu'un visiteur
   // anonyme — jamais moins. On ne garde donc l'abonnement que si is_private.
-  if (user && scene.is_private) {
-    await requireSubscriptionOrRedirect(user);
+  // Le propriétaire, lui, répète toujours son propre texte : c'est tout l'intérêt
+  // de l'import offert.
+  if (user && scene.is_private && !(await canAccessPrivateScene(user.id, scene))) {
+    redirect("/subscribe");
   }
 
   // Si le deeplink pointe vers une scène publique et que l'utilisateur a accès,

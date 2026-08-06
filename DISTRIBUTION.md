@@ -71,6 +71,8 @@ Trois chantiers, dans cet ordre. Chacun lève une objection précise qui sera re
 - Quota appliqué **côté serveur** sur les deux routes API : avant l'extraction (on ne paie pas d'OCR pour un compte sans droit) et avant la création de la scène.
 - Page ouverte à tout inscrit, avec bandeau « ton premier texte importé est offert » ; redirection vers `/subscribe` une fois l'offert consommé, y compris depuis le client (402 → `/subscribe`).
 
+**Correctif du 06/08/2026, remonté par un test manuel.** Le premier import créait bien la scène, puis `/scenes/[id]` renvoyait aussitôt sur `/subscribe` : quatre gardes (détail, `/learn`, export, édition) traitaient toute scène privée comme du contenu payant, sans regarder à qui elle appartenait. On offrait un import qu'on ne pouvait pas ouvrir. `canAccessPrivateScene` pose désormais la règle « on est toujours chez soi » : le propriétaire d'un texte importé le lit, le répète, l'exporte et le corrige sans pass. **Conséquence assumée : un pass expiré ne reprend pas les textes déjà importés** — le pass vend le droit d'importer, pas la garde de ce qui a été importé.
+
 **Sémantique retenue.** On compte les textes importés **possédés**, pas les imports réalisés depuis toujours : supprimer son texte importé rend l'import offert. La promesse « un texte importé à la fois » reste vraie, et compter l'historique aurait demandé de s'appuyer sur `import_jobs`, qui ne couvre pas le chemin d'import synchrone. À revoir si quelqu'un en abuse.
 
 ### Chantier 2 — Le PDF des scènes du domaine public, gratuit avec un compte ✅ livré le 06/08/2026

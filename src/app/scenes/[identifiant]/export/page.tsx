@@ -5,7 +5,7 @@ import { fetchSceneWithRelations, fetchUserProgressScenes, getSupabaseSessionUse
 import { fetchUserLineNotes, fetchUserLineHighlights } from "@/lib/queries/notes";
 import { hasAccess } from "@/lib/queries/access";
 import { ensurePersonalSceneForCurrentUser } from "@/lib/utils/personal-scene";
-import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
+import { canAccessPrivateScene } from "@/lib/utils/entitlement";
 import { ExportPrintTrigger } from "@/components/scenes/export-print-trigger";
 import { t } from "@/locales/fr";
 
@@ -32,12 +32,13 @@ export default async function SceneExportPage({ params }: Props) {
     redirect(`/login?redirect=/scenes/${id}/export`);
   }
 
-  // Le pass ne garde QUE l'export d'un texte importé. Sur une scène du domaine
-  // public, le PDF est une commodité d'impression sur du contenu déjà libre et
-  // déjà lisible en entier sans compte : le mettre derrière le paiement était
-  // une entorse à la règle produit n°1.
-  if (scene.is_private) {
-    await requireSubscriptionOrRedirect(user);
+  // Le pass ne garde QUE l'export d'un texte importé qui ne nous appartient pas.
+  // Sur une scène du domaine public, le PDF est une commodité d'impression sur du
+  // contenu déjà libre et déjà lisible en entier sans compte : le mettre derrière
+  // le paiement était une entorse à la règle produit n°1. Et sur son propre texte
+  // importé, on est chez soi.
+  if (scene.is_private && !(await canAccessPrivateScene(user.id, scene))) {
+    redirect("/subscribe");
   }
 
   if (!scene.is_private) {

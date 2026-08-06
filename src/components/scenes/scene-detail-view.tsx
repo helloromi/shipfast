@@ -14,7 +14,7 @@ import { buildBreadcrumbJsonLd, buildSceneJsonLd } from "@/lib/seo/json-ld";
 import { scenePathFor, workPathForScene } from "@/lib/seo/urls";
 import { hasAccess } from "@/lib/queries/access";
 import { ensurePersonalSceneForCurrentUser } from "@/lib/utils/personal-scene";
-import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
+import { canAccessPrivateScene } from "@/lib/utils/entitlement";
 import { SceneWithRelations } from "@/types/scenes";
 
 type Props = {
@@ -34,8 +34,10 @@ export async function SceneDetailView({ scene }: Props) {
   // Le paywall ne concerne que le contenu privé importé. Sur une scène du domaine
   // public, un utilisateur connecté a exactement le même accès qu'un visiteur
   // anonyme — jamais moins (règle produit n°1). On ne garde l'abonnement que si is_private.
-  if (user && scene.is_private) {
-    await requireSubscriptionOrRedirect(user);
+  // Et sur une scène privée, le propriétaire est toujours chez lui : sans ça,
+  // le texte de l'import offert était créé puis inaccessible.
+  if (user && scene.is_private && !(await canAccessPrivateScene(user.id, scene))) {
+    redirect("/subscribe");
   }
 
   // Si un user a accès à une scène publique, on travaille sur sa copie perso (éditable) + historique migré.

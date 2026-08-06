@@ -31,3 +31,28 @@ export const isEntitledToPaidFeatures = cache(async (userId: string): Promise<bo
 
   return admin || subscribed || inClass;
 });
+
+/**
+ * Accès à une scène privée (texte importé).
+ *
+ * **On est toujours chez soi.** Le propriétaire d'un texte importé peut le lire,
+ * le répéter, l'exporter et le corriger, sans condition de pass. Sans cette
+ * règle, l'import offert ne servait à rien : la scène était bien créée, puis
+ * `/scenes/[id]` renvoyait aussitôt sur `/subscribe` — on offrait un import
+ * qu'on ne pouvait pas ouvrir.
+ *
+ * Conséquence assumée : un pass expiré ne reprend pas les textes déjà importés.
+ * Le pass vend le droit d'importer, pas la garde de ce qu'on a importé.
+ *
+ * Le droit payant reste nécessaire pour une scène privée qui ne nous appartient
+ * pas — texte partagé par un professeur, scène d'une classe.
+ */
+export async function canAccessPrivateScene(
+  userId: string,
+  scene: { owner_user_id?: string | null }
+): Promise<boolean> {
+  if (!userId) return false;
+  if (scene.owner_user_id && scene.owner_user_id === userId) return true;
+
+  return isEntitledToPaidFeatures(userId);
+}

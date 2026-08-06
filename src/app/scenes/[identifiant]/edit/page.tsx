@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { fetchSceneWithRelations, getSupabaseSessionUser } from "@/lib/queries/scenes";
 import { isAdmin } from "@/lib/utils/admin";
 import { SceneEditor } from "@/components/scenes/scene-editor";
-import { requireSubscriptionOrRedirect } from "@/lib/utils/require-subscription";
+import { canAccessPrivateScene } from "@/lib/utils/entitlement";
 
 type Props = {
   params: Promise<{ identifiant: string }>;
@@ -18,7 +18,6 @@ export default async function SceneEditPage({ params }: Props) {
   if (!user) {
     redirect("/login");
   }
-  await requireSubscriptionOrRedirect(user);
 
   const scene = await fetchSceneWithRelations(sceneId);
   if (!scene) notFound();
@@ -26,6 +25,14 @@ export default async function SceneEditPage({ params }: Props) {
   // Les scènes publiques passent par /scenes/[identifiant] (qui auto-fork si accès).
   if (!scene.is_private) {
     redirect(`/scenes/${sceneId}`);
+  }
+
+  // Le droit d'accès se juge sur la scène, pas seulement sur l'utilisateur : corriger
+  // son propre texte importé fait partie de l'import offert. L'OCR se trompe, et un
+  // texte qu'on ne peut pas corriger n'est pas utilisable. `canEdit` ci-dessous
+  // restreint de toute façon l'écriture au propriétaire ou à un admin.
+  if (!(await canAccessPrivateScene(user.id, scene))) {
+    redirect("/subscribe");
   }
 
   const admin = await isAdmin(user.id);
