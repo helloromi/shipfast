@@ -152,6 +152,14 @@ export function ImportForm() {
 
       const data = await response.json();
 
+      // Import offert déjà consommé : c'est le moment de proposer le pass, pas
+      // d'afficher une erreur. On envoie directement sur la page de paiement.
+      if (response.status === 402) {
+        setProcessing({ stage: "idle" });
+        router.push("/subscribe");
+        return;
+      }
+
       if (!response.ok || !data.success) {
         throw new Error(data.error || data.details || t.scenes.import.errors.generic);
       }

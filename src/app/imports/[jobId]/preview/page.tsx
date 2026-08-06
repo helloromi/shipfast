@@ -316,6 +316,14 @@ export default function ImportPreviewPage() {
       });
 
       const data = await response.json();
+
+      // Import offert déjà consommé entre le lancement du job et la validation :
+      // on bascule sur le pass plutôt que d'afficher une erreur technique.
+      if (response.status === 402) {
+        router.push("/subscribe");
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(data.details || data.error || t.scenes.import.errors.generic);
       }

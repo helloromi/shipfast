@@ -157,6 +157,14 @@ export const scenes = {
     sectionLabel: "Importer une scène",
     title: "Importer depuis un fichier",
     description: "Téléchargez une photo ou un PDF de votre scène. Le texte sera extrait automatiquement et la scène sera créée pour vous.",
+    // Bandeau affiché au compte sans pass, qui dispose de son import offert.
+    offert: {
+      titre: "Ton premier texte importé est offert",
+      description:
+        "Photographie ta scène ou dépose un PDF : le texte est découpé en répliques, et tu peux le répéter en flashcards tout de suite.",
+      limite: (maxFiles: number) =>
+        `Import offert limité à ${maxFiles} fichiers. Le pass à 12€ lève la limite et débloque les imports suivants.`,
+    },
     dropzone: {
       title: "Glissez-déposez votre fichier ici",
       or: "ou",

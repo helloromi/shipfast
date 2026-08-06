@@ -4,6 +4,12 @@ import { parseTextWithAI, type ParsedScene } from "@/lib/utils/text-parser";
 import { requireAuth } from "@/lib/utils/api-auth";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { processImportJobPreview } from "@/lib/imports/process-import-job";
+import {
+  FREE_IMPORT_MAX_FILES,
+  IMPORT_FILE_CAP_EXCEEDED,
+  IMPORT_QUOTA_EXCEEDED,
+  getImportQuota,
+} from "@/lib/utils/import-quota";
 
 export const runtime = "nodejs"; // Nécessaire pour canvas + pdfjs-dist
 export const maxDuration = 300; // 5 minutes max pour le traitement
@@ -74,6 +80,18 @@ export async function POST(request: NextRequest) {
         },
         { status: 403 }
       );
+    }
+
+    // Paywall de l'import, appliqué ici pour la première fois côté serveur : jusqu'ici
+    // il ne vivait que sur la page /scenes/import, donc un appel direct à cette route
+    // le contournait entièrement. On vérifie AVANT toute extraction pour ne pas payer
+    // d'OCR à un compte qui n'y a pas droit.
+    const quota = await getImportQuota(user.id);
+    if (!quota.allowed) {
+      return NextResponse.json(IMPORT_QUOTA_EXCEEDED, { status: 402 });
+    }
+    if (!quota.entitled && filePaths.length > FREE_IMPORT_MAX_FILES) {
+      return NextResponse.json(IMPORT_FILE_CAP_EXCEEDED, { status: 402 });
     }
 
     // Mode background: créer un job et traiter en arrière-plan

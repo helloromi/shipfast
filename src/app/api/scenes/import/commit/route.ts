@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { ParsedScene } from "@/lib/utils/text-parser";
 import { requireAuth } from "@/lib/utils/api-auth";
+import { IMPORT_QUOTA_EXCEEDED, getImportQuota } from "@/lib/utils/import-quota";
 
 export const runtime = "nodejs";
 
@@ -44,6 +45,16 @@ export async function POST(request: NextRequest) {
 
     const title = (draft.title || "").trim() || "Scène importée";
     const author = draft.author ? String(draft.author).trim() : null;
+
+    // Second point d'application du quota, et le seul qui compte vraiment : c'est ici
+    // que la scène est créée, donc ici que l'import offert est consommé. Un draft déjà
+    // préparé (job lancé avant que le quota ne soit atteint) ne doit pas passer en
+    // force. Le comptage porte sur les scènes existantes, donc `allowed` est faux dès
+    // que l'utilisateur en possède déjà une.
+    const quota = await getImportQuota(user.id);
+    if (!quota.allowed) {
+      return NextResponse.json(IMPORT_QUOTA_EXCEEDED, { status: 402 });
+    }
 
     // 1) Créer la scène privée
     const { data: scene, error: sceneError } = await supabase
