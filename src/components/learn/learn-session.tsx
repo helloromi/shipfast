@@ -661,14 +661,39 @@ export function LearnSession(props: LearnSessionProps) {
     );
   };
 
+  // On montre tout le passage couvert par la session, pas seulement les répliques à
+  // apprendre : sans les répliques adverses on ne peut ni relire l'enchaînement, ni
+  // repérer sa réplique d'amorce — et sur un texte fraîchement importé, on ne peut
+  // pas vérifier l'OCR, ce que cet écran demande pourtant de faire. `displayLines`
+  // est déjà borné par « commencer à » et par le nombre de répliques choisi.
+  //
+  // Les répliques du rôle sont surlignées avec le même jaune que la vue d'ensemble
+  // et que l'export PDF : dans tout le produit, cette couleur veut dire « toi ». Le
+  // badge double le signal en texte, la couleur seule ne suffisant pas.
   const renderSetupPreviewList = () => (
     <div className="divide-y divide-[#f0ece6] rounded-xl border border-[#e7e1d9]">
-      {userLines.map((line) => (
-        <div key={line.id} className="flex flex-col gap-1 p-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-[#7a7184]">
-            {line.characterName}
+      {visibleLines.map((line) => (
+        <div
+          key={line.id}
+          className={`flex flex-col gap-1 p-3 ${line.isUserLine ? "bg-[#f4c95d1f]" : ""}`}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`text-xs font-semibold uppercase tracking-wide ${
+                line.isUserLine ? "text-[#3b1f4a]" : "text-[#7a7184]"
+              }`}
+            >
+              {line.characterName}
+            </span>
+            {line.isUserLine && (
+              <span className="rounded-full bg-[#f4c95d66] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3b1f4a]">
+                {t.learn.setup.previewRoleBadge}
+              </span>
+            )}
           </div>
-          <p className="text-sm text-[#1c1b1f]">{line.text}</p>
+          <p className={`text-sm text-[#1c1b1f] ${line.isUserLine ? "font-semibold" : ""}`}>
+            {line.text}
+          </p>
         </div>
       ))}
     </div>
