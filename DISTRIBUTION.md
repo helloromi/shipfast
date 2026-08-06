@@ -73,11 +73,19 @@ Trois chantiers, dans cet ordre. Chacun lève une objection précise qui sera re
 
 **Sémantique retenue.** On compte les textes importés **possédés**, pas les imports réalisés depuis toujours : supprimer son texte importé rend l'import offert. La promesse « un texte importé à la fois » reste vraie, et compter l'historique aurait demandé de s'appuyer sur `import_jobs`, qui ne couvre pas le chemin d'import synchrone. À revoir si quelqu'un en abuse.
 
-### Chantier 2 — Le PDF des scènes du domaine public, gratuit avec un compte (~0,5 jour)
+### Chantier 2 — Le PDF des scènes du domaine public, gratuit avec un compte ✅ livré le 06/08/2026
 
-**Pourquoi.** `src/app/scenes/[identifiant]/export/page.tsx` exige le pass, y compris quand `scene.is_private` est faux. C'est du contenu du domaine public derrière l'auth **et** derrière 12 € — une entorse à la règle produit n°1. C'est aussi le meilleur aimant à compte disponible : « télécharger la scène en PDF » est exactement ce que veulent le prof qui photocopie et le lycéen qui révise, et c'est un argument physique sur un stand de forum.
+**Pourquoi.** `src/app/scenes/[identifiant]/export/page.tsx` exigeait le pass, y compris quand `scene.is_private` était faux. C'était du contenu du domaine public derrière l'auth **et** derrière 12 € — une entorse à la règle produit n°1. C'est aussi le meilleur aimant à compte disponible : « télécharger la scène en PDF » est exactement ce que veulent le prof qui photocopie et le lycéen qui révise, et c'est un argument physique sur un stand de forum.
 
-**Fini quand.** Un inscrit sans pass exporte en PDF n'importe quelle scène publique ; le pass ne conditionne plus que l'export d'un texte importé.
+**Décision.** Le PDF exige un compte, volontairement. Le texte intégral reste lisible sans compte sur la page scène ; le PDF est une commodité dérivée, et c'est la seule contrepartie concrète qu'on ait à échanger contre une adresse mail auprès du trafic SEO existant.
+
+**Ce qui a été fait.**
+- Le pass ne garde plus que l'export d'un texte **importé** (`scene.is_private`). Sur une scène publique, un compte gratuit suffit.
+- Un visiteur anonyme part sur `/login?redirect=/scenes/[id]/export` et retombe sur son PDF après connexion.
+- **Le CTA existe enfin pour l'anonyme** : un bloc « Télécharger la scène en PDF » en haut de l'onglet Aperçu. Sans lui, ouvrir la route n'aurait rien changé — l'entrée était réservée aux connectés et enterrée dans l'onglet Réglages.
+- Le bloc connecté s'intitulait « Exporter mes notes », ce qui vendait une fonction annexe. Il s'appelle maintenant « Télécharger la scène en PDF ».
+
+`/scenes/*/export` reste en disallow dans `robots.ts` : c'est une vue par utilisateur, pas une page de contenu.
 
 ### Chantier 3 — Le parcours professeur en autonomie (~1,5 jour)
 

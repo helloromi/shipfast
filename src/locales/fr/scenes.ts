@@ -28,6 +28,14 @@ export const scenes = {
       tuJoues: "Tu joues",
       changer: "changer",
       ctaCompte: "Sauvegarde ta progression — c'est gratuit",
+      // Aimant à compte du visiteur SEO : le texte est déjà lisible sans compte,
+      // le PDF prêt à imprimer est ce qu'on échange contre une adresse mail.
+      pdf: {
+        titre: "Télécharger la scène en PDF",
+        description:
+          "Le texte complet mis en page pour l'impression : à distribuer en atelier, ou à réviser sur papier.",
+        cta: "Créer un compte gratuit pour télécharger",
+      },
     },
     notes: {
       notePerso: "Note perso",
@@ -80,10 +88,10 @@ export const scenes = {
       partagerPlaceholder: "adresse@email.com",
       partagerBouton: "Envoyer",
       partagerConfirmation: "Invitation envoyée à",
-      exportNotesTitle: "Exporter mes notes",
-      exportNotes: "Exporter / Imprimer mes notes en PDF",
+      exportNotesTitle: "Télécharger la scène en PDF",
+      exportNotes: "Exporter / Imprimer la scène en PDF",
       exportNotesDescription:
-        "Ouvre une vue imprimable de la scène avec toutes tes notes. Utilise « Enregistrer en PDF » dans la boîte d'impression pour obtenir un fichier PDF.",
+        "Ouvre une vue imprimable de la scène, avec tes notes si tu en as pris. Utilise « Enregistrer en PDF » dans la boîte d'impression pour obtenir un fichier.",
       exportScreenMessage: "Vue pour l'impression. Une fois l'export fait, retournez à la scène.",
       exportBackToScene: "Retour à la scène",
     },

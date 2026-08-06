@@ -161,6 +161,24 @@ export function SceneDetailTabs({
               )}
             </div>
           )}
+          {/* Le PDF est la seule contrepartie concrète qu'on ait à offrir au visiteur
+              venu du SEO : il cherche le texte, il l'a déjà gratuitement, mais la
+              version imprimable vaut une adresse mail. Placé haut dans l'Aperçu —
+              en bas de page il serait sous soixante répliques. */}
+          {!user && (
+            <div className="flex flex-col gap-2 rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] px-3 py-3">
+              <p className="text-sm font-semibold text-[#3b1f4a]">
+                {t.scenes.detail.apercu.pdf.titre}
+              </p>
+              <p className="text-sm text-[#524b5a]">{t.scenes.detail.apercu.pdf.description}</p>
+              <Link
+                href={`/login?redirect=/scenes/${sceneId}/export`}
+                className="inline-flex w-fit items-center gap-2 rounded-full border border-[#e7e1d9] bg-white px-4 py-2 text-sm font-semibold text-[#3b1f4a] shadow-sm transition hover:-translate-y-[1px] hover:border-[#3b1f4a66]"
+              >
+                {t.scenes.detail.apercu.pdf.cta}
+              </Link>
+            </div>
+          )}
           {user && (
             <div className="rounded-xl border border-[#e7e1d9] bg-[#f9f7f3] px-3 py-2 text-sm text-[#524b5a]">
               {t.scenes.detail.highlights.help}

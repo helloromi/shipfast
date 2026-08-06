@@ -26,9 +26,19 @@ export default async function SceneExportPage({ params }: Props) {
 
   const user = await getSupabaseSessionUser();
   if (!user) {
-    redirect("/login");
+    // Le compte est exigé — c'est la seule raison d'en créer un pour un visiteur
+    // venu du SEO, et donc l'entrée du funnel (chantier 2 de DISTRIBUTION.md).
+    // On revient ici après connexion.
+    redirect(`/login?redirect=/scenes/${id}/export`);
   }
-  await requireSubscriptionOrRedirect(user);
+
+  // Le pass ne garde QUE l'export d'un texte importé. Sur une scène du domaine
+  // public, le PDF est une commodité d'impression sur du contenu déjà libre et
+  // déjà lisible en entier sans compte : le mettre derrière le paiement était
+  // une entorse à la règle produit n°1.
+  if (scene.is_private) {
+    await requireSubscriptionOrRedirect(user);
+  }
 
   if (!scene.is_private) {
     const access = await hasAccess(user.id, scene.work_id ?? undefined, scene.id);
